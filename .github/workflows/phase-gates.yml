@@ -1,0 +1,29 @@
+name: Phase Gates
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
+        run: bun install --frozen-lockfile
+
+      - name: Full validation gate
+        run: ./scripts/phase-check.sh full
+
+      - name: Regression gate
+        run: ./scripts/phase-check.sh regression

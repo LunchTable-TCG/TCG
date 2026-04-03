@@ -1,0 +1,24 @@
+# Optional phase loop overrides.
+# Copy this file to `phase-loop.conf` and edit the command arrays as the repo grows.
+
+FAST_FEEDBACK_COMMANDS=(
+  "bun run typecheck"
+  "bun run test"
+)
+
+VALIDATION_COMMANDS=(
+  "bun run lint"
+  "bun run typecheck"
+  "bun run test"
+)
+
+REGRESSION_COMMANDS=(
+  "bun run test:rules"
+  "bun run test:convex"
+  "bun run test:replay"
+  "bun run test:e2e"
+)
+
+# Optional push target overrides.
+PUSH_REMOTE="origin"
+PUSH_BRANCH=""
