@@ -17,6 +17,10 @@ export default defineConfig({
         __dirname,
         "packages/card-content/src/index.ts",
       ),
+      "@lunchtable/bot-sdk": path.resolve(
+        __dirname,
+        "packages/bot-sdk/src/index.ts",
+      ),
       "@lunchtable/render-pixi": path.resolve(
         __dirname,
         "packages/render-pixi/src/index.ts",

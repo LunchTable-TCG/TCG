@@ -22,6 +22,7 @@
     "test:replay": "vitest run tests/replay-contract.test.ts"
   },
   "dependencies": {
+    "@convex-dev/agent": "0.6.1",
     "@noble/curves": "2.0.1",
     "convex": "1.34.1",
     "jose": "6.2.2",

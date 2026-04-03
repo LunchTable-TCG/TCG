@@ -1,6 +1,8 @@
 import { starterFormat } from "@lunchtable/card-content";
 import { createMatchSkeleton } from "@lunchtable/game-core";
 import type {
+  AgentLabMessageRecord,
+  AgentLabSessionRecord,
   CardCatalogEntry,
   CollectionSummary,
   DeckId,
@@ -24,6 +26,7 @@ import {
   signUpWithGeneratedWallet,
   storeAuthToken,
 } from "./auth";
+import { AgentLabPanel } from "./components/agents/AgentLabPanel";
 import { MatchShell as LiveMatchShell } from "./components/match/MatchShell";
 import { ReplayPlayer } from "./components/replay/ReplayPlayer";
 import { convexWalletAuthTransport, syncConvexAuth } from "./convex/client";
@@ -35,6 +38,7 @@ const bootstrapChecklist = [
   "Deck validation and CRUD online",
   "Match shell persistence online",
   "Lobby and queue matchmaking online",
+  "Agent lab threads separated from live match state",
 ];
 
 const defaultFormatId = starterFormat.formatId;
@@ -141,6 +145,26 @@ async function loadPlaySnapshot() {
     lobbies,
     queueEntries,
   };
+}
+
+async function loadAgentLabSnapshot(matchId: string) {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport.listAgentSessions({
+    matchId,
+  });
+}
+
+async function loadAgentSessionMessages(sessionId: string) {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport.listAgentMessages({
+    sessionId,
+  });
 }
 
 function summarizeValidation(deck: DeckRecord) {
@@ -801,11 +825,23 @@ export function App() {
   const [replaySummary, setReplaySummary] = useState<ReplaySummary | null>(
     null,
   );
+  const [agentSessions, setAgentSessions] = useState<AgentLabSessionRecord[]>(
+    [],
+  );
+  const [selectedAgentSessionId, setSelectedAgentSessionId] = useState<
+    string | null
+  >(null);
+  const [agentMessages, setAgentMessages] = useState<AgentLabMessageRecord[]>(
+    [],
+  );
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [replayLoading, setReplayLoading] = useState(false);
+  const [agentSessionsLoading, setAgentSessionsLoading] = useState(false);
+  const [agentMessagesLoading, setAgentMessagesLoading] = useState(false);
   const [deckAction, setDeckAction] = useState<string | null>(null);
   const [playAction, setPlayAction] = useState<string | null>(null);
+  const [agentAction, setAgentAction] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
 
   useEffect(() => {
@@ -868,6 +904,18 @@ export function App() {
   async function refreshMatches() {
     const nextMatches = await loadMatchSnapshot();
     setMatches(nextMatches);
+  }
+
+  async function refreshAgentSessions(matchId: string) {
+    const nextSessions = await loadAgentLabSnapshot(matchId);
+    setAgentSessions(nextSessions);
+    return nextSessions;
+  }
+
+  async function refreshAgentMessages(sessionId: string) {
+    const nextMessages = await loadAgentSessionMessages(sessionId);
+    setAgentMessages(nextMessages);
+    return nextMessages;
   }
 
   async function refreshPlay() {
@@ -1059,6 +1107,103 @@ export function App() {
     };
   }, [selectedMatchId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncAgentSessions() {
+      if (!convexWalletAuthTransport || !viewer || !selectedMatchId) {
+        setAgentSessions([]);
+        setSelectedAgentSessionId(null);
+        return;
+      }
+
+      setAgentSessionsLoading(true);
+      try {
+        const nextSessions = await loadAgentLabSnapshot(selectedMatchId);
+        if (cancelled) {
+          return;
+        }
+
+        setAgentSessions(nextSessions);
+      } catch (error) {
+        if (!cancelled) {
+          setNotice({
+            body: getErrorMessage(error),
+            title: "Agent session sync failed",
+            tone: "error",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setAgentSessionsLoading(false);
+        }
+      }
+    }
+
+    void syncAgentSessions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMatchId, viewer]);
+
+  useEffect(() => {
+    if (agentSessions.length === 0) {
+      setSelectedAgentSessionId(null);
+      return;
+    }
+
+    if (
+      selectedAgentSessionId &&
+      agentSessions.some((session) => session.id === selectedAgentSessionId)
+    ) {
+      return;
+    }
+
+    setSelectedAgentSessionId(agentSessions[0]?.id ?? null);
+  }, [agentSessions, selectedAgentSessionId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncAgentMessages() {
+      if (!convexWalletAuthTransport || !selectedAgentSessionId) {
+        setAgentMessages([]);
+        return;
+      }
+
+      setAgentMessagesLoading(true);
+      try {
+        const nextMessages = await loadAgentSessionMessages(
+          selectedAgentSessionId,
+        );
+        if (cancelled) {
+          return;
+        }
+
+        setAgentMessages(nextMessages);
+      } catch (error) {
+        if (!cancelled) {
+          setNotice({
+            body: getErrorMessage(error),
+            title: "Agent thread sync failed",
+            tone: "error",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setAgentMessagesLoading(false);
+        }
+      }
+    }
+
+    void syncAgentMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAgentSessionId]);
+
   async function handleSignupSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1168,6 +1313,9 @@ export function App() {
     setMatches([]);
     setQueueEntries([]);
     setSelectedMatchId(null);
+    setAgentSessions([]);
+    setSelectedAgentSessionId(null);
+    setAgentMessages([]);
     setNotice({
       body: "The local JWT was cleared. Use your saved private key to restore access again.",
       title: "Signed out",
@@ -1549,11 +1697,118 @@ export function App() {
     }
   }
 
+  async function handleEnsureAgentSession(
+    purpose: AgentLabSessionRecord["purpose"],
+  ) {
+    if (!convexWalletAuthTransport || !selectedMatchId) {
+      return;
+    }
+
+    setAgentAction(`ensure:${purpose}`);
+    try {
+      const session = await convexWalletAuthTransport.ensureLabSession({
+        matchId: selectedMatchId,
+        purpose,
+      });
+      await refreshAgentSessions(selectedMatchId);
+      setSelectedAgentSessionId(session.id);
+      await refreshAgentMessages(session.id);
+      setNotice({
+        body:
+          purpose === "coach"
+            ? "Coach thread opened on your owned seat view. Suggestions remain non-authoritative."
+            : "Commentator thread opened on the public spectator view.",
+        title:
+          purpose === "coach"
+            ? "Coach thread ready"
+            : "Commentator thread ready",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Agent thread setup failed",
+        tone: "error",
+      });
+    } finally {
+      setAgentAction(null);
+    }
+  }
+
+  async function handleArchiveAgentSession(sessionId: string) {
+    if (!convexWalletAuthTransport || !selectedMatchId) {
+      return;
+    }
+
+    setAgentAction(`archive-session:${sessionId}`);
+    try {
+      await convexWalletAuthTransport.archiveLabSession({
+        sessionId,
+      });
+      const nextSessions = await refreshAgentSessions(selectedMatchId);
+      const fallbackSessionId = nextSessions[0]?.id ?? null;
+      setSelectedAgentSessionId(fallbackSessionId);
+      if (fallbackSessionId) {
+        await refreshAgentMessages(fallbackSessionId);
+      } else {
+        setAgentMessages([]);
+      }
+      setNotice({
+        body: "The helper thread was archived without touching live match state.",
+        title: "Agent thread archived",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Agent archive failed",
+        tone: "error",
+      });
+    } finally {
+      setAgentAction(null);
+    }
+  }
+
+  async function handleSendAgentPrompt(sessionId: string, prompt: string) {
+    if (!convexWalletAuthTransport) {
+      return;
+    }
+
+    setAgentAction(`send-session:${sessionId}`);
+    try {
+      const result = await convexWalletAuthTransport.sendLabPrompt({
+        prompt,
+        sessionId,
+      });
+      if (selectedMatchId) {
+        await refreshAgentSessions(selectedMatchId);
+      }
+      setSelectedAgentSessionId(result.session.id);
+      await refreshAgentMessages(result.session.id);
+      setNotice({
+        body: result.reply,
+        title:
+          result.session.purpose === "coach"
+            ? "Coach reply generated"
+            : "Commentator reply generated",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Agent reply failed",
+        tone: "error",
+      });
+    } finally {
+      setAgentAction(null);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Phase 14 Replay And Spectator Mode</p>
+          <p className="eyebrow">Phase 16 Agent Lab And Helper Threads</p>
           <h1>{APP_NAME}</h1>
           <p className="lede">
             Email and username create the player record. A fresh BSC wallet is
@@ -1561,9 +1816,10 @@ export function App() {
             the private key never leaves the player’s machine.
           </p>
           <p className="support-copy">
-            This phase adds spectator-safe replay capture on top of the live
-            match shell, so completed matches can be stepped through using the
-            same authoritative event log and cached public board projections.
+            This phase adds non-authoritative coach and commentator threads on
+            top of the live match shell. Helper sessions live in separate agent
+            storage, reuse the same public or seat-scoped views, and never
+            become part of turn resolution.
           </p>
         </div>
         <div className="hero-metrics">
@@ -1578,10 +1834,12 @@ export function App() {
             <strong>{starterFormat.name}</strong>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Replay</span>
+            <span className="metric-label">Agent Lab</span>
             <strong>
-              {replaySummary
-                ? `${replaySummary.totalFrames} frames`
+              {selectedMatchId
+                ? `${agentSessions.length} active thread${
+                    agentSessions.length === 1 ? "" : "s"
+                  }`
                 : "Awaiting match"}
             </strong>
           </div>
@@ -1830,6 +2088,21 @@ export function App() {
           summary={replaySummary}
         />
       </section>
+
+      <AgentLabPanel
+        loadingMessages={agentMessagesLoading}
+        loadingSessions={agentSessionsLoading}
+        messages={agentMessages}
+        onArchiveSession={handleArchiveAgentSession}
+        onEnsureSession={handleEnsureAgentSession}
+        onSelectSession={setSelectedAgentSessionId}
+        onSendPrompt={handleSendAgentPrompt}
+        pendingAction={agentAction}
+        replaySummary={replaySummary}
+        selectedMatchId={selectedMatchId}
+        selectedSessionId={selectedAgentSessionId}
+        sessions={agentSessions}
+      />
 
       <section className="panel panel-secondary">
         <div>

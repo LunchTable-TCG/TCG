@@ -749,6 +749,39 @@ h3 {
   border: 1px solid rgba(255, 223, 177, 0.08);
 }
 
+.agent-message-list {
+  display: grid;
+  gap: 0.85rem;
+  max-height: 30rem;
+  overflow: auto;
+}
+
+.agent-message {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 223, 177, 0.12);
+}
+
+.agent-message-user {
+  background: rgba(255, 249, 236, 0.08);
+}
+
+.agent-message-assistant {
+  background: rgba(239, 198, 126, 0.08);
+}
+
+.agent-message-system {
+  background: rgba(182, 226, 255, 0.08);
+}
+
+.agent-message-text {
+  margin: 0;
+  white-space: pre-wrap;
+  color: rgba(255, 237, 210, 0.92);
+}
+
 @media (min-width: 900px) {
   .hero {
     grid-template-columns: minmax(0, 1.8fr) minmax(260px, 0.9fr);

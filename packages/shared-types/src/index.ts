@@ -1,6 +1,10 @@
 export const APP_NAME = "Lunch-Table";
 
 export {
+  AGENT_LAB_PURPOSES,
+  AGENT_LAB_SESSION_STATUSES,
+} from "./agent-lab";
+export {
   BOT_ASSIGNMENT_STATUSES,
   BOT_IDENTITY_STATUSES,
 } from "./agents";
@@ -39,6 +43,14 @@ export {
 } from "./play";
 export { MATCH_TELEMETRY_EVENT_NAMES } from "./telemetry";
 
+export type {
+  AgentLabMessageRecord,
+  AgentLabPurpose,
+  AgentLabSessionId,
+  AgentLabSessionRecord,
+  AgentLabSessionStatus,
+  AgentLabTurnResult,
+} from "./agent-lab";
 export type {
   BotAssignmentId,
   BotAssignmentRecord,

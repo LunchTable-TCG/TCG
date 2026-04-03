@@ -1,4 +1,9 @@
 import type {
+  AgentLabMessageRecord,
+  AgentLabPurpose,
+  AgentLabSessionId,
+  AgentLabSessionRecord,
+  AgentLabTurnResult,
   CardCatalogEntry,
   CollectionSummary,
   DeckCardEntry,
@@ -142,6 +147,9 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   archiveDeck(args: {
     deckId: DeckId;
   }): Promise<DeckRecord>;
+  archiveLabSession(args: {
+    sessionId: AgentLabSessionId;
+  }): Promise<AgentLabSessionRecord>;
   createPrivateLobby(args: {
     deckId: DeckId;
   }): Promise<LobbyMutationResult>;
@@ -158,6 +166,10 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   createPracticeMatch(args: {
     deckId: DeckId;
   }): Promise<MatchShell>;
+  ensureLabSession(args: {
+    matchId: string;
+    purpose: AgentLabPurpose;
+  }): Promise<AgentLabSessionRecord>;
   dequeueCasualQueue(args: {
     entryId: QueueEntryId;
   }): Promise<QueueMutationResult>;
@@ -188,6 +200,13 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
     code: string;
     deckId: DeckId;
   }): Promise<LobbyMutationResult>;
+  listAgentMessages(args: {
+    sessionId: AgentLabSessionId;
+  }): Promise<AgentLabMessageRecord[]>;
+  listAgentSessions(args: {
+    includeArchived?: boolean;
+    matchId?: string;
+  }): Promise<AgentLabSessionRecord[]>;
   listCatalog(args: {
     formatId: string;
   }): Promise<CardCatalogEntry[]>;
@@ -217,6 +236,10 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
     lobbyId: LobbyRecord["id"];
     ready: boolean;
   }): Promise<LobbyMutationResult>;
+  sendLabPrompt(args: {
+    prompt: string;
+    sessionId: AgentLabSessionId;
+  }): Promise<AgentLabTurnResult>;
   submitIntent(args: {
     intent: SubmitIntent;
   }): Promise<SubmitIntentResult>;
@@ -228,6 +251,12 @@ export function createConvexWalletAuthTransport(
   return {
     archiveDeck(args) {
       return client.mutation(api.decks.archive, args) as Promise<DeckRecord>;
+    },
+    archiveLabSession(args) {
+      return client.mutation(
+        api.agents.archiveLabSession,
+        args,
+      ) as Promise<AgentLabSessionRecord>;
     },
     createPrivateLobby(args) {
       return client.mutation(
@@ -258,6 +287,12 @@ export function createConvexWalletAuthTransport(
         api.matches.createPractice,
         args,
       ) as Promise<MatchShell>;
+    },
+    ensureLabSession(args) {
+      return client.mutation(
+        api.agents.ensureLabSession,
+        args,
+      ) as Promise<AgentLabSessionRecord>;
     },
     dequeueCasualQueue(args) {
       return client.mutation(
@@ -313,6 +348,16 @@ export function createConvexWalletAuthTransport(
         args,
       ) as Promise<LobbyMutationResult>;
     },
+    listAgentMessages(args) {
+      return client.query(api.agents.listLabMessages, args) as Promise<
+        AgentLabMessageRecord[]
+      >;
+    },
+    listAgentSessions(args) {
+      return client.query(api.agents.listLabSessions, args) as Promise<
+        AgentLabSessionRecord[]
+      >;
+    },
     getViewer() {
       return client.query(api.viewer.get, {}) as Promise<ViewerIdentity | null>;
     },
@@ -366,6 +411,12 @@ export function createConvexWalletAuthTransport(
         api.lobbies.setReady,
         args,
       ) as Promise<LobbyMutationResult>;
+    },
+    sendLabPrompt(args) {
+      return client.mutation(
+        api.agents.sendLabPrompt,
+        args,
+      ) as Promise<AgentLabTurnResult>;
     },
     submitIntent(args) {
       return client.mutation(

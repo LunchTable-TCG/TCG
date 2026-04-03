@@ -2,6 +2,26 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  agentSessions: defineTable({
+    createdAt: v.number(),
+    latestReplyPreview: v.optional(v.string()),
+    matchId: v.id("matches"),
+    ownerUserId: v.id("users"),
+    purpose: v.union(v.literal("coach"), v.literal("commentator")),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    threadId: v.string(),
+    title: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerUserId_and_updatedAt", ["ownerUserId", "updatedAt"])
+    .index("by_ownerUserId_and_matchId_and_purpose_and_status", [
+      "ownerUserId",
+      "matchId",
+      "purpose",
+      "status",
+    ])
+    .index("by_matchId_and_updatedAt", ["matchId", "updatedAt"]),
+
   authAudits: defineTable({
     failureCode: v.optional(v.string()),
     ipHash: v.optional(v.string()),

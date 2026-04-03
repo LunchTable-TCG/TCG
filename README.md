@@ -9,6 +9,7 @@ apps/
   web/
   bot-runner/
 packages/
+  bot-sdk/
   shared-types/
   game-core/
   card-content/
@@ -51,6 +52,19 @@ configured to read root-level env files, so you do not need to copy
 `VITE_CONVEX_URL` into `apps/web/`. The same setup step also seeds
 `BOT_RUNNER_SECRET` for the local bot runner and syncs it into the Convex
 deployment so `agents.issueBotSession` can work locally.
+
+## Phase 16 Agent Lab
+
+The agent lab is intentionally non-authoritative:
+
+- live match turns still resolve only through `matches.submitIntent`
+- coach threads read the signed-in player's owned seat view
+- commentator threads read spectator-safe public state only
+- helper thread history is stored in the Convex Agent component, separate from
+  match snapshots, events, and replay frames
+
+The current implementation uses deterministic helper replies so the feature
+works locally without any external model credentials.
 
 ## Session Loop
 
