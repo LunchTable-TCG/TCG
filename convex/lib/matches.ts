@@ -29,7 +29,11 @@ import type {
 } from "@lunchtable/shared-types";
 
 import type { MutationCtx } from "../_generated/server";
-import { createReplayFrame, serializeReplayFrames } from "./replays";
+import {
+  createReplayFrame,
+  createReplayFrameSlice,
+  serializeReplayFrames,
+} from "./replays";
 
 export interface PracticeMatchBundleInput {
   createdAt: number;
@@ -384,6 +388,7 @@ export function buildPracticeMatchBundle(
   input: PracticeMatchBundleInput,
 ): PracticeMatchBundle {
   return buildPersistedMatchBundle({
+    activeSeat: "seat-0",
     createdAt: input.createdAt,
     format: input.format,
     matchId: input.matchId,
@@ -403,7 +408,9 @@ export function buildPracticeMatchBundle(
         username: "Table Bot",
       },
     ],
-    status: "pending",
+    startedAt: input.createdAt,
+    status: "active",
+    turnNumber: 1,
   });
 }
 
@@ -537,11 +544,11 @@ export async function createPersistedMatch(
     view: bundle.spectatorView,
   });
 
-  await ctx.db.insert("replays", {
+  const replayRef = await ctx.db.insert("replays", {
     completedAt: bundle.shell.completedAt ?? undefined,
     createdAt: input.createdAt,
     formatId: input.format.formatId,
-    framesJson: serializeReplayFrames([initialReplayFrame]),
+    framesJson: serializeReplayFrames([]),
     lastEventSequence: initialReplayFrame.eventSequence,
     matchId: matchRef,
     ownerUserId: input.participants[0]?.userId ?? undefined,
@@ -549,6 +556,22 @@ export async function createPersistedMatch(
     totalFrames: 1,
     updatedAt: input.createdAt,
     winnerSeat: bundle.shell.winnerSeat ?? undefined,
+  });
+
+  const initialSlice = createReplayFrameSlice({
+    frames: [initialReplayFrame],
+    sliceIndex: 0,
+  });
+  await ctx.db.insert("replayFrameSlices", {
+    createdAt: input.createdAt,
+    endFrameIndex: initialSlice.endFrameIndex,
+    frameCount: initialSlice.frameCount,
+    framesJson: initialSlice.framesJson,
+    matchId: matchRef,
+    replayId: replayRef,
+    sliceIndex: initialSlice.sliceIndex,
+    startFrameIndex: initialSlice.startFrameIndex,
+    updatedAt: input.createdAt,
   });
 
   return bundle;

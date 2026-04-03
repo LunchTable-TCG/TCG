@@ -1,23 +1,98 @@
 import type {
-  GameplayIntent,
+  CardCatalogEntry,
   GameplayIntentKind,
   MatchId,
   MatchSeatView,
-  SeatId,
 } from "@lunchtable/shared-types";
+
+export type BotSeatId = "seat-0" | "seat-1";
+
+export type BotSupportedIntent =
+  | {
+      intentId: string;
+      kind: "activateAbility";
+      matchId: MatchId;
+      payload: {
+        abilityId: string;
+        sourceInstanceId: string;
+      };
+      seat: BotSeatId;
+      stateVersion: number;
+    }
+  | {
+      intentId: string;
+      kind: "keepOpeningHand";
+      matchId: MatchId;
+      payload: Record<string, never>;
+      seat: BotSeatId;
+      stateVersion: number;
+    }
+  | {
+      intentId: string;
+      kind: "passPriority";
+      matchId: MatchId;
+      payload: Record<string, never>;
+      seat: BotSeatId;
+      stateVersion: number;
+    }
+  | {
+      intentId: string;
+      kind: "playCard";
+      matchId: MatchId;
+      payload: {
+        alternativeCostId: string | null;
+        cardInstanceId: string;
+        sourceZone:
+          | "battlefield"
+          | "command"
+          | "deck"
+          | "graveyard"
+          | "hand"
+          | "laneReserve"
+          | "objective"
+          | "sideboard"
+          | "exile";
+        targetSlotId: string | null;
+      };
+      seat: BotSeatId;
+      stateVersion: number;
+    }
+  | {
+      intentId: string;
+      kind: "takeMulligan";
+      matchId: MatchId;
+      payload: {
+        targetHandSize: number | null;
+      };
+      seat: BotSeatId;
+      stateVersion: number;
+    };
 
 export interface BotDecisionFrame {
   availableIntentKinds: GameplayIntentKind[];
+  catalog: CardCatalogEntry[];
   deadlineAt: number | null;
   matchId: MatchId;
   receivedAt: number;
-  seat: SeatId;
+  seat: BotSeatId;
   view: MatchSeatView;
+}
+
+export interface BotLegalAction {
+  intent: BotSupportedIntent;
+  kind: BotSupportedIntent["kind"];
+  label: string;
+  priority: number;
 }
 
 export interface BotPlannedIntent {
   confidence: number;
-  intent: GameplayIntent;
+  intent: BotSupportedIntent;
   requestedAt: number;
-  seat: SeatId;
+  seat: BotSeatId;
+}
+
+export interface BotPolicy {
+  key: string;
+  decide(frame: BotDecisionFrame): BotPlannedIntent | null;
 }

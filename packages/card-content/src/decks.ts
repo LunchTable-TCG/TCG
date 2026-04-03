@@ -10,6 +10,20 @@ function summarizeAbility(ability: CardDefinition["abilities"][number]) {
   return {
     id: ability.id,
     kind: ability.kind,
+    requiresTargets:
+      ability.kind === "activated" && Array.isArray(ability.targets)
+        ? ability.targets.length > 0
+        : false,
+    resourceCost:
+      ability.kind === "activated"
+        ? ability.costs.reduce((total, cost) => {
+            if (cost.kind !== "resource") {
+              return total;
+            }
+            return total + cost.amount;
+          }, 0)
+        : null,
+    speed: ability.kind === "activated" ? ability.speed : null,
     text: ability.text,
   };
 }

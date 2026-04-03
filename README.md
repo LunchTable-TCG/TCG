@@ -31,6 +31,7 @@ bun run test
 
 ```bash
 bun install
+bun run setup:convex-auth-local --sync
 bun run dev:web
 bun run dev:bot
 ```
@@ -47,7 +48,9 @@ bun run dev:convex
 
 The generated `.env.local` lives at the repository root. The Vite app is
 configured to read root-level env files, so you do not need to copy
-`VITE_CONVEX_URL` into `apps/web/`.
+`VITE_CONVEX_URL` into `apps/web/`. The same setup step also seeds
+`BOT_RUNNER_SECRET` for the local bot runner and syncs it into the Convex
+deployment so `agents.issueBotSession` can work locally.
 
 ## Session Loop
 

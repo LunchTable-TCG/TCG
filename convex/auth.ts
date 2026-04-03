@@ -260,6 +260,7 @@ export const completeWalletSignupTransaction = internalMutation({
 
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      actorType: "human",
       email,
       emailNormalized,
       status: "active",

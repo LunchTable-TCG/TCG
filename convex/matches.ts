@@ -4,6 +4,14 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
+  DEFAULT_BOT_DISPLAY_NAME,
+  DEFAULT_BOT_POLICY_KEY,
+  DEFAULT_BOT_SLUG,
+  deriveBotAssignmentStatus,
+  ensureBotIdentity,
+  syncBotAssignmentsForMatch,
+} from "./lib/agents";
+import {
   getFormatDefinition,
   listCollectionEntriesForUser,
   validateDeckForUserCollection,
@@ -25,12 +33,13 @@ import {
 } from "./lib/matches";
 import { assertUserCanEnterPlaySurface } from "./lib/participation";
 import {
+  REPLAY_FRAME_SLICE_SIZE,
   appendReplayFrame,
   buildReplaySummary,
   createReplayFrame,
+  createReplayFrameSlice,
   deserializeReplayFrames,
   selectReplayAnchorEvent,
-  serializeReplayFrames,
 } from "./lib/replays";
 import { requireViewerUser } from "./lib/viewer";
 
@@ -220,6 +229,92 @@ async function getReplayDoc(
     .unique();
 }
 
+async function getLastReplayFrameSliceDoc(
+  ctx: Pick<MutationCtx, "db">,
+  replayId: Id<"replays">,
+) {
+  const sliceDocs = await ctx.db
+    .query("replayFrameSlices")
+    .withIndex("by_replayId_and_sliceIndex", (query) =>
+      query.eq("replayId", replayId),
+    )
+    .order("desc")
+    .take(1);
+
+  return sliceDocs[0] ?? null;
+}
+
+async function appendReplayFrameToSlices(
+  ctx: Pick<MutationCtx, "db">,
+  input: {
+    matchId: Id<"matches">;
+    now: number;
+    replayDoc: Doc<"replays">;
+    replayFrame: ReturnType<typeof createReplayFrame>;
+  },
+) {
+  const lastSliceDoc = await getLastReplayFrameSliceDoc(
+    ctx,
+    input.replayDoc._id,
+  );
+  const legacyFrames = deserializeReplayFrames(input.replayDoc.framesJson);
+  const lastSliceFrames = lastSliceDoc
+    ? deserializeReplayFrames(lastSliceDoc.framesJson)
+    : [];
+  const previousFrames = lastSliceDoc ? lastSliceFrames : legacyFrames;
+  const nextFrames = appendReplayFrame(previousFrames, input.replayFrame);
+
+  if (nextFrames.length === previousFrames.length) {
+    return {
+      lastEventSequence: input.replayDoc.lastEventSequence,
+      totalFrames: input.replayDoc.totalFrames,
+    };
+  }
+
+  const appendedFrame = nextFrames.at(-1);
+  if (!appendedFrame) {
+    return {
+      lastEventSequence: input.replayDoc.lastEventSequence,
+      totalFrames: input.replayDoc.totalFrames,
+    };
+  }
+
+  if (lastSliceDoc && lastSliceFrames.length < REPLAY_FRAME_SLICE_SIZE) {
+    const updatedSlice = createReplayFrameSlice({
+      frames: nextFrames,
+      sliceIndex: lastSliceDoc.sliceIndex,
+    });
+    await ctx.db.patch(lastSliceDoc._id, {
+      endFrameIndex: updatedSlice.endFrameIndex,
+      frameCount: updatedSlice.frameCount,
+      framesJson: updatedSlice.framesJson,
+      startFrameIndex: updatedSlice.startFrameIndex,
+      updatedAt: input.now,
+    });
+  } else {
+    const createdSlice = createReplayFrameSlice({
+      frames: [appendedFrame],
+      sliceIndex: (lastSliceDoc?.sliceIndex ?? -1) + 1,
+    });
+    await ctx.db.insert("replayFrameSlices", {
+      createdAt: input.now,
+      endFrameIndex: createdSlice.endFrameIndex,
+      frameCount: createdSlice.frameCount,
+      framesJson: createdSlice.framesJson,
+      matchId: input.matchId,
+      replayId: input.replayDoc._id,
+      sliceIndex: createdSlice.sliceIndex,
+      startFrameIndex: createdSlice.startFrameIndex,
+      updatedAt: input.now,
+    });
+  }
+
+  return {
+    lastEventSequence: appendedFrame.eventSequence,
+    totalFrames: input.replayDoc.totalFrames + 1,
+  };
+}
+
 async function deletePendingPromptsForSeat(
   ctx: Pick<MutationCtx, "db">,
   input: {
@@ -281,7 +376,14 @@ export const createPractice = mutation({
     const wallet = user.primaryWalletId
       ? await ctx.db.get(user.primaryWalletId)
       : null;
+    const botIdentity = await ensureBotIdentity(ctx.db, {
+      displayName: DEFAULT_BOT_DISPLAY_NAME,
+      now,
+      policyKey: DEFAULT_BOT_POLICY_KEY,
+      slug: DEFAULT_BOT_SLUG,
+    });
     const bundle = await createPersistedMatch(ctx, {
+      activeSeat: "seat-0",
       createdAt: now,
       format: getFormatDefinition(deck.formatId),
       participants: [
@@ -303,10 +405,28 @@ export const createPractice = mutation({
             sideboard: deck.sideboard,
           },
           seat: "seat-1",
-          username: "Table Bot",
+          userId: botIdentity.user._id,
+          username: botIdentity.botIdentity.displayName,
         },
       ],
-      status: "pending",
+      startedAt: now,
+      status: "active",
+      turnNumber: 1,
+    });
+    const normalizedMatchId = ctx.db.normalizeId("matches", bundle.shell.id);
+    if (!normalizedMatchId) {
+      throw new Error("Failed to resolve created match");
+    }
+
+    await ctx.db.insert("botAssignments", {
+      botIdentityId: botIdentity.botIdentity._id,
+      botUserId: botIdentity.user._id,
+      createdAt: now,
+      lastObservedVersion: bundle.shell.version,
+      matchId: normalizedMatchId,
+      seat: "seat-1",
+      status: deriveBotAssignmentStatus(bundle.shell.status),
+      updatedAt: now,
     });
 
     return bundle.shell;
@@ -464,26 +584,28 @@ export const submitIntent = mutation({
     });
 
     if (replayDoc) {
-      const nextFrames = appendReplayFrame(
-        deserializeReplayFrames(replayDoc.framesJson),
+      const replayMeta = await appendReplayFrameToSlices(ctx, {
+        matchId,
+        now,
+        replayDoc,
         replayFrame,
-      );
+      });
 
       const replaySummary = buildReplaySummary({
         completedAt: result.shell.completedAt ?? null,
         createdAt: replayDoc.createdAt,
         formatId: replayDoc.formatId,
-        frames: nextFrames,
+        lastEventSequence: replayMeta.lastEventSequence,
         matchId: result.shell.id,
         ownerUserId: replayDoc.ownerUserId ?? null,
         status: result.shell.status,
+        totalFrames: replayMeta.totalFrames,
         updatedAt: now,
         winnerSeat: result.shell.winnerSeat ?? null,
       });
 
       await ctx.db.patch(replayDoc._id, {
         completedAt: replaySummary.completedAt ?? undefined,
-        framesJson: serializeReplayFrames(nextFrames),
         lastEventSequence: replaySummary.lastEventSequence,
         status: replaySummary.status,
         totalFrames: replaySummary.totalFrames,
@@ -495,19 +617,20 @@ export const submitIntent = mutation({
         completedAt: result.shell.completedAt ?? null,
         createdAt: now,
         formatId: match.formatId,
-        frames: [replayFrame],
+        lastEventSequence: replayFrame.eventSequence,
         matchId: result.shell.id,
         ownerUserId: user._id,
         status: result.shell.status,
+        totalFrames: 1,
         updatedAt: now,
         winnerSeat: result.shell.winnerSeat ?? null,
       });
 
-      await ctx.db.insert("replays", {
+      const replayId = await ctx.db.insert("replays", {
         completedAt: replaySummary.completedAt ?? undefined,
         createdAt: replaySummary.createdAt,
         formatId: replaySummary.formatId,
-        framesJson: serializeReplayFrames([replayFrame]),
+        framesJson: "[]",
         lastEventSequence: replaySummary.lastEventSequence,
         matchId,
         ownerUserId: replaySummary.ownerUserId ?? undefined,
@@ -515,6 +638,22 @@ export const submitIntent = mutation({
         totalFrames: replaySummary.totalFrames,
         updatedAt: replaySummary.updatedAt,
         winnerSeat: replaySummary.winnerSeat ?? undefined,
+      });
+
+      const replaySlice = createReplayFrameSlice({
+        frames: [replayFrame],
+        sliceIndex: 0,
+      });
+      await ctx.db.insert("replayFrameSlices", {
+        createdAt: now,
+        endFrameIndex: replaySlice.endFrameIndex,
+        frameCount: replaySlice.frameCount,
+        framesJson: replaySlice.framesJson,
+        matchId,
+        replayId,
+        sliceIndex: replaySlice.sliceIndex,
+        startFrameIndex: replaySlice.startFrameIndex,
+        updatedAt: now,
       });
     }
 
@@ -538,6 +677,15 @@ export const submitIntent = mutation({
         updatedAt: now,
       });
     }
+
+    await syncBotAssignmentsForMatch(ctx.db, {
+      completedAt: result.shell.completedAt,
+      lastIntentAt: actingSeat.actorType === "bot" ? now : null,
+      lastObservedVersion: result.shell.version,
+      matchId,
+      matchStatus: result.shell.status,
+      updatedAt: now,
+    });
 
     return {
       accepted: true,

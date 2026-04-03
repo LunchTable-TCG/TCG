@@ -2,11 +2,12 @@ import { SignJWT, importPKCS8 } from "jose";
 
 const JWT_ALGORITHM = "ES256" as const;
 
-interface WalletAuthTokenInput {
+interface ActorAuthTokenInput {
+  actorType: "bot" | "human";
   email: string;
   userId: string;
   username: string;
-  walletAddress: `0x${string}`;
+  walletAddress?: `0x${string}` | null;
 }
 
 let cachedPrivateKeyPromise: Promise<CryptoKey> | null = null;
@@ -53,16 +54,21 @@ export function buildJwksDataUri(): string {
   )}`;
 }
 
-export async function issueWalletAuthToken(
-  input: WalletAuthTokenInput,
+export async function issueActorAuthToken(
+  input: ActorAuthTokenInput,
 ): Promise<string> {
   const settings = getJwtSettings();
   const privateKey = await getPrivateKey();
   const jwt = new SignJWT({
-    chain_id: 56,
+    actor_type: input.actorType,
     email: input.email,
     preferred_username: input.username,
-    wallet_address: input.walletAddress,
+    ...(input.walletAddress
+      ? {
+          chain_id: 56,
+          wallet_address: input.walletAddress,
+        }
+      : {}),
   })
     .setProtectedHeader({
       alg: JWT_ALGORITHM,
@@ -75,4 +81,15 @@ export async function issueWalletAuthToken(
     .setSubject(`user:${input.userId}`);
 
   return jwt.sign(privateKey);
+}
+
+export async function issueWalletAuthToken(
+  input: Omit<ActorAuthTokenInput, "actorType"> & {
+    walletAddress: `0x${string}`;
+  },
+) {
+  return issueActorAuthToken({
+    ...input,
+    actorType: "human",
+  });
 }

@@ -28,10 +28,11 @@ export const getSummary = query({
       completedAt: replay.completedAt ?? null,
       createdAt: replay.createdAt,
       formatId: replay.formatId,
-      frames: deserializeReplayFrames(replay.framesJson),
+      lastEventSequence: replay.lastEventSequence,
       matchId: replay.matchId,
       ownerUserId: replay.ownerUserId ?? null,
       status: replay.status,
+      totalFrames: replay.totalFrames,
       updatedAt: replay.updatedAt,
       winnerSeat: replay.winnerSeat ?? null,
     });
@@ -67,13 +68,29 @@ export const getFrames = query({
       };
     }
 
-    const frames = deserializeReplayFrames(replay.framesJson);
+    const sliceDocs = await ctx.db
+      .query("replayFrameSlices")
+      .withIndex("by_matchId_and_sliceIndex", (queryBuilder) =>
+        queryBuilder.eq("matchId", matchId),
+      )
+      .order("asc")
+      .collect();
+
+    const frames =
+      sliceDocs.length > 0
+        ? [
+            ...deserializeReplayFrames(replay.framesJson),
+            ...sliceDocs.flatMap((sliceDoc) =>
+              deserializeReplayFrames(sliceDoc.framesJson),
+            ),
+          ]
+        : deserializeReplayFrames(replay.framesJson);
     const start = Math.max(0, args.start ?? 0);
     const limit = Math.min(Math.max(args.limit ?? 60, 1), 240);
 
     return {
       frames: frames.slice(start, start + limit),
-      totalFrames: frames.length,
+      totalFrames: replay.totalFrames,
     };
   },
 });

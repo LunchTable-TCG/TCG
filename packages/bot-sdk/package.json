@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@lunchtable/card-content": "workspace:*",
     "@lunchtable/shared-types": "workspace:*"
   }
 }

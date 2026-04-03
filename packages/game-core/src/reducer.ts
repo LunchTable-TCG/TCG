@@ -222,6 +222,70 @@ function drawCards(seat: MatchState["seats"][SeatId], count: number) {
   return drawn;
 }
 
+function completeMatch(
+  state: MatchState,
+  createEvent: ReturnType<typeof createEventFactory>,
+  input: {
+    defeatedSeats: SeatId[];
+    reason: "concession" | "draw" | "elimination" | "objective";
+  },
+) {
+  if (state.shell.status === "complete") {
+    return [] as MatchEvent[];
+  }
+
+  for (const seatId of input.defeatedSeats) {
+    const seat = state.seats[seatId];
+    if (seat) {
+      seat.status = "eliminated";
+    }
+  }
+
+  state.shell.status = "complete";
+  state.shell.completedAt = state.shell.startedAt ?? state.shell.createdAt;
+  state.shell.winnerSeat =
+    input.defeatedSeats.length === 1
+      ? getOtherSeatId(state, input.defeatedSeats[0] ?? "seat-0")
+      : null;
+
+  return [
+    createEvent("matchCompleted", {
+      reason: input.reason,
+      winnerSeat: state.shell.winnerSeat,
+    }),
+  ];
+}
+
+function applyTurnStartDraw(
+  state: MatchState,
+  createEvent: ReturnType<typeof createEventFactory>,
+) {
+  const activeSeatId = state.shell.activeSeat;
+  if (!activeSeatId) {
+    return [] as MatchEvent[];
+  }
+
+  const activeSeat = state.seats[activeSeatId];
+  if (!activeSeat) {
+    return [] as MatchEvent[];
+  }
+
+  const drawn = drawCards(activeSeat, 1);
+  if (drawn.length === 0) {
+    return completeMatch(state, createEvent, {
+      defeatedSeats: [activeSeatId],
+      reason: "elimination",
+    });
+  }
+
+  return [
+    createEvent("cardsDrawn", {
+      count: drawn.length,
+      seat: activeSeatId,
+    }),
+  ];
+}
+
 function getCardCatalogEntry(
   state: MatchState,
   instanceId: string,
@@ -315,19 +379,10 @@ function applyLifeTotalCheck(
     return [] as MatchEvent[];
   }
 
-  state.shell.status = "complete";
-  state.shell.completedAt = state.shell.startedAt ?? state.shell.createdAt;
-  state.shell.winnerSeat =
-    defeatedSeats.length === 1
-      ? getOtherSeatId(state, defeatedSeats[0] ?? "seat-0")
-      : null;
-
-  return [
-    createEvent("matchCompleted", {
-      reason: defeatedSeats.length > 1 ? "draw" : "elimination",
-      winnerSeat: state.shell.winnerSeat,
-    }),
-  ];
+  return completeMatch(state, createEvent, {
+    defeatedSeats,
+    reason: defeatedSeats.length > 1 ? "draw" : "elimination",
+  });
 }
 
 function moveBattlefieldCard(
@@ -1128,6 +1183,7 @@ export function reduceGameplayIntent(
               turnNumber: nextState.shell.turnNumber,
             }),
           );
+          events.push(...applyTurnStartDraw(nextState, createEvent));
         }
       }
     } else {

@@ -182,6 +182,7 @@ export const MATCH_EVENT_KINDS = [
   "matchCreated",
   "openingHandKept",
   "mulliganTaken",
+  "cardsDrawn",
   "cardPlayed",
   "abilityActivated",
   "attackersDeclared",
@@ -234,6 +235,15 @@ export interface MulliganTakenEvent
     "mulliganTaken",
     {
       handSize: number;
+      seat: SeatId;
+    }
+  > {}
+
+export interface CardsDrawnEvent
+  extends MatchEventBase<
+    "cardsDrawn",
+    {
+      count: number;
       seat: SeatId;
     }
   > {}
@@ -401,6 +411,7 @@ export type MatchEvent =
   | AttackersDeclaredEvent
   | AutoPassToggledEvent
   | BlockersDeclaredEvent
+  | CardsDrawnEvent
   | CardMovedEvent
   | CardPlayedEvent
   | CombatDamageAssignedEvent

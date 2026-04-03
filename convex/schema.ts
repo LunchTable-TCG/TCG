@@ -13,6 +13,7 @@ export default defineSchema({
   }).index("by_purpose", ["purpose"]),
 
   users: defineTable({
+    actorType: v.optional(v.union(v.literal("human"), v.literal("bot"))),
     email: v.string(),
     emailNormalized: v.string(),
     primaryWalletId: v.optional(v.id("wallets")),
@@ -22,7 +23,47 @@ export default defineSchema({
     usernameNormalized: v.string(),
   })
     .index("by_email", ["emailNormalized"])
+    .index("by_actorType_and_updatedAt", ["actorType", "updatedAt"])
     .index("by_username", ["usernameNormalized"]),
+
+  botIdentities: defineTable({
+    createdAt: v.number(),
+    displayName: v.string(),
+    policyKey: v.string(),
+    slug: v.string(),
+    slugNormalized: v.string(),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+    updatedAt: v.number(),
+    userId: v.id("users"),
+  })
+    .index("by_slug", ["slugNormalized"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_userId", ["userId"]),
+
+  botAssignments: defineTable({
+    botIdentityId: v.id("botIdentities"),
+    botUserId: v.id("users"),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    lastIntentAt: v.optional(v.number()),
+    lastObservedVersion: v.optional(v.number()),
+    matchId: v.id("matches"),
+    seat: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("complete"),
+      v.literal("cancelled"),
+    ),
+    updatedAt: v.number(),
+  })
+    .index("by_botUserId_and_status_and_updatedAt", [
+      "botUserId",
+      "status",
+      "updatedAt",
+    ])
+    .index("by_matchId", ["matchId"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   collectionEntries: defineTable({
     cardId: v.string(),
@@ -210,6 +251,20 @@ export default defineSchema({
   })
     .index("by_matchId", ["matchId"])
     .index("by_ownerUserId_and_createdAt", ["ownerUserId", "createdAt"]),
+
+  replayFrameSlices: defineTable({
+    createdAt: v.number(),
+    endFrameIndex: v.number(),
+    frameCount: v.number(),
+    framesJson: v.string(),
+    matchId: v.id("matches"),
+    replayId: v.id("replays"),
+    sliceIndex: v.number(),
+    startFrameIndex: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_matchId_and_sliceIndex", ["matchId", "sliceIndex"])
+    .index("by_replayId_and_sliceIndex", ["replayId", "sliceIndex"]),
 
   walletChallenges: defineTable({
     address: v.string(),

@@ -138,11 +138,17 @@ describe("web match model helpers", () => {
           {
             id: "study-bolt",
             kind: "activated",
+            requiresTargets: false,
+            resourceCost: 1,
+            speed: "slow",
             text: "Pay 1 mana: Draw a card.",
           },
           {
             id: "entry-spark",
             kind: "triggered",
+            requiresTargets: false,
+            resourceCost: null,
+            speed: null,
             text: "When this enters, deal 2 damage.",
           },
         ],

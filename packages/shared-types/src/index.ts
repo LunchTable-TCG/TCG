@@ -1,6 +1,10 @@
 export const APP_NAME = "Lunch-Table";
 
 export {
+  BOT_ASSIGNMENT_STATUSES,
+  BOT_IDENTITY_STATUSES,
+} from "./agents";
+export {
   CARD_LIBRARY_KINDS,
   CARD_LIBRARY_RARITIES,
   DECK_STATUSES,
@@ -35,6 +39,16 @@ export {
 } from "./play";
 export { MATCH_TELEMETRY_EVENT_NAMES } from "./telemetry";
 
+export type {
+  BotAssignmentId,
+  BotAssignmentRecord,
+  BotAssignmentSnapshot,
+  BotAssignmentStatus,
+  BotIdentityId,
+  BotIdentityRecord,
+  BotIdentityStatus,
+  BotRunnerSession,
+} from "./agents";
 export type {
   UserId,
   ViewerIdentity,

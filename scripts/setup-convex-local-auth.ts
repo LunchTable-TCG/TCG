@@ -39,6 +39,8 @@ function formatEnv(entries: Map<string, string>): string {
     "VITE_CONVEX_SITE_URL",
     "AUTH_DOMAIN",
     "AUTH_URI",
+    "BOT_RUNNER_SECRET",
+    "BOT_SLUG",
     "JWT_ISSUER",
     "JWT_AUDIENCE",
     "JWT_KEY_ID",
@@ -103,6 +105,7 @@ async function syncConvexEnv(entries: Map<string, string>) {
   const keys = [
     "AUTH_DOMAIN",
     "AUTH_URI",
+    "BOT_RUNNER_SECRET",
     "JWT_ISSUER",
     "JWT_AUDIENCE",
     "JWT_KEY_ID",
@@ -131,6 +134,11 @@ async function main() {
 
   entries.set("AUTH_DOMAIN", entries.get("AUTH_DOMAIN") ?? site.host);
   entries.set("AUTH_URI", entries.get("AUTH_URI") ?? siteUrl);
+  entries.set(
+    "BOT_RUNNER_SECRET",
+    entries.get("BOT_RUNNER_SECRET") ?? "lunchtable-local-runner-secret",
+  );
+  entries.set("BOT_SLUG", entries.get("BOT_SLUG") ?? "table-bot");
   entries.set(
     "JWT_ISSUER",
     entries.get("JWT_ISSUER") ?? "https://auth.lunchtable.local",

@@ -6,6 +6,8 @@ import type {
   UserId,
 } from "@lunchtable/shared-types";
 
+export const REPLAY_FRAME_SLICE_SIZE = 16;
+
 export function describeReplayEvent(event: MatchEvent): string {
   switch (event.kind) {
     case "matchCreated":
@@ -14,6 +16,8 @@ export function describeReplayEvent(event: MatchEvent): string {
       return `${event.payload.seat} kept their opening hand.`;
     case "mulliganTaken":
       return `${event.payload.seat} took a mulligan to ${event.payload.handSize}.`;
+    case "cardsDrawn":
+      return `${event.payload.seat} drew ${event.payload.count} card${event.payload.count === 1 ? "" : "s"}.`;
     case "cardPlayed":
       return `${event.payload.seat} cast ${event.payload.cardInstanceId}.`;
     case "abilityActivated":
@@ -82,10 +86,11 @@ export function buildReplaySummary(input: {
   completedAt: number | null;
   createdAt: number;
   formatId: string;
-  frames: ReplayFrame[];
+  lastEventSequence: number;
   matchId: string;
   ownerUserId: UserId | null;
   status: ReplaySummary["status"];
+  totalFrames: number;
   updatedAt: number;
   winnerSeat: string | null;
 }): ReplaySummary {
@@ -93,11 +98,11 @@ export function buildReplaySummary(input: {
     completedAt: input.completedAt,
     createdAt: input.createdAt,
     formatId: input.formatId,
-    lastEventSequence: input.frames.at(-1)?.eventSequence ?? 0,
+    lastEventSequence: input.lastEventSequence,
     matchId: input.matchId,
     ownerUserId: input.ownerUserId,
     status: input.status,
-    totalFrames: input.frames.length,
+    totalFrames: input.totalFrames,
     updatedAt: input.updatedAt,
     winnerSeat: input.winnerSeat,
   };
@@ -144,4 +149,23 @@ export function appendReplayFrame(
   }
 
   return [...frames, nextFrame];
+}
+
+export function createReplayFrameSlice(input: {
+  frames: ReplayFrame[];
+  sliceIndex: number;
+}) {
+  const firstFrame = input.frames[0];
+  const lastFrame = input.frames.at(-1);
+  if (!firstFrame || !lastFrame) {
+    throw new Error("Replay frame slices must contain at least one frame.");
+  }
+
+  return {
+    endFrameIndex: lastFrame.frameIndex,
+    frameCount: input.frames.length,
+    framesJson: serializeReplayFrames(input.frames),
+    sliceIndex: input.sliceIndex,
+    startFrameIndex: firstFrame.frameIndex,
+  };
 }

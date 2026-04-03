@@ -20,6 +20,9 @@ export interface CardCatalogEntry {
   abilities: Array<{
     id: string;
     kind: "activated" | "replacement" | "static" | "triggered";
+    requiresTargets: boolean;
+    resourceCost: number | null;
+    speed: "fast" | "slow" | null;
     text: string;
   }>;
   cardId: string;

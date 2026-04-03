@@ -336,6 +336,84 @@ describe("applyGameplayIntent", () => {
     expect(fourthPass.nextState.shell.phase).toBe("attack");
   });
 
+  it("draws a card for the next active seat when cleanup advances the turn", () => {
+    const state = keepBothOpeningHands();
+    state.shell.phase = "cleanup";
+    state.shell.prioritySeat = "seat-0";
+    state.lastPriorityPassSeat = null;
+    state.seats["seat-1"].deck = [
+      "seat-1:tidecall-apprentice:deck:draw-turn",
+      ...state.seats["seat-1"].deck,
+    ];
+
+    const firstPass = applyGameplayIntent(state, {
+      intentId: "intent_turn_draw_pass_001",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+    const secondPass = applyGameplayIntent(firstPass.nextState, {
+      intentId: "intent_turn_draw_pass_002",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-1",
+      stateVersion: firstPass.nextState.shell.version,
+    });
+
+    expect(secondPass.outcome).toBe("applied");
+    expect(secondPass.events.map((event) => event.kind)).toEqual([
+      "priorityPassed",
+      "phaseAdvanced",
+      "turnAdvanced",
+      "cardsDrawn",
+    ]);
+    expect(secondPass.nextState.shell.turnNumber).toBe(2);
+    expect(secondPass.nextState.shell.activeSeat).toBe("seat-1");
+    expect(secondPass.nextState.shell.phase).toBe("main1");
+    expect(secondPass.nextState.seats["seat-1"]?.hand).toContain(
+      "seat-1:tidecall-apprentice:deck:draw-turn",
+    );
+  });
+
+  it("completes the match if the next active seat cannot draw at turn start", () => {
+    const state = keepBothOpeningHands();
+    state.shell.phase = "cleanup";
+    state.shell.prioritySeat = "seat-0";
+    state.lastPriorityPassSeat = null;
+    state.seats["seat-1"].deck = [];
+
+    const firstPass = applyGameplayIntent(state, {
+      intentId: "intent_turn_loss_pass_001",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+    const secondPass = applyGameplayIntent(firstPass.nextState, {
+      intentId: "intent_turn_loss_pass_002",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-1",
+      stateVersion: firstPass.nextState.shell.version,
+    });
+
+    expect(secondPass.outcome).toBe("applied");
+    expect(secondPass.events.map((event) => event.kind)).toEqual([
+      "priorityPassed",
+      "phaseAdvanced",
+      "turnAdvanced",
+      "matchCompleted",
+    ]);
+    expect(secondPass.nextState.shell.status).toBe("complete");
+    expect(secondPass.nextState.shell.winnerSeat).toBe("seat-0");
+    expect(secondPass.nextState.seats["seat-1"]?.status).toBe("eliminated");
+  });
+
   it("enqueues and resolves self-enter triggers before priority resumes", () => {
     const state = keepBothOpeningHands();
     state.seats["seat-0"].resources = [

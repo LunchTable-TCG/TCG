@@ -206,6 +206,18 @@ function createRecentEventSummary(event: MatchEvent): MatchEventSummary {
     };
   }
 
+  if (event.kind === "cardsDrawn") {
+    return {
+      kind: event.kind,
+      label:
+        event.payload.count === 1
+          ? "Drew 1 card"
+          : `Drew ${event.payload.count} cards`,
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
   if (event.kind === "priorityPassed") {
     return {
       kind: event.kind,

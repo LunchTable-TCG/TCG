@@ -9,6 +9,7 @@ import {
   appendReplayFrame,
   buildReplaySummary,
   createReplayFrame,
+  createReplayFrameSlice,
   selectReplayAnchorEvent,
 } from "../convex/lib/replays";
 
@@ -69,10 +70,11 @@ describe("replay helpers", () => {
       completedAt: bundle.shell.completedAt ?? null,
       createdAt: bundle.shell.createdAt,
       formatId: starterFormat.formatId,
-      frames: [initialFrame],
+      lastEventSequence: initialFrame.eventSequence,
       matchId: bundle.shell.id,
       ownerUserId: "user_host" as never,
       status: bundle.shell.status,
+      totalFrames: 1,
       updatedAt: bundle.shell.createdAt,
       winnerSeat: bundle.shell.winnerSeat ?? null,
     });
@@ -124,5 +126,34 @@ describe("replay helpers", () => {
     expect(duplicate).toHaveLength(2);
     expect(frames[1]?.label).toBe("seat-0 kept their opening hand.");
     expect(frames[1]?.eventSequence).toBe(4);
+  });
+
+  it("creates bounded replay slices without depending on full replay history", () => {
+    const bundle = createBundle();
+    const initialFrame = createReplayFrame({
+      event: bundle.events[0] ?? null,
+      fallbackLabel: "Match created",
+      frameIndex: 0,
+      recordedAt: bundle.shell.createdAt,
+      view: bundle.spectatorView,
+    });
+    const nextFrame = createReplayFrame({
+      event: bundle.events[0] ?? null,
+      fallbackLabel: "Match checkpoint",
+      frameIndex: 1,
+      recordedAt: bundle.shell.createdAt + 1,
+      view: bundle.spectatorView,
+    });
+
+    const slice = createReplayFrameSlice({
+      frames: [initialFrame, nextFrame],
+      sliceIndex: 3,
+    });
+
+    expect(slice.sliceIndex).toBe(3);
+    expect(slice.frameCount).toBe(2);
+    expect(slice.startFrameIndex).toBe(0);
+    expect(slice.endFrameIndex).toBe(1);
+    expect(slice.framesJson).toContain('"frameIndex":1');
   });
 });

@@ -27,9 +27,13 @@ describe("match persistence helpers", () => {
     });
 
     expect(bundle.shell.id).toBe("match_123");
-    expect(bundle.shell.lastEventNumber).toBe(1);
-    expect(bundle.events).toHaveLength(1);
+    expect(bundle.shell.lastEventNumber).toBe(3);
+    expect(bundle.events).toHaveLength(3);
     expect(bundle.events[0]?.kind).toBe("matchCreated");
+    expect(bundle.events.slice(1).map((event) => event.kind)).toEqual([
+      "promptOpened",
+      "promptOpened",
+    ]);
     expect(bundle.views).toHaveLength(2);
     expect(bundle.spectatorView.kind).toBe("spectator");
   });
@@ -58,9 +62,9 @@ describe("match persistence helpers", () => {
     );
 
     expect(seatView?.viewerSeat).toBe("seat-0");
-    expect(seatDeck?.cards).toHaveLength(48);
+    expect(seatDeck?.cards).toHaveLength(41);
     expect(spectatorDeck?.cards).toHaveLength(0);
-    expect(spectatorDeck?.cardCount).toBe(48);
+    expect(spectatorDeck?.cardCount).toBe(41);
   });
 
   it("compiles keyword-generated abilities into the persisted runtime card catalog", () => {
