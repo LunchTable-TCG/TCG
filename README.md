@@ -45,6 +45,10 @@ bun run setup:convex-auth-local --sync
 bun run dev:convex
 ```
 
+The generated `.env.local` lives at the repository root. The Vite app is
+configured to read root-level env files, so you do not need to copy
+`VITE_CONVEX_URL` into `apps/web/`.
+
 ## Session Loop
 
 Use the phase loop scripts to work through `IMPLEMENTATION_PHASES.md`:
