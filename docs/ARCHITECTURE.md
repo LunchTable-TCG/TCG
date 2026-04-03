@@ -1,6 +1,6 @@
 # Lunchtable Architecture Spec
 
-**Last updated**: 2026-04-02
+**Last updated**: 2026-04-03
 **Scope**: Web-first trading card game platform with realtime online play, deterministic rules, replay support, and AI seats with human parity.
 
 ## Assumptions
@@ -29,7 +29,7 @@
 - Match renderer: PixiJS 8 with `@pixi/react`.
 - Premium hero moments only: Three.js / React Three Fiber.
 - Backend and realtime state sync: Convex.
-- Human auth: WorkOS AuthKit.
+- Human auth: self-custodied local BSC wallet auth with custom JWT sessions in Convex.
 - Bot and service auth: custom JWT provider in Convex auth config.
 - Styling: tokens-first CSS variables, React DOM for all text-heavy UI.
 
@@ -95,6 +95,7 @@ Does not own:
 Owns:
 
 - user identity and authorization
+- canonical user, wallet, and challenge records
 - persistence of decks, collections, lobbies, matches, replays
 - command ingestion
 - transactional application of intents
@@ -106,6 +107,7 @@ Does not own:
 
 - game logic implementation details beyond orchestration
 - client animation state
+- raw private keys
 
 ### 3. `apps/web` + `packages/render-pixi`
 

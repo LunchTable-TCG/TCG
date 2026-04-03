@@ -1,6 +1,6 @@
 # Lunch-Table
 
-Web-first trading card game platform built with Bun, TypeScript, React, PixiJS, and Convex.
+Web-first trading card game platform built with Bun, TypeScript, React, PixiJS, Convex, and self-custodied BSC wallet auth.
 
 ## Workspace
 

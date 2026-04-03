@@ -96,9 +96,11 @@ Do not put authoritative command application inside actions.
 
 ### Humans
 
-- WorkOS AuthKit provider
-- user identity loaded through `ctx.auth.getUserIdentity()`
-- seat authorization checks in every mutation and sensitive query
+- self-custodied local BSC wallet generated in the browser
+- signup and login done through one-time challenge signatures
+- Convex stores canonical user, wallet, and challenge rows
+- Convex never stores or receives the raw private key
+- successful verification results in a custom JWT-backed session
 
 ### Bots
 
@@ -114,7 +116,9 @@ This is the cleanest way to preserve parity while keeping bot workers server-sid
 ### Core Product Tables
 
 - `users`
-- `profiles`
+- `wallets`
+- `wallet_challenges`
+- `auth_audits`
 - `cards`
 - `sets`
 - `formats`
@@ -162,6 +166,8 @@ Minimum initial index set:
 ### Public Queries
 
 - `viewer.get`
+- `auth.getSignupChallenge`
+- `auth.getLoginChallenge`
 - `cards.list`
 - `cards.get`
 - `formats.list`
@@ -184,7 +190,8 @@ Minimum initial index set:
 
 ### Public Mutations
 
-- `profiles.completeOnboarding`
+- `auth.completeWalletSignup`
+- `auth.completeWalletLogin`
 - `decks.create`
 - `decks.rename`
 - `decks.clone`
@@ -228,7 +235,8 @@ Minimum initial index set:
 
 ### HTTP Actions
 
-- `/webhooks/workos`
+- `/auth/jwks`
+- `/auth/token`
 - `/webhooks/payments`
 - `/agents/seat-token`
 - `/agents/external-intent`

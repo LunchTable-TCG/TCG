@@ -1,13 +1,13 @@
 # Session State
 
-**Current Phase**: Phase 1
-**Current Stage**: Verification
-**Last Checkpoint**: 2d8fae8 (2026-04-02)
-**Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`
+**Current Phase**: Phase 2
+**Current Stage**: Implementation
+**Last Checkpoint**: 383aa2a (2026-04-03)
+**Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`, `docs/WALLET_AUTH_SPEC.md`
 
 ---
 
-## Phase 1: Repository Bootstrap 🔄
+## Phase 1: Repository Bootstrap ✅
 **Type**: Infrastructure
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-1-repository-bootstrap`
 **Progress**:
@@ -16,12 +16,12 @@
 - [x] Configure shared TypeScript paths
 - [x] Set up lint, format, and test commands
 - [x] Add base README and environment template
-**Next Action**: Configure Convex and WorkOS for human auth, bot JWT auth, and the viewer bootstrap.
+**Next Action**: Phase 1 complete.
 **Known Issues**: None
 
-## Phase 2: Convex Bootstrap and Auth ⏸️
+## Phase 2: Convex Bootstrap and Auth 🔄
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-2-convex-bootstrap-and-auth`
-**Next Action**: Configure Convex and WorkOS after Phase 1 is complete.
+**Next Action**: Initialize Convex and implement wallet challenge issuance, signature verification, and canonical users/wallets/wallet_challenges tables.
 
 ## Phase 3: Shared Domain Types ⏸️
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-3-shared-domain-types`

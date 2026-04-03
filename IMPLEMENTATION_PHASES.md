@@ -1,7 +1,7 @@
 # Implementation Phases: Lunchtable
 
 **Project Type**: Web TCG platform
-**Stack**: Bun + TypeScript + React 19 + PixiJS 8 + Convex + WorkOS
+**Stack**: Bun + TypeScript + React 19 + PixiJS 8 + Convex + local BSC wallet auth
 **Estimated Total**: 120-160 hours initial foundation, excluding card content production and live ops
 
 ## Phase 1: Repository Bootstrap
@@ -30,17 +30,20 @@
 
 **Tasks**:
 - [ ] Initialize Convex project
-- [ ] Configure WorkOS AuthKit for humans
+- [ ] Implement client-generated BSC wallet signup flow
+- [ ] Implement signup and login challenge issuance and verification model
 - [ ] Add custom JWT provider plan for bot identities
+- [ ] Add canonical `users`, `wallets`, and `wallet_challenges` table design
 - [ ] Implement viewer query and auth guards
 - [ ] Wire `ConvexProvider` into web app
 
 **Verification Criteria**:
-- [ ] Human sign-in works locally
+- [ ] Wallet signup works locally without sending the private key to Convex
+- [ ] Wallet login works locally through signed challenges
 - [ ] Authenticated queries return viewer data
 - [ ] Unauthenticated access is rejected cleanly
 
-**Exit Criteria**: Human auth works end to end and Convex is the active backend.
+**Exit Criteria**: Wallet-based human auth works end to end and Convex is the active backend.
 
 ## Phase 3: Shared Domain Types
 **Type**: Infrastructure
