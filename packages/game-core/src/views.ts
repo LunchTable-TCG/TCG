@@ -1,15 +1,16 @@
-import {
-  AUTHORITATIVE_INTENT_KINDS,
-  type MatchCardView,
-  type MatchEvent,
-  type MatchEventSummary,
-  type MatchSeatView,
-  type MatchSpectatorView,
-  type MatchStackItemView,
-  type MatchZoneView,
-  type SeatId,
-  type SeatStateView,
-  type ZoneKind,
+import type {
+  GameplayIntentKind,
+  MatchCardView,
+  MatchEvent,
+  MatchEventSummary,
+  MatchPromptView,
+  MatchSeatView,
+  MatchSpectatorView,
+  MatchStackItemView,
+  MatchZoneView,
+  SeatId,
+  SeatStateView,
+  ZoneKind,
 } from "@lunchtable/shared-types";
 
 import type { MatchState } from "./state";
@@ -33,12 +34,6 @@ const ZONE_ORDER = [
   "sideboard",
   "laneReserve",
 ] as const satisfies ZoneKind[];
-const AVAILABLE_SEAT_INTENTS = AUTHORITATIVE_INTENT_KINDS.filter(
-  (intent) =>
-    intent === "concede" ||
-    intent === "passPriority" ||
-    intent === "toggleAutoPass",
-);
 
 function isPublicZoneKind(
   zone: ZoneKind,
@@ -52,23 +47,31 @@ function cardIdFromInstanceId(instanceId: string): string {
 }
 
 function createCardView(
+  state: MatchState,
   seat: SeatId,
   zone: ZoneKind,
   instanceId: string,
   visibility: MatchCardView["visibility"],
 ): MatchCardView {
+  const cardId = cardIdFromInstanceId(instanceId);
+  const card = state.cardCatalog[cardId];
   return {
     annotations: [],
-    cardId: cardIdFromInstanceId(instanceId),
+    cardId,
     controllerSeat: seat,
     counters: {},
     instanceId,
     isTapped: false,
-    keywords: [],
-    name: cardIdFromInstanceId(instanceId),
+    keywords: [...(card?.keywords ?? [])],
+    name: card?.name ?? cardId,
     ownerSeat: seat,
     slotId: null,
-    statLine: null,
+    statLine: card?.stats
+      ? {
+          power: card.stats.power,
+          toughness: card.stats.toughness,
+        }
+      : null,
     visibility,
     zone,
   };
@@ -78,13 +81,20 @@ function createZoneView(input: {
   instances: string[];
   ownerSeat: SeatId;
   revealCards: boolean;
+  state: MatchState;
   zone: ZoneKind;
 }): MatchZoneView {
   const visibility = input.revealCards ? "private-self" : "hidden";
   return {
     cards: input.revealCards
       ? input.instances.map((instanceId) =>
-          createCardView(input.ownerSeat, input.zone, instanceId, visibility),
+          createCardView(
+            input.state,
+            input.ownerSeat,
+            input.zone,
+            instanceId,
+            visibility,
+          ),
         )
       : [],
     cardCount: input.instances.length,
@@ -95,13 +105,14 @@ function createZoneView(input: {
 }
 
 function createPublicZoneView(
+  state: MatchState,
   seat: SeatId,
   zone: ZoneKind,
   instances: string[],
 ): MatchZoneView {
   return {
     cards: instances.map((instanceId) =>
-      createCardView(seat, zone, instanceId, "public"),
+      createCardView(state, seat, zone, instanceId, "public"),
     ),
     cardCount: instances.length,
     ownerSeat: seat,
@@ -158,6 +169,51 @@ function createRecentEventSummary(event: MatchEvent): MatchEventSummary {
     };
   }
 
+  if (event.kind === "openingHandKept") {
+    return {
+      kind: event.kind,
+      label: "Kept opening hand",
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "mulliganTaken") {
+    return {
+      kind: event.kind,
+      label: `Took mulligan to ${event.payload.handSize}`,
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "cardPlayed") {
+    return {
+      kind: event.kind,
+      label: "Played a card",
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "priorityPassed") {
+    return {
+      kind: event.kind,
+      label: "Passed priority",
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "phaseAdvanced") {
+    return {
+      kind: event.kind,
+      label: `Phase: ${event.payload.from} -> ${event.payload.to}`,
+      seat: null,
+      sequence: event.sequence,
+    };
+  }
+
   return {
     kind: event.kind,
     label: event.kind,
@@ -206,6 +262,7 @@ function createZoneViews(
             instances: getZoneInstances(seat, zone),
             ownerSeat: seat.seat,
             revealCards: viewerSeat === seat.seat,
+            state,
             zone,
           }),
         );
@@ -214,7 +271,12 @@ function createZoneViews(
 
       if (isPublicZoneKind(zone)) {
         zones.push(
-          createPublicZoneView(seat.seat, zone, getZoneInstances(seat, zone)),
+          createPublicZoneView(
+            state,
+            seat.seat,
+            zone,
+            getZoneInstances(seat, zone),
+          ),
         );
         continue;
       }
@@ -244,6 +306,55 @@ function createStackViews(state: MatchState): MatchStackItemView[] {
   }));
 }
 
+function createPromptView(
+  prompt: MatchState["prompts"][number],
+): MatchPromptView {
+  return {
+    choices: prompt.choiceIds.map((choiceId) => ({
+      choiceId,
+      disabled: false,
+      hint: null,
+      label: choiceId,
+    })),
+    expiresAt: prompt.expiresAt,
+    kind: prompt.kind,
+    maxSelections: 1,
+    message: prompt.message,
+    minSelections: 1,
+    ownerSeat: prompt.ownerSeat,
+    promptId: prompt.promptId,
+  };
+}
+
+function createAvailableIntents(
+  state: MatchState,
+  viewerSeat: SeatId,
+  prompt: MatchState["prompts"][number] | null,
+): GameplayIntentKind[] {
+  const intents: GameplayIntentKind[] = ["toggleAutoPass", "concede"];
+  const viewerState = state.seats[viewerSeat];
+
+  if (prompt?.kind === "mulligan") {
+    return ["keepOpeningHand", "takeMulligan", ...intents];
+  }
+
+  if (
+    state.shell.status === "active" &&
+    state.shell.prioritySeat === viewerSeat &&
+    !prompt
+  ) {
+    if (
+      (state.shell.phase === "main1" || state.shell.phase === "main2") &&
+      viewerState.hand.length > 0
+    ) {
+      intents.unshift("playCard");
+    }
+    intents.unshift("passPriority");
+  }
+
+  return intents;
+}
+
 export function createRecentEventSummaries(
   events: MatchEvent[],
   limit = 10,
@@ -264,26 +375,10 @@ export function createSeatView(
     ) ?? null;
 
   return {
-    availableIntents: [...AVAILABLE_SEAT_INTENTS],
+    availableIntents: createAvailableIntents(state, viewerSeat, prompt),
     kind: "seat",
     match: state.shell,
-    prompt: prompt
-      ? {
-          choices: prompt.choiceIds.map((choiceId) => ({
-            choiceId,
-            disabled: false,
-            hint: null,
-            label: choiceId,
-          })),
-          expiresAt: prompt.expiresAt,
-          kind: prompt.kind,
-          maxSelections: 1,
-          message: prompt.message,
-          minSelections: 1,
-          ownerSeat: prompt.ownerSeat,
-          promptId: prompt.promptId,
-        }
-      : null,
+    prompt: prompt ? createPromptView(prompt) : null,
     recentEvents: createRecentEventSummaries(events),
     seats: Object.values(state.seats).map((seat) =>
       createSeatStateView(state, seat),

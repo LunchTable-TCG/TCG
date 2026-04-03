@@ -12,6 +12,7 @@ import type {
   StackObjectId,
   UserId,
 } from "@lunchtable/shared-types";
+import type { CardKind } from "./dsl";
 
 export interface MatchRandomState {
   cursor: number;
@@ -19,6 +20,18 @@ export interface MatchRandomState {
 }
 
 export interface MatchResourceState extends SeatResourceView {}
+
+export interface MatchCardCatalogEntry {
+  cardId: string;
+  cost: number;
+  kind: CardKind;
+  keywords: string[];
+  name: string;
+  stats?: {
+    power: number;
+    toughness: number;
+  };
+}
 
 export interface MatchPromptState {
   choiceIds: string[];
@@ -71,7 +84,9 @@ export interface MatchSeatState {
 }
 
 export interface MatchState {
+  cardCatalog: Record<string, MatchCardCatalogEntry>;
   eventSequence: number;
+  lastPriorityPassSeat: SeatId | null;
   prompts: MatchPromptState[];
   random: MatchRandomState;
   seats: Record<SeatId, MatchSeatState>;
@@ -228,7 +243,9 @@ export function createMatchState(
   };
 
   const state: MatchState = {
+    cardCatalog: {},
     eventSequence: 0,
+    lastPriorityPassSeat: null,
     prompts: [],
     random: {
       cursor: 0,

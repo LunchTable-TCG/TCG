@@ -267,8 +267,6 @@ export const enqueue = mutation({
           walletAddress: orderedEntries[1].walletAddress ?? null,
         },
       ],
-      phase: "ready",
-      prioritySeat: "seat-0",
       startedAt: createdAt,
       status: "active",
       turnNumber: 1,

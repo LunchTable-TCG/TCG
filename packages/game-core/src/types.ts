@@ -16,6 +16,7 @@ export type {
 } from "@lunchtable/shared-types";
 
 export type {
+  MatchCardCatalogEntry,
   CreateMatchStateOptions,
   MatchPromptState,
   MatchRandomState,
@@ -25,7 +26,7 @@ export type {
   MatchState,
 } from "./state";
 
-export type { MatchTransition } from "./reducer";
+export type { MatchTransition, MatchTransitionReason } from "./reducer";
 export type { ReplayResult } from "./engine";
 
 export type {

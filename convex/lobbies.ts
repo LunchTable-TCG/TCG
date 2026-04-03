@@ -424,8 +424,6 @@ export const setReady = mutation({
           walletAddress: readyLobby.guestWalletAddress ?? null,
         },
       ],
-      phase: "ready",
-      prioritySeat: "seat-0",
       startedAt,
       status: "active",
       turnNumber: 1,

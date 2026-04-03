@@ -95,7 +95,7 @@ describe("lobby and matchmaking helpers", () => {
     expect(pickQueueOpponent(entries, "user_self")?._id).toBe("entry_a");
   });
 
-  it("builds an active human mirror match bundle for ready checks and queues", () => {
+  it("builds an active human mirror match bundle with deterministic opening hands", () => {
     const bundle = buildPersistedMatchBundle({
       activeSeat: "seat-0",
       createdAt: Date.UTC(2026, 3, 3, 12, 0, 0),
@@ -131,21 +131,33 @@ describe("lobby and matchmaking helpers", () => {
           walletAddress: "0x2222222222222222222222222222222222222222",
         },
       ],
-      phase: "ready",
-      prioritySeat: "seat-0",
       startedAt: Date.UTC(2026, 3, 3, 12, 0, 0),
       status: "active",
       turnNumber: 1,
     });
 
     expect(bundle.shell.status).toBe("active");
-    expect(bundle.shell.phase).toBe("ready");
+    expect(bundle.shell.phase).toBe("mulligan");
     expect(bundle.shell.activeSeat).toBe("seat-0");
     expect(bundle.shell.turnNumber).toBe(1);
     expect(bundle.views).toHaveLength(2);
-    expect(
-      bundle.views.every((view) => view.view.availableIntents.length === 3),
-    ).toBe(true);
+    expect(bundle.events.map((event) => event.kind)).toEqual([
+      "matchCreated",
+      "promptOpened",
+      "promptOpened",
+    ]);
+    expect(bundle.views[0]?.view.prompt?.kind).toBe("mulligan");
+    expect(bundle.views[1]?.view.prompt?.kind).toBe("mulligan");
+    expect(bundle.views[0]?.view.availableIntents).toEqual([
+      "keepOpeningHand",
+      "takeMulligan",
+      "toggleAutoPass",
+      "concede",
+    ]);
+    expect(bundle.views[0]?.view.seats[0]?.handCount).toBe(7);
+    expect(bundle.views[1]?.view.seats[1]?.handCount).toBe(7);
+    expect(bundle.views[0]?.view.seats[0]?.deckCount).toBe(41);
+    expect(bundle.views[1]?.view.seats[1]?.deckCount).toBe(41);
     expect(bundle.spectatorView.availableIntents).toHaveLength(0);
   });
 });
