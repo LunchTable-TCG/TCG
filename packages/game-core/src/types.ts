@@ -1,4 +1,5 @@
 export type {
+  MatchActorType,
   GameplayIntent,
   GameplayIntentKind,
   MatchEvent,
@@ -9,5 +10,19 @@ export type {
   MatchShell,
   MatchSkeleton,
   MatchView,
+  MatchVisibility,
   SeatId,
 } from "@lunchtable/shared-types";
+
+export type {
+  CreateMatchStateOptions,
+  MatchPromptState,
+  MatchRandomState,
+  MatchResourceState,
+  MatchSeatState,
+  MatchStackObjectState,
+  MatchState,
+} from "./state";
+
+export type { MatchTransition } from "./reducer";
+export type { ReplayResult } from "./engine";
