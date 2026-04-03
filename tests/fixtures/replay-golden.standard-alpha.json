@@ -1,0 +1,863 @@
+[
+  {
+    "eventKind": "matchCreated",
+    "eventSequence": 1,
+    "frameIndex": 0,
+    "label": "Match created",
+    "recordedAt": 1775217600000,
+    "view": {
+      "availableIntents": [],
+      "kind": "spectator",
+      "match": {
+        "activeSeat": "seat-0",
+        "completedAt": null,
+        "createdAt": 1775217600000,
+        "format": {
+          "boardModel": "openBoard",
+          "deckRules": {
+            "maxCopies": 4,
+            "minCards": 40,
+            "sideboardSize": 15
+          },
+          "id": "standard-alpha",
+          "name": "Standard Alpha",
+          "resourceModel": "manaCurve",
+          "timingModel": "fullStack",
+          "turnModel": "alternating",
+          "version": "alpha-1",
+          "victoryModel": "lifeTotal"
+        },
+        "id": "match_replay_golden",
+        "lastEventNumber": 3,
+        "phase": "mulligan",
+        "prioritySeat": null,
+        "seats": [
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 1,
+            "seat": "seat-0",
+            "status": "active",
+            "userId": "user_host",
+            "username": "host",
+            "walletAddress": "0x1111111111111111111111111111111111111111"
+          },
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 0,
+            "seat": "seat-1",
+            "status": "active",
+            "userId": "user_guest",
+            "username": "guest",
+            "walletAddress": "0x2222222222222222222222222222222222222222"
+          }
+        ],
+        "spectatorCount": 0,
+        "startedAt": 1775217600000,
+        "status": "active",
+        "timers": {
+          "activeDeadlineAt": null,
+          "ropeDeadlineAt": null,
+          "seatTimeRemainingMs": {},
+          "turnStartedAt": null
+        },
+        "turnNumber": 1,
+        "version": 0,
+        "winnerSeat": null
+      },
+      "prompt": null,
+      "recentEvents": [
+        {
+          "kind": "matchCreated",
+          "label": "Match created",
+          "seat": null,
+          "sequence": 1
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 2
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 3
+        }
+      ],
+      "seats": [
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": false,
+          "isActiveTurn": true,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 1,
+              "label": "Mana",
+              "maximum": 1,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-0",
+          "status": "active",
+          "username": "host"
+        },
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": false,
+          "isActiveTurn": false,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 0,
+              "label": "Mana",
+              "maximum": 0,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-1",
+          "status": "active",
+          "username": "guest"
+        }
+      ],
+      "stack": [],
+      "zones": [
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "laneReserve"
+        },
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "laneReserve"
+        }
+      ]
+    }
+  },
+  {
+    "eventKind": "openingHandKept",
+    "eventSequence": 4,
+    "frameIndex": 1,
+    "label": "seat-0 kept their opening hand.",
+    "recordedAt": 1775217600004,
+    "view": {
+      "availableIntents": [],
+      "kind": "spectator",
+      "match": {
+        "activeSeat": "seat-0",
+        "completedAt": null,
+        "createdAt": 1775217600000,
+        "format": {
+          "boardModel": "openBoard",
+          "deckRules": {
+            "maxCopies": 4,
+            "minCards": 40,
+            "sideboardSize": 15
+          },
+          "id": "standard-alpha",
+          "name": "Standard Alpha",
+          "resourceModel": "manaCurve",
+          "timingModel": "fullStack",
+          "turnModel": "alternating",
+          "version": "alpha-1",
+          "victoryModel": "lifeTotal"
+        },
+        "id": "match_replay_golden",
+        "lastEventNumber": 5,
+        "phase": "mulligan",
+        "prioritySeat": null,
+        "seats": [
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 1,
+            "seat": "seat-0",
+            "status": "active",
+            "userId": "user_host",
+            "username": "host",
+            "walletAddress": "0x1111111111111111111111111111111111111111"
+          },
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 0,
+            "seat": "seat-1",
+            "status": "active",
+            "userId": "user_guest",
+            "username": "guest",
+            "walletAddress": "0x2222222222222222222222222222222222222222"
+          }
+        ],
+        "spectatorCount": 0,
+        "startedAt": 1775217600000,
+        "status": "active",
+        "timers": {
+          "activeDeadlineAt": null,
+          "ropeDeadlineAt": null,
+          "seatTimeRemainingMs": {},
+          "turnStartedAt": null
+        },
+        "turnNumber": 1,
+        "version": 1,
+        "winnerSeat": null
+      },
+      "prompt": null,
+      "recentEvents": [
+        {
+          "kind": "matchCreated",
+          "label": "Match created",
+          "seat": null,
+          "sequence": 1
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 2
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 3
+        },
+        {
+          "kind": "openingHandKept",
+          "label": "Kept opening hand",
+          "seat": "seat-0",
+          "sequence": 4
+        },
+        {
+          "kind": "promptResolved",
+          "label": "promptResolved",
+          "seat": "seat-0",
+          "sequence": 5
+        }
+      ],
+      "seats": [
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": false,
+          "isActiveTurn": true,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 1,
+              "label": "Mana",
+              "maximum": 1,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-0",
+          "status": "active",
+          "username": "host"
+        },
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": false,
+          "isActiveTurn": false,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 0,
+              "label": "Mana",
+              "maximum": 0,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-1",
+          "status": "active",
+          "username": "guest"
+        }
+      ],
+      "stack": [],
+      "zones": [
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "laneReserve"
+        },
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "laneReserve"
+        }
+      ]
+    }
+  },
+  {
+    "eventKind": "phaseAdvanced",
+    "eventSequence": 8,
+    "frameIndex": 2,
+    "label": "Phase: mulligan -> main1",
+    "recordedAt": 1775217600008,
+    "view": {
+      "availableIntents": [],
+      "kind": "spectator",
+      "match": {
+        "activeSeat": "seat-0",
+        "completedAt": null,
+        "createdAt": 1775217600000,
+        "format": {
+          "boardModel": "openBoard",
+          "deckRules": {
+            "maxCopies": 4,
+            "minCards": 40,
+            "sideboardSize": 15
+          },
+          "id": "standard-alpha",
+          "name": "Standard Alpha",
+          "resourceModel": "manaCurve",
+          "timingModel": "fullStack",
+          "turnModel": "alternating",
+          "version": "alpha-1",
+          "victoryModel": "lifeTotal"
+        },
+        "id": "match_replay_golden",
+        "lastEventNumber": 8,
+        "phase": "main1",
+        "prioritySeat": "seat-0",
+        "seats": [
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 1,
+            "seat": "seat-0",
+            "status": "active",
+            "userId": "user_host",
+            "username": "host",
+            "walletAddress": "0x1111111111111111111111111111111111111111"
+          },
+          {
+            "actorType": "human",
+            "connected": false,
+            "deckCount": 41,
+            "graveyardCount": 0,
+            "handCount": 7,
+            "lifeTotal": 20,
+            "ready": true,
+            "resourceTotal": 0,
+            "seat": "seat-1",
+            "status": "active",
+            "userId": "user_guest",
+            "username": "guest",
+            "walletAddress": "0x2222222222222222222222222222222222222222"
+          }
+        ],
+        "spectatorCount": 0,
+        "startedAt": 1775217600000,
+        "status": "active",
+        "timers": {
+          "activeDeadlineAt": null,
+          "ropeDeadlineAt": null,
+          "seatTimeRemainingMs": {},
+          "turnStartedAt": null
+        },
+        "turnNumber": 1,
+        "version": 2,
+        "winnerSeat": null
+      },
+      "prompt": null,
+      "recentEvents": [
+        {
+          "kind": "matchCreated",
+          "label": "Match created",
+          "seat": null,
+          "sequence": 1
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 2
+        },
+        {
+          "kind": "promptOpened",
+          "label": "promptOpened",
+          "seat": null,
+          "sequence": 3
+        },
+        {
+          "kind": "openingHandKept",
+          "label": "Kept opening hand",
+          "seat": "seat-0",
+          "sequence": 4
+        },
+        {
+          "kind": "promptResolved",
+          "label": "promptResolved",
+          "seat": "seat-0",
+          "sequence": 5
+        },
+        {
+          "kind": "openingHandKept",
+          "label": "Kept opening hand",
+          "seat": "seat-1",
+          "sequence": 6
+        },
+        {
+          "kind": "promptResolved",
+          "label": "promptResolved",
+          "seat": "seat-1",
+          "sequence": 7
+        },
+        {
+          "kind": "phaseAdvanced",
+          "label": "Phase: mulligan -> main1",
+          "seat": null,
+          "sequence": 8
+        }
+      ],
+      "seats": [
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": true,
+          "isActiveTurn": true,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 1,
+              "label": "Mana",
+              "maximum": 1,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-0",
+          "status": "active",
+          "username": "host"
+        },
+        {
+          "actorType": "human",
+          "autoPassEnabled": false,
+          "deckCount": 41,
+          "graveyardCount": 0,
+          "handCount": 7,
+          "hasPriority": false,
+          "isActiveTurn": false,
+          "lifeTotal": 20,
+          "resources": [
+            {
+              "current": 0,
+              "label": "Mana",
+              "maximum": 0,
+              "resourceId": "mana"
+            }
+          ],
+          "seat": "seat-1",
+          "status": "active",
+          "username": "guest"
+        }
+      ],
+      "stack": [],
+      "zones": [
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-0",
+          "visibility": "public",
+          "zone": "laneReserve"
+        },
+        {
+          "cards": [],
+          "cardCount": 41,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "deck"
+        },
+        {
+          "cards": [],
+          "cardCount": 7,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "hand"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "battlefield"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "graveyard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "exile"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "command"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "objective"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "hidden",
+          "zone": "sideboard"
+        },
+        {
+          "cards": [],
+          "cardCount": 0,
+          "ownerSeat": "seat-1",
+          "visibility": "public",
+          "zone": "laneReserve"
+        }
+      ]
+    }
+  }
+]

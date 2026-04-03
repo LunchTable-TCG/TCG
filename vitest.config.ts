@@ -29,7 +29,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["packages/**/*.test.ts", "tests/**/*.test.ts"],
+    include: [
+      "convex/**/*.test.ts",
+      "packages/**/*.test.ts",
+      "tests/**/*.test.ts",
+    ],
     coverage: {
       enabled: false,
     },

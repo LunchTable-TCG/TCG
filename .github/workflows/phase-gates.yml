@@ -22,6 +22,10 @@ jobs:
         if: ${{ hashFiles('package.json') != '' }}
         run: bun install --frozen-lockfile
 
+      - name: Install Playwright Chromium
+        if: ${{ hashFiles('playwright.config.ts') != '' }}
+        run: bunx playwright install --with-deps chromium
+
       - name: Full validation gate
         run: ./scripts/phase-check.sh full
 

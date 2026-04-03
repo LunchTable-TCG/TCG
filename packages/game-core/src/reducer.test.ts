@@ -765,6 +765,54 @@ describe("applyGameplayIntent", () => {
     expect(transition.reason).toBe("notPriorityOwner");
   });
 
+  it.each([
+    {
+      expectedReason: "staleStateVersion",
+      intent: (state: ReturnType<typeof keepBothOpeningHands>) => ({
+        intentId: "intent_invalid_001",
+        kind: "playCard" as const,
+        matchId: state.shell.id,
+        payload: {
+          alternativeCostId: null,
+          cardInstanceId: "seat-0:tidecall-apprentice:deck:1",
+          sourceZone: "hand" as const,
+          targetSlotId: null,
+        },
+        seat: "seat-0" as const,
+        stateVersion: -1,
+      }),
+      label: "stale state versions before applying a card play",
+    },
+    {
+      expectedReason: "notPriorityOwner",
+      intent: (state: ReturnType<typeof keepBothOpeningHands>) => ({
+        intentId: "intent_invalid_002",
+        kind: "activateAbility" as const,
+        matchId: state.shell.id,
+        payload: {
+          abilityId: "study-bolt",
+          sourceInstanceId: "seat-0:archive-apprentice:battlefield:1",
+        },
+        seat: "seat-1" as const,
+        stateVersion: state.shell.version,
+      }),
+      label: "ability activations from a seat without priority",
+      mutate: (state: ReturnType<typeof keepBothOpeningHands>) => {
+        state.seats["seat-0"].battlefield.push(
+          "seat-0:archive-apprentice:battlefield:1",
+        );
+      },
+    },
+  ])("rejects %s", ({ expectedReason, intent, label: _label, mutate }) => {
+    const state = keepBothOpeningHands();
+    mutate?.(state);
+
+    const transition = applyGameplayIntent(state, intent(state));
+
+    expect(transition.outcome).toBe("rejected");
+    expect(transition.reason).toBe(expectedReason);
+  });
+
   it("replays the same seed and intents into the same final state", () => {
     const initialState = createGameState({
       matchId: "match_replay",
