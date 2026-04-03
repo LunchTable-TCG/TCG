@@ -3,6 +3,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./react": "./src/PixiMatchBoard.tsx"
+  },
+  "dependencies": {
+    "@lunchtable/shared-types": "workspace:*",
+    "@pixi/react": "^8.0.3",
+    "pixi.js": "^8.2.6",
+    "react": "^19.2.0"
   }
 }

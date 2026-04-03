@@ -18,7 +18,10 @@
       "@lunchtable/game-core": ["packages/game-core/src/index.ts"],
       "@lunchtable/bot-sdk": ["packages/bot-sdk/src/index.ts"],
       "@lunchtable/card-content": ["packages/card-content/src/index.ts"],
-      "@lunchtable/render-pixi": ["packages/render-pixi/src/index.ts"]
+      "@lunchtable/render-pixi": ["packages/render-pixi/src/index.ts"],
+      "@lunchtable/render-pixi/react": [
+        "packages/render-pixi/src/PixiMatchBoard.tsx"
+      ]
     },
     "types": ["node", "vitest/globals"]
   },

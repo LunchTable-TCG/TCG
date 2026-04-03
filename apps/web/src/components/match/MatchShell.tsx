@@ -4,7 +4,7 @@ import type {
   MatchShell as MatchShellRecord,
   MatchView,
 } from "@lunchtable/shared-types";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import type {
   SubmitIntent,
@@ -15,9 +15,16 @@ import { useSeatView } from "../../hooks/useSeatView";
 import {
   type MatchRenderMode,
   getZoneView,
-  listActivatedAbilityActions,
   resolveRenderableView,
 } from "./model";
+
+const BoardCanvas = lazy(async () => {
+  const module = await import("./BoardCanvas");
+
+  return {
+    default: module.BoardCanvas,
+  };
+});
 
 type MatchNoticeTone = "error" | "neutral" | "success" | "warning";
 
@@ -179,54 +186,6 @@ function MatchSeatStrip({
   );
 }
 
-function MatchZoneCard({
-  card,
-  action,
-  disabled,
-  tone = "neutral",
-}: {
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-  card: NonNullable<MatchView["zones"][number]["cards"]>[number];
-  disabled?: boolean;
-  tone?: "accent" | "neutral";
-}) {
-  return (
-    <article
-      className={`match-card match-card-${tone} ${
-        disabled ? "match-card-disabled" : ""
-      }`}
-    >
-      <div className="match-card-header">
-        <p className="match-card-name">{card.name}</p>
-        <span className="match-card-meta">{card.zone}</span>
-      </div>
-      <div className="match-card-body">
-        <p className="match-card-line">
-          {card.statLine
-            ? `${card.statLine.power ?? "?"}/${card.statLine.toughness ?? "?"}`
-            : "No stats"}
-        </p>
-        <p className="match-card-line">
-          {card.keywords.length > 0 ? card.keywords.join(" · ") : "No keywords"}
-        </p>
-      </div>
-      {action ? (
-        <button
-          className="match-card-action"
-          disabled={disabled}
-          onClick={action.onClick}
-          type="button"
-        >
-          {action.label}
-        </button>
-      ) : null}
-    </article>
-  );
-}
-
 export function MatchShell({
   catalog,
   matchId,
@@ -254,7 +213,6 @@ export function MatchShell({
     seatView,
     spectatorView,
   });
-  const activatedAbilities = listActivatedAbilityActions(catalog, seatView);
   const gameplaySeat =
     view?.kind === "seat" ? toGameplaySeat(view.viewerSeat) : null;
 
@@ -295,6 +253,47 @@ export function MatchShell({
     } finally {
       setPendingIntent(null);
     }
+  }
+
+  function submitPlayCard(cardInstanceId: string) {
+    if (!shell || !gameplaySeat) {
+      return;
+    }
+
+    void submitIntent({
+      intentId: createIntentId("playCard"),
+      kind: "playCard",
+      matchId: shell.id,
+      payload: {
+        alternativeCostId: null,
+        cardInstanceId,
+        sourceZone: "hand",
+        targetSlotId: null,
+      },
+      seat: gameplaySeat,
+      stateVersion: shell.version,
+    });
+  }
+
+  function submitActivateAbility(input: {
+    abilityId: string;
+    cardInstanceId: string;
+  }) {
+    if (!shell || !gameplaySeat) {
+      return;
+    }
+
+    void submitIntent({
+      intentId: createIntentId("activateAbility"),
+      kind: "activateAbility",
+      matchId: shell.id,
+      payload: {
+        abilityId: input.abilityId,
+        sourceInstanceId: input.cardInstanceId,
+      },
+      seat: gameplaySeat,
+      stateVersion: shell.version,
+    });
   }
 
   if (!matchId) {
@@ -379,13 +378,30 @@ export function MatchShell({
 
             <div className="match-layout">
               <div className="match-board-column">
+                <Suspense
+                  fallback={
+                    <div className="board-inspector board-inspector-idle">
+                      <div>
+                        <p className="match-zone-label">Pixi renderer</p>
+                        <h4>Loading battlefield</h4>
+                        <p className="support-copy">
+                          Splitting the renderer out of the base app bundle and
+                          mounting the live Pixi surface for this match.
+                        </p>
+                      </div>
+                    </div>
+                  }
+                >
+                  <BoardCanvas
+                    catalog={catalog}
+                    disabled={pendingIntent !== null}
+                    onActivateAbility={submitActivateAbility}
+                    onPlayCard={submitPlayCard}
+                    view={view}
+                  />
+                </Suspense>
+
                 {view.seats.map((seat) => {
-                  const hand = getZoneView(view, seat.seat, "hand");
-                  const battlefield = getZoneView(
-                    view,
-                    seat.seat,
-                    "battlefield",
-                  );
                   const graveyard = getZoneView(view, seat.seat, "graveyard");
                   const exile = getZoneView(view, seat.seat, "exile");
                   const deck = getZoneView(view, seat.seat, "deck");
@@ -426,90 +442,17 @@ export function MatchShell({
 
                       <div className="match-zone-block">
                         <div className="match-zone-label-row">
-                          <p className="match-zone-label">Battlefield</p>
-                          <span>{battlefield?.cardCount ?? 0} cards</span>
+                          <p className="match-zone-label">Board reserves</p>
+                          <span>{deck?.cardCount ?? 0} deck</span>
                         </div>
-                        <div className="match-card-grid">
-                          {battlefield?.cards.map((card) => {
-                            const abilityAction = activatedAbilities.find(
-                              (ability) =>
-                                ability.instanceId === card.instanceId,
-                            );
-                            return (
-                              <MatchZoneCard
-                                action={
-                                  isViewerSeat && abilityAction
-                                    ? {
-                                        label: abilityAction.text,
-                                        onClick: () =>
-                                          submitIntent({
-                                            intentId:
-                                              createIntentId("activateAbility"),
-                                            kind: "activateAbility",
-                                            matchId: shell.id,
-                                            payload: {
-                                              abilityId:
-                                                abilityAction.abilityId,
-                                              sourceInstanceId:
-                                                abilityAction.instanceId,
-                                            },
-                                            seat: gameplaySeat ?? "seat-0",
-                                            stateVersion: shell.version,
-                                          }),
-                                      }
-                                    : undefined
-                                }
-                                card={card}
-                                disabled={pendingIntent !== null}
-                                key={card.instanceId}
-                                tone={isViewerSeat ? "accent" : "neutral"}
-                              />
-                            );
-                          })}
-                        </div>
+                        <p className="support-copy">
+                          {isViewerSeat
+                            ? "The Pixi surface now owns battlefield and hand presentation. Graveyard and exile remain listed here for inspection."
+                            : "Opponent board presence is rendered in the shared Pixi surface above."}
+                        </p>
                       </div>
 
                       <div className="match-zone-row">
-                        <div className="match-zone-block">
-                          <div className="match-zone-label-row">
-                            <p className="match-zone-label">Hand</p>
-                            <span>{hand?.cardCount ?? 0} cards</span>
-                          </div>
-                          <div className="match-card-grid match-card-grid-hand">
-                            {hand?.cards.map((card) => (
-                              <MatchZoneCard
-                                action={
-                                  isViewerSeat &&
-                                  view.kind === "seat" &&
-                                  view.availableIntents.includes("playCard")
-                                    ? {
-                                        label: "Cast to stack",
-                                        onClick: () =>
-                                          submitIntent({
-                                            intentId:
-                                              createIntentId("playCard"),
-                                            kind: "playCard",
-                                            matchId: shell.id,
-                                            payload: {
-                                              alternativeCostId: null,
-                                              cardInstanceId: card.instanceId,
-                                              sourceZone: "hand",
-                                              targetSlotId: null,
-                                            },
-                                            seat: gameplaySeat ?? "seat-0",
-                                            stateVersion: shell.version,
-                                          }),
-                                      }
-                                    : undefined
-                                }
-                                card={card}
-                                disabled={pendingIntent !== null}
-                                key={card.instanceId}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
                         <div className="match-zone-block match-zone-block-compact">
                           <div className="match-zone-label-row">
                             <p className="match-zone-label">Exile</p>
