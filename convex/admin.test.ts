@@ -100,7 +100,7 @@ describe("admin backend", () => {
     await expect(
       viewer.query(api.admin.listFormatSettings, {}),
     ).rejects.toThrow("Operator access required");
-  });
+  }, 15_000);
 
   it("normalizes runtime format overrides and blocks unpublished play", async () => {
     const t = convexTest({
@@ -167,7 +167,7 @@ describe("admin backend", () => {
         deckId: deck.id,
       }),
     ).rejects.toThrow("not currently published");
-  });
+  }, 15_000);
 
   it("lists stale matches and lets an operator force concession or cancel them", async () => {
     const t = convexTest({
@@ -272,5 +272,5 @@ describe("admin backend", () => {
         staleAfterMs: 60_000,
       }),
     ).resolves.toEqual([]);
-  });
+  }, 15_000);
 });

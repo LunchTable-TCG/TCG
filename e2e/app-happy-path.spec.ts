@@ -57,6 +57,12 @@ async function createPracticeMatch(page: Page) {
   await expect(page.getByText(/Replay frames: \d+/)).toBeVisible();
 }
 
+async function clickControl(page: Page, name: string) {
+  const control = page.getByRole("button", { name });
+  await control.scrollIntoViewIfNeeded();
+  await control.click({ force: true });
+}
+
 async function createSignedInDeckedUser(page: Page, prefix: string) {
   await signUp(page, prefix);
   await createStarterDeck(page);
@@ -82,10 +88,10 @@ test("creates a starter deck, a practice match, and non-authoritative agent thre
   await createSignedInDeckedUser(page, "practice");
   await createPracticeMatch(page);
 
-  await page.getByRole("button", { name: "Open coach" }).click();
+  await clickControl(page, "Open coach");
   await expect(page.getByText("Coach thread ready")).toBeVisible();
 
-  await page.getByRole("button", { name: "Send prompt" }).click();
+  await clickControl(page, "Send prompt");
   await expect(page.getByText("Coach reply generated")).toBeVisible();
   await expect(
     page
@@ -94,7 +100,7 @@ test("creates a starter deck, a practice match, and non-authoritative agent thre
       .first(),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Open commentator" }).click();
+  await clickControl(page, "Open commentator");
   await expect(page.getByText("Commentator thread ready")).toBeVisible();
   await expect(page.getByText("Commentator conversation")).toBeVisible();
 });

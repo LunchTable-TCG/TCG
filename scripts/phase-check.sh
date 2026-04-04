@@ -39,10 +39,10 @@ append_default_commands() {
       candidates=(typecheck test:unit test)
       ;;
     full)
-      candidates=(lint typecheck test)
+      candidates=(lint typecheck test build)
       ;;
     regression)
-      candidates=(test:rules test:convex test:replay test:e2e)
+      candidates=(test:workflow test:rules test:convex test:replay test:e2e)
       ;;
     *)
       usage

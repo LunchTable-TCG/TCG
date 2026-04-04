@@ -20,6 +20,7 @@
     "test:convex": "vitest run convex/*.test.ts convex/**/*.test.ts tests/agent-lab-helpers.test.ts tests/bot-foundation.test.ts tests/bot-runner-refresh.test.ts tests/convex-auth-helpers.test.ts tests/convex-library-helpers.test.ts tests/lobby-matchmaking-helpers.test.ts tests/match-intent-helpers.test.ts tests/match-persistence-helpers.test.ts tests/replay-helpers.test.ts",
     "test:rules": "vitest run packages/game-core/src",
     "test:replay": "vitest run tests/replay-contract.test.ts tests/replay-golden.test.ts tests/replay-helpers.test.ts",
+    "test:workflow": "vitest run tests/phase-gates-workflow.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

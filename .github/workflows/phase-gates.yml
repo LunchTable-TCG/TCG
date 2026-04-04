@@ -4,19 +4,42 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: phase-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve Bun version
+        id: bun-version
+        if: ${{ hashFiles('package.json') != '' }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          package_json = json.loads(Path("package.json").read_text())
+          package_manager = package_json.get("packageManager", "")
+          if not package_manager.startswith("bun@"):
+              raise SystemExit("Expected packageManager to pin Bun with bun@<version>")
+          print(f"version={package_manager.split('@', 1)[1]}")
+          PY
+
       - name: Setup Bun
         if: ${{ hashFiles('package.json') != '' }}
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ steps.bun-version.outputs.version }}
 
       - name: Install dependencies
         if: ${{ hashFiles('package.json') != '' }}

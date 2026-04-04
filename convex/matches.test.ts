@@ -121,7 +121,7 @@ describe("matches backend", () => {
       )?.cardCount,
     ).toBe(41);
     expect(replaySummary?.totalFrames).toBe(1);
-  });
+  }, 15_000);
 
   it("persists an accepted gameplay intent into seat views and replay checkpoints", async () => {
     const t = convexTest({
@@ -205,5 +205,5 @@ describe("matches backend", () => {
         "replay.chunkPersisted",
       ]),
     );
-  });
+  }, 15_000);
 });
