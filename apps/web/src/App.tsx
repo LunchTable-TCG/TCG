@@ -7,6 +7,7 @@ import type {
   CollectionSummary,
   DeckId,
   DeckRecord,
+  FormatRuntimeSettings,
   LobbyRecord,
   MatchShell,
   QueueEntryRecord,
@@ -39,6 +40,7 @@ const bootstrapChecklist = [
   "Match shell persistence online",
   "Lobby and queue matchmaking online",
   "Agent lab threads separated from live match state",
+  "Operator format controls live",
 ];
 
 const defaultFormatId = starterFormat.formatId;
@@ -147,6 +149,14 @@ async function loadPlaySnapshot() {
   };
 }
 
+async function loadFormatSettingsSnapshot() {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport.listFormatSettings();
+}
+
 async function loadAgentLabSnapshot(matchId: string) {
   if (!convexWalletAuthTransport) {
     throw new Error("Convex transport unavailable");
@@ -226,6 +236,10 @@ function SessionPanel({
             <div>
               <dt>Wallet</dt>
               <dd>{viewer.walletAddress ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Access</dt>
+              <dd>{viewer.isOperator ? "Operator" : "Player"}</dd>
             </div>
           </dl>
           <button
@@ -784,6 +798,154 @@ function QueuePanel({
   );
 }
 
+function FormatAdminPanel({
+  catalog,
+  formatSettings,
+  loading,
+  onToggleBan,
+  onTogglePublished,
+  pendingAction,
+}: {
+  catalog: CardCatalogEntry[];
+  formatSettings: FormatRuntimeSettings | null;
+  loading: boolean;
+  onToggleBan: (cardId: string) => void;
+  onTogglePublished: (isPublished: boolean) => void;
+  pendingAction: string | null;
+}) {
+  if (!formatSettings) {
+    return null;
+  }
+
+  const orderedCatalog = [...catalog].sort((left, right) => {
+    if (left.isBanned !== right.isBanned) {
+      return Number(right.isBanned) - Number(left.isBanned);
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+
+  return (
+    <section className="panel panel-secondary">
+      <div className="workspace-header">
+        <div>
+          <p className="eyebrow">Operator Controls</p>
+          <h2>Format publication and ban list</h2>
+        </div>
+        <p className="support-copy">
+          Runtime overrides are applied centrally in Convex. Unpublishing blocks
+          new deck saves and new play entry, while ban-list changes immediately
+          revalidate catalog and deck legality.
+        </p>
+      </div>
+
+      <div className="admin-grid">
+        <section className="workspace-card">
+          <div className="panel-stack">
+            <div className="panel-header-row">
+              <div>
+                <p className="eyebrow">Runtime state</p>
+                <h3>{formatSettings.name}</h3>
+              </div>
+              <button
+                className={
+                  formatSettings.isPublished
+                    ? "action secondary-action"
+                    : "action"
+                }
+                disabled={loading || pendingAction !== null}
+                onClick={() => onTogglePublished(!formatSettings.isPublished)}
+                type="button"
+              >
+                {pendingAction === "format:publish"
+                  ? "Saving..."
+                  : formatSettings.isPublished
+                    ? "Unpublish format"
+                    : "Publish format"}
+              </button>
+            </div>
+            <dl className="stats">
+              <div>
+                <dt>Status</dt>
+                <dd>{formatSettings.isPublished ? "Published" : "Hidden"}</dd>
+              </div>
+              <div>
+                <dt>Banned cards</dt>
+                <dd>{formatSettings.bannedCardIds.length}</dd>
+              </div>
+              <div>
+                <dt>Updated</dt>
+                <dd>
+                  {formatSettings.updatedAt
+                    ? new Date(formatSettings.updatedAt).toLocaleString()
+                    : "Default"}
+                </dd>
+              </div>
+            </dl>
+            <p className="microcopy">
+              Existing decks and collections remain visible. New practice
+              matches, private lobbies, queue entries, and deck saves respect
+              the live publication status and ban list.
+            </p>
+          </div>
+        </section>
+
+        <section className="workspace-card">
+          <div className="panel-stack">
+            <div className="panel-header-row">
+              <div>
+                <p className="eyebrow">Ban list</p>
+                <h3>Card overrides</h3>
+              </div>
+            </div>
+            <div className="deck-list admin-card-list">
+              {orderedCatalog.map((card) => (
+                <article className="deck-card admin-card" key={card.cardId}>
+                  <div className="deck-card-header">
+                    <div>
+                      <p className="library-card-title">{card.name}</p>
+                      <p className="library-card-meta">
+                        {card.kind} · cost {card.cost} · {card.cardId}
+                      </p>
+                    </div>
+                    <span
+                      className={`deck-status ${
+                        card.isBanned
+                          ? "deck-status-illegal"
+                          : "deck-status-legal"
+                      }`}
+                    >
+                      {card.isBanned ? "Banned" : "Legal"}
+                    </span>
+                  </div>
+                  <div className="inline-actions">
+                    <button
+                      className={
+                        card.isBanned
+                          ? "action secondary-action"
+                          : "action action-contrast"
+                      }
+                      disabled={loading || pendingAction !== null}
+                      onClick={() => onToggleBan(card.cardId)}
+                      type="button"
+                    >
+                      {pendingAction === `format:ban:${card.cardId}`
+                        ? "Saving..."
+                        : card.isBanned
+                          ? "Unban card"
+                          : "Ban card"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const match = createMatchSkeleton();
   const [signupEmail, setSignupEmail] = useState("");
@@ -843,6 +1005,11 @@ export function App() {
   const [playAction, setPlayAction] = useState<string | null>(null);
   const [agentAction, setAgentAction] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
+  const [formatSettings, setFormatSettings] = useState<FormatRuntimeSettings[]>(
+    [],
+  );
+  const [operatorLoading, setOperatorLoading] = useState(false);
+  const [operatorAction, setOperatorAction] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -924,6 +1091,12 @@ export function App() {
     setQueueEntries(nextPlaySnapshot.queueEntries);
   }
 
+  async function refreshFormatSettings() {
+    const nextFormatSettings = await loadFormatSettingsSnapshot();
+    setFormatSettings(nextFormatSettings);
+    return nextFormatSettings;
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -963,6 +1136,46 @@ export function App() {
     }
 
     void syncLibrary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viewer]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncFormatSettings() {
+      if (!convexWalletAuthTransport || !viewer?.isOperator) {
+        setFormatSettings([]);
+        setOperatorLoading(false);
+        return;
+      }
+
+      setOperatorLoading(true);
+      try {
+        const nextFormatSettings = await loadFormatSettingsSnapshot();
+        if (cancelled) {
+          return;
+        }
+
+        setFormatSettings(nextFormatSettings);
+      } catch (error) {
+        if (!cancelled) {
+          setNotice({
+            body: getErrorMessage(error),
+            title: "Operator sync failed",
+            tone: "error",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setOperatorLoading(false);
+        }
+      }
+    }
+
+    void syncFormatSettings();
 
     return () => {
       cancelled = true;
@@ -1312,6 +1525,7 @@ export function App() {
     setLobbies([]);
     setMatches([]);
     setQueueEntries([]);
+    setFormatSettings([]);
     setSelectedMatchId(null);
     setAgentSessions([]);
     setSelectedAgentSessionId(null);
@@ -1804,11 +2018,102 @@ export function App() {
     }
   }
 
+  const currentFormatSettings =
+    formatSettings.find((format) => format.formatId === defaultFormatId) ??
+    null;
+
+  async function handleToggleFormatPublished(isPublished: boolean) {
+    if (!convexWalletAuthTransport || !currentFormatSettings) {
+      return;
+    }
+
+    setOperatorAction("format:publish");
+    try {
+      await convexWalletAuthTransport.updateFormatSettings({
+        bannedCardIds: currentFormatSettings.bannedCardIds,
+        formatId: currentFormatSettings.formatId,
+        isPublished,
+      });
+      const [nextFormatSettings, nextLibrary] = await Promise.all([
+        refreshFormatSettings(),
+        loadLibrarySnapshot(),
+      ]);
+      setCatalog(nextLibrary.catalog);
+      setCollection(nextLibrary.collection);
+      setDecks(nextLibrary.decks);
+      await Promise.all([refreshPlay(), refreshMatches()]);
+      setNotice({
+        body: `${nextFormatSettings[0]?.name ?? currentFormatSettings.name} is now ${
+          isPublished ? "published" : "unpublished"
+        } for new deck saves and play entry.`,
+        title: "Format status updated",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Format status update failed",
+        tone: "error",
+      });
+    } finally {
+      setOperatorAction(null);
+    }
+  }
+
+  async function handleToggleCardBan(cardId: string) {
+    if (!convexWalletAuthTransport || !currentFormatSettings) {
+      return;
+    }
+
+    const nextBannedCardIds = currentFormatSettings.bannedCardIds.includes(
+      cardId,
+    )
+      ? currentFormatSettings.bannedCardIds.filter(
+          (bannedCardId) => bannedCardId !== cardId,
+        )
+      : [...currentFormatSettings.bannedCardIds, cardId];
+
+    setOperatorAction(`format:ban:${cardId}`);
+    try {
+      await convexWalletAuthTransport.updateFormatSettings({
+        bannedCardIds: nextBannedCardIds,
+        formatId: currentFormatSettings.formatId,
+        isPublished: currentFormatSettings.isPublished,
+      });
+      await Promise.all([
+        refreshFormatSettings(),
+        refreshPlay(),
+        refreshMatches(),
+      ]);
+      const nextLibrary = await loadLibrarySnapshot();
+      setCatalog(nextLibrary.catalog);
+      setCollection(nextLibrary.collection);
+      setDecks(nextLibrary.decks);
+      const cardName =
+        catalog.find((card) => card.cardId === cardId)?.name ?? cardId;
+      setNotice({
+        body: nextBannedCardIds.includes(cardId)
+          ? `${cardName} is now banned in ${currentFormatSettings.name}.`
+          : `${cardName} was removed from the ${currentFormatSettings.name} ban list.`,
+        title: "Ban list updated",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Ban list update failed",
+        tone: "error",
+      });
+    } finally {
+      setOperatorAction(null);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Phase 16 Agent Lab And Helper Threads</p>
+          <p className="eyebrow">Phase 18 Ops Hardening And Release Gating</p>
           <h1>{APP_NAME}</h1>
           <p className="lede">
             Email and username create the player record. A fresh BSC wallet is
@@ -1816,10 +2121,10 @@ export function App() {
             the private key never leaves the player’s machine.
           </p>
           <p className="support-copy">
-            This phase adds non-authoritative coach and commentator threads on
-            top of the live match shell. Helper sessions live in separate agent
-            storage, reuse the same public or seat-scoped views, and never
-            become part of turn resolution.
+            This phase hardens the live product for external testing: operator
+            controls now sit on top of the existing match, replay, and agent
+            surfaces so format publication and ban-list changes propagate
+            through the same canonical Convex rules path.
           </p>
         </div>
         <div className="hero-metrics">
@@ -1831,7 +2136,13 @@ export function App() {
           </div>
           <div className="metric-card">
             <span className="metric-label">Format</span>
-            <strong>{starterFormat.name}</strong>
+            <strong>
+              {currentFormatSettings
+                ? `${starterFormat.name} · ${
+                    currentFormatSettings.isPublished ? "Published" : "Hidden"
+                  }`
+                : starterFormat.name}
+            </strong>
           </div>
           <div className="metric-card">
             <span className="metric-label">Agent Lab</span>
@@ -1988,6 +2299,17 @@ export function App() {
           />
         </div>
       </section>
+
+      {viewer?.isOperator ? (
+        <FormatAdminPanel
+          catalog={catalog}
+          formatSettings={currentFormatSettings}
+          loading={operatorLoading}
+          onToggleBan={handleToggleCardBan}
+          onTogglePublished={handleToggleFormatPublished}
+          pendingAction={operatorAction}
+        />
+      ) : null}
 
       <section className="panel panel-secondary">
         <div className="workspace-header">

@@ -119,6 +119,16 @@ export default defineSchema({
     .index("by_user_status_updated", ["userId", "status", "updatedAt"])
     .index("by_user_updated", ["userId", "updatedAt"]),
 
+  formatSettings: defineTable({
+    banList: v.array(v.string()),
+    formatId: v.string(),
+    isPublished: v.boolean(),
+    updatedAt: v.number(),
+    updatedByUserId: v.id("users"),
+  })
+    .index("by_formatId", ["formatId"])
+    .index("by_isPublished_and_updatedAt", ["isPublished", "updatedAt"]),
+
   lobbies: defineTable({
     code: v.string(),
     codeNormalized: v.string(),

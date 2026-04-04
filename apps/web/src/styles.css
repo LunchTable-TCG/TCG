@@ -190,6 +190,7 @@ h3 {
 .auth-grid,
 .utility-grid,
 .library-grid,
+.admin-grid,
 .panel-secondary {
   display: grid;
   gap: 1rem;
@@ -359,6 +360,16 @@ h3 {
 .workspace-card-dark .deck-card {
   background: rgba(255, 246, 228, 0.08);
   border-color: rgba(255, 222, 178, 0.12);
+}
+
+.admin-card-list {
+  max-height: 28rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.admin-card {
+  background: rgba(144, 96, 27, 0.05);
 }
 
 .library-card-title {
@@ -791,7 +802,8 @@ h3 {
   .workspace-header,
   .panel-secondary,
   .utility-grid,
-  .library-grid {
+  .library-grid,
+  .admin-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

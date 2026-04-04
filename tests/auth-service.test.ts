@@ -214,6 +214,7 @@ describe("wallet auth service", () => {
         return {
           email: "mage@example.com",
           id: viewerId,
+          isOperator: false,
           username: "tablemage",
           walletAddress: "0xabc",
         };
@@ -229,6 +230,7 @@ describe("wallet auth service", () => {
     await expect(loadViewerIdentity(transport)).resolves.toEqual({
       email: "mage@example.com",
       id: viewerId,
+      isOperator: false,
       username: "tablemage",
       walletAddress: "0xabc",
     });

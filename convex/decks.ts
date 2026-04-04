@@ -4,8 +4,10 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import {
+  assertFormatPublishedForOperation,
   ensureStarterCollectionEntries,
   listCollectionEntriesForUser,
+  loadFormatRuntime,
   toDeckRecord,
   validateDeckForUserCollection,
 } from "./lib/library";
@@ -70,6 +72,10 @@ export const list = query({
       string,
       Awaited<ReturnType<typeof listCollectionEntriesForUser>>
     >();
+    const formatRuntimeById = new Map<
+      string,
+      Awaited<ReturnType<typeof loadFormatRuntime>>
+    >();
     const baseQuery = status
       ? ctx.db
           .query("decks")
@@ -98,9 +104,14 @@ export const list = query({
           );
           collectionEntriesByFormat.set(deck.formatId, collectionEntries);
         }
+        let runtime = formatRuntimeById.get(deck.formatId);
+        if (!runtime) {
+          runtime = await loadFormatRuntime(ctx.db, deck.formatId);
+          formatRuntimeById.set(deck.formatId, runtime);
+        }
         const validation = validateDeckForUserCollection({
           collectionEntries,
-          formatId: deck.formatId,
+          runtime,
           mainboard: deck.mainboard,
           sideboard: deck.sideboard,
         });
@@ -119,15 +130,14 @@ export const validate = query({
   },
   handler: async (ctx, args) => {
     const user = await requireViewerUser(ctx);
-    const collectionEntries = await listCollectionEntriesForUser(
-      ctx.db,
-      user._id,
-      args.formatId,
-    );
+    const [collectionEntries, runtime] = await Promise.all([
+      listCollectionEntriesForUser(ctx.db, user._id, args.formatId),
+      loadFormatRuntime(ctx.db, args.formatId),
+    ]);
 
     return validateDeckForUserCollection({
       collectionEntries,
-      formatId: args.formatId,
+      runtime,
       mainboard: args.mainboard,
       sideboard: args.sideboard,
     });
@@ -145,6 +155,11 @@ export const create = mutation({
     const user = await requireViewerUser(ctx);
     const now = Date.now();
     const name = normalizeDeckName(args.name);
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      args.formatId,
+      "saving decks",
+    );
     await ensureStarterCollectionEntries(ctx.db, user._id, now);
     const collectionEntries = await listCollectionEntriesForUser(
       ctx.db,
@@ -153,7 +168,7 @@ export const create = mutation({
     );
     const validation = validateDeckForUserCollection({
       collectionEntries,
-      formatId: args.formatId,
+      runtime,
       mainboard: args.mainboard,
       sideboard: args.sideboard,
     });
@@ -192,6 +207,11 @@ export const update = mutation({
     const deck = await getDeckOrThrow(ctx, args.deckId);
     assertDeckOwner(deck, user._id);
     const name = normalizeDeckName(args.name);
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      deck.formatId,
+      "updating decks",
+    );
 
     const collectionEntries = await listCollectionEntriesForUser(
       ctx.db,
@@ -200,7 +220,7 @@ export const update = mutation({
     );
     const validation = validateDeckForUserCollection({
       collectionEntries,
-      formatId: deck.formatId,
+      runtime,
       mainboard: args.mainboard,
       sideboard: args.sideboard,
     });
@@ -243,6 +263,11 @@ export const clone = mutation({
     const user = await requireViewerUser(ctx);
     const sourceDeck = await getDeckOrThrow(ctx, args.deckId);
     assertDeckOwner(sourceDeck, user._id);
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      sourceDeck.formatId,
+      "cloning decks",
+    );
 
     const collectionEntries = await listCollectionEntriesForUser(
       ctx.db,
@@ -251,7 +276,7 @@ export const clone = mutation({
     );
     const validation = validateDeckForUserCollection({
       collectionEntries,
-      formatId: sourceDeck.formatId,
+      runtime,
       mainboard: sourceDeck.mainboard,
       sideboard: sourceDeck.sideboard,
     });
@@ -290,6 +315,7 @@ export const archive = mutation({
     const user = await requireViewerUser(ctx);
     const deck = await getDeckOrThrow(ctx, args.deckId);
     assertDeckOwner(deck, user._id);
+    const runtime = await loadFormatRuntime(ctx.db, deck.formatId);
 
     const updatedAt = Date.now();
     await ctx.db.patch(deck._id, {
@@ -304,7 +330,7 @@ export const archive = mutation({
     );
     const validation = validateDeckForUserCollection({
       collectionEntries,
-      formatId: deck.formatId,
+      runtime,
       mainboard: deck.mainboard,
       sideboard: deck.sideboard,
     });

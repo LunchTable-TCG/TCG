@@ -11,6 +11,7 @@ import type {
   DeckRecord,
   DeckStatus,
   DeckValidationResult,
+  FormatRuntimeSettings,
   LobbyMutationResult,
   LobbyRecord,
   MatchEventKind,
@@ -173,6 +174,7 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   dequeueCasualQueue(args: {
     entryId: QueueEntryId;
   }): Promise<QueueMutationResult>;
+  listFormatSettings(): Promise<FormatRuntimeSettings[]>;
   getCollectionSummary(args: {
     formatId: string;
   }): Promise<CollectionSummary>;
@@ -236,6 +238,11 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
     lobbyId: LobbyRecord["id"];
     ready: boolean;
   }): Promise<LobbyMutationResult>;
+  updateFormatSettings(args: {
+    bannedCardIds: string[];
+    formatId: string;
+    isPublished: boolean;
+  }): Promise<FormatRuntimeSettings>;
   sendLabPrompt(args: {
     prompt: string;
     sessionId: AgentLabSessionId;
@@ -305,6 +312,11 @@ export function createConvexWalletAuthTransport(
         api.collections.getSummary,
         args,
       ) as Promise<CollectionSummary>;
+    },
+    listFormatSettings() {
+      return client.query(api.admin.listFormatSettings, {}) as Promise<
+        FormatRuntimeSettings[]
+      >;
     },
     getLobbyByCode(args) {
       return client.query(
@@ -411,6 +423,12 @@ export function createConvexWalletAuthTransport(
         api.lobbies.setReady,
         args,
       ) as Promise<LobbyMutationResult>;
+    },
+    updateFormatSettings(args) {
+      return client.mutation(
+        api.admin.updateFormatSettings,
+        args,
+      ) as Promise<FormatRuntimeSettings>;
     },
     sendLabPrompt(args) {
       return client.mutation(

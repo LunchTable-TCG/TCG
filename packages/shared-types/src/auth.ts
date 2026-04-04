@@ -38,6 +38,7 @@ export interface WalletAuthSession {
 export interface ViewerIdentity {
   email: string;
   id: UserId;
+  isOperator: boolean;
   username: string;
   walletAddress: string | null;
 }

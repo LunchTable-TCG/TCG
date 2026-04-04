@@ -9,8 +9,9 @@ import {
   query,
 } from "./_generated/server";
 import {
-  getFormatDefinition,
+  assertFormatPublishedForOperation,
   listCollectionEntriesForUser,
+  loadFormatRuntime,
   validateDeckForUserCollection,
 } from "./lib/library";
 import { createPersistedMatch, deserializeMatchShell } from "./lib/matches";
@@ -67,6 +68,7 @@ async function assertLegalDeckForUser(
     username: string;
   },
 ) {
+  const runtime = await loadFormatRuntime(ctx.db, input.deck.formatId);
   const collectionEntries = await listCollectionEntriesForUser(
     ctx.db,
     input.userId,
@@ -74,7 +76,7 @@ async function assertLegalDeckForUser(
   );
   const validation = validateDeckForUserCollection({
     collectionEntries,
-    formatId: input.deck.formatId,
+    runtime,
     mainboard: input.deck.mainboard,
     sideboard: input.deck.sideboard,
   });
@@ -150,6 +152,11 @@ export const enqueue = mutation({
       deckId: args.deckId,
       userId: user._id,
     });
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      deck.formatId,
+      "entering the casual queue",
+    );
     await assertLegalDeckForUser(ctx, {
       deck,
       userId: user._id,
@@ -230,7 +237,7 @@ export const enqueue = mutation({
     const bundle = await createPersistedMatch(ctx, {
       activeSeat: "seat-0",
       createdAt,
-      format: getFormatDefinition(deck.formatId),
+      format: runtime.format,
       participants: [
         {
           actorType: "human",

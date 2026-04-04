@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import { requireViewerUser } from "./lib/viewer";
+import { isOperatorUser, requireViewerUser } from "./lib/viewer";
 
 export const get = query({
   args: {},
@@ -17,6 +17,7 @@ export const get = query({
     return {
       email: user.email,
       id: user._id,
+      isOperator: isOperatorUser(user),
       username: user.username,
       walletAddress:
         wallet?.address ??

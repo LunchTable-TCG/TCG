@@ -12,8 +12,9 @@ import {
   syncBotAssignmentsForMatch,
 } from "./lib/agents";
 import {
-  getFormatDefinition,
+  assertFormatPublishedForOperation,
   listCollectionEntriesForUser,
+  loadFormatRuntime,
   validateDeckForUserCollection,
 } from "./lib/library";
 import {
@@ -359,9 +360,10 @@ export const createPractice = mutation({
       user._id,
       deck.formatId,
     );
+    const deckRuntime = await loadFormatRuntime(ctx.db, deck.formatId);
     const validation = validateDeckForUserCollection({
       collectionEntries,
-      formatId: deck.formatId,
+      runtime: deckRuntime,
       mainboard: deck.mainboard,
       sideboard: deck.sideboard,
     });
@@ -382,10 +384,15 @@ export const createPractice = mutation({
       policyKey: DEFAULT_BOT_POLICY_KEY,
       slug: DEFAULT_BOT_SLUG,
     });
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      deck.formatId,
+      "creating a practice match",
+    );
     const bundle = await createPersistedMatch(ctx, {
       activeSeat: "seat-0",
       createdAt: now,
-      format: getFormatDefinition(deck.formatId),
+      format: runtime.format,
       participants: [
         {
           actorType: "human",

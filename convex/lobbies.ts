@@ -9,8 +9,9 @@ import {
   query,
 } from "./_generated/server";
 import {
-  getFormatDefinition,
+  assertFormatPublishedForOperation,
   listCollectionEntriesForUser,
+  loadFormatRuntime,
   validateDeckForUserCollection,
 } from "./lib/library";
 import { createPersistedMatch, deserializeMatchShell } from "./lib/matches";
@@ -65,6 +66,7 @@ async function assertLegalDeckForUser(
     username: string;
   },
 ) {
+  const runtime = await loadFormatRuntime(ctx.db, input.deck.formatId);
   const collectionEntries = await listCollectionEntriesForUser(
     ctx.db,
     input.userId,
@@ -72,7 +74,7 @@ async function assertLegalDeckForUser(
   );
   const validation = validateDeckForUserCollection({
     collectionEntries,
-    formatId: input.deck.formatId,
+    runtime,
     mainboard: input.deck.mainboard,
     sideboard: input.deck.sideboard,
   });
@@ -186,6 +188,11 @@ export const createPrivate = mutation({
       deckId: args.deckId,
       userId: user._id,
     });
+    await assertFormatPublishedForOperation(
+      ctx.db,
+      deck.formatId,
+      "creating a private lobby",
+    );
     await assertLegalDeckForUser(ctx, {
       deck,
       userId: user._id,
@@ -257,6 +264,11 @@ export const join = mutation({
     if (deck.formatId !== lobby.formatId) {
       throw new Error("Deck format does not match the lobby");
     }
+    await assertFormatPublishedForOperation(
+      ctx.db,
+      lobby.formatId,
+      "joining a private lobby",
+    );
     await assertLegalDeckForUser(ctx, {
       deck,
       userId: user._id,
@@ -382,6 +394,11 @@ export const setReady = mutation({
         userId: readyLobby.guestUserId,
       }),
     ]);
+    const runtime = await assertFormatPublishedForOperation(
+      ctx.db,
+      readyLobby.formatId,
+      "starting a private lobby match",
+    );
     await Promise.all([
       assertLegalDeckForUser(ctx, {
         deck: hostDeck,
@@ -399,7 +416,7 @@ export const setReady = mutation({
     const bundle = await createPersistedMatch(ctx, {
       activeSeat: "seat-0",
       createdAt: startedAt,
-      format: getFormatDefinition(readyLobby.formatId),
+      format: runtime.format,
       participants: [
         {
           actorType: "human",

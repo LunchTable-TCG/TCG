@@ -4,6 +4,7 @@ import { query } from "./_generated/server";
 import {
   buildCollectionSummary,
   listCollectionEntriesForUser,
+  loadFormatRuntime,
 } from "./lib/library";
 import { requireViewerUser } from "./lib/viewer";
 
@@ -13,12 +14,11 @@ export const getSummary = query({
   },
   handler: async (ctx, args) => {
     const user = await requireViewerUser(ctx);
-    const entries = await listCollectionEntriesForUser(
-      ctx.db,
-      user._id,
-      args.formatId,
-    );
+    const [entries, runtime] = await Promise.all([
+      listCollectionEntriesForUser(ctx.db, user._id, args.formatId),
+      loadFormatRuntime(ctx.db, args.formatId),
+    ]);
 
-    return buildCollectionSummary(args.formatId, entries);
+    return buildCollectionSummary(runtime, entries);
   },
 });

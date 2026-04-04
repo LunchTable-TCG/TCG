@@ -1,5 +1,7 @@
 import type { GenericId } from "convex/values";
 
+import type { UserId } from "./auth";
+
 export type DeckId = GenericId<"decks">;
 
 export const DECK_STATUSES = ["active", "archived"] as const;
@@ -88,4 +90,13 @@ export interface CollectionSummary {
   formatId: string;
   totalOwnedCards: number;
   totalUniqueCards: number;
+}
+
+export interface FormatRuntimeSettings {
+  bannedCardIds: string[];
+  formatId: string;
+  isPublished: boolean;
+  name: string;
+  updatedAt: number | null;
+  updatedByUserId: UserId | null;
 }
