@@ -6,6 +6,7 @@ import { action, internalMutation, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { issueWalletAuthToken } from "./lib/jwt";
 import { ensureStarterCollectionEntries } from "./lib/library";
+import { recordTelemetryEvent } from "./lib/telemetry";
 import {
   AUTH_CHAIN_ID,
   createWalletChallengeRecord,
@@ -291,6 +292,15 @@ export const completeWalletSignupTransaction = internalMutation({
       userId,
       walletId,
     });
+    await recordTelemetryEvent(ctx.db, {
+      at: now,
+      name: "auth.signup.completed",
+      tags: {
+        actorType: "human",
+        walletType: "evm-local",
+      },
+      userId,
+    });
 
     return {
       address,
@@ -380,6 +390,15 @@ export const completeWalletLoginTransaction = internalMutation({
       success: true,
       userId: user._id,
       walletId: wallet._id,
+    });
+    await recordTelemetryEvent(ctx.db, {
+      at: now,
+      name: "auth.login.completed",
+      tags: {
+        actorType: user.actorType ?? "human",
+        walletType: wallet.walletType,
+      },
+      userId: user._id,
     });
 
     return {

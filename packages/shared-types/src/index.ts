@@ -1,5 +1,6 @@
 export const APP_NAME = "Lunch-Table";
 
+export { MATCH_RECOVERY_ACTIONS } from "./admin";
 export {
   AGENT_LAB_PURPOSES,
   AGENT_LAB_SESSION_STATUSES,
@@ -43,6 +44,11 @@ export {
 } from "./play";
 export { MATCH_TELEMETRY_EVENT_NAMES } from "./telemetry";
 
+export type {
+  MatchRecoveryAction,
+  RecoverableMatchRecord,
+  RecoverMatchResult,
+} from "./admin";
 export type {
   AgentLabMessageRecord,
   AgentLabPurpose,

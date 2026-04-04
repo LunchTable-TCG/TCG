@@ -10,10 +10,12 @@ export const MATCH_TELEMETRY_EVENT_NAMES = [
   "match.state.persisted",
   "match.view.published",
   "match.sync.staleVersion",
+  "match.recovery.completed",
   "bot.seat.decisionStarted",
   "bot.seat.decisionCompleted",
   "bot.seat.intentSubmitted",
   "replay.chunkPersisted",
+  "ops.format.updated",
 ] as const;
 
 export type MatchTelemetryEventName =

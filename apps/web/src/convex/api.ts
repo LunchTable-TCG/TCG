@@ -19,9 +19,12 @@ import type {
   MatchShell,
   MatchSpectatorView,
   MatchStatus,
+  MatchTelemetryEvent,
   QueueEntryId,
   QueueEntryRecord,
   QueueMutationResult,
+  RecoverMatchResult,
+  RecoverableMatchRecord,
   ReplayFrame,
   ReplayFrameSlice,
   ReplaySummary,
@@ -223,6 +226,15 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   listMyQueueEntries(args: {
     status?: "cancelled" | "matched" | "queued";
   }): Promise<QueueEntryRecord[]>;
+  listRecoverableMatches(args: {
+    limit?: number;
+    staleAfterMs?: number;
+  }): Promise<RecoverableMatchRecord[]>;
+  listTelemetry(args: {
+    limit?: number;
+    matchId?: string;
+    name?: MatchTelemetryEvent["name"];
+  }): Promise<MatchTelemetryEvent[]>;
   enqueueCasualQueue(args: {
     deckId: DeckId;
   }): Promise<QueueMutationResult>;
@@ -247,6 +259,12 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
     prompt: string;
     sessionId: AgentLabSessionId;
   }): Promise<AgentLabTurnResult>;
+  recoverStaleMatch(args: {
+    action: "cancel" | "forceConcede";
+    matchId: string;
+    seat?: "seat-0" | "seat-1";
+    staleAfterMs?: number;
+  }): Promise<RecoverMatchResult>;
   submitIntent(args: {
     intent: SubmitIntent;
   }): Promise<SubmitIntentResult>;
@@ -394,6 +412,16 @@ export function createConvexWalletAuthTransport(
         QueueEntryRecord[]
       >;
     },
+    listRecoverableMatches(args) {
+      return client.query(api.admin.listRecoverableMatches, args) as Promise<
+        RecoverableMatchRecord[]
+      >;
+    },
+    listTelemetry(args) {
+      return client.query(api.admin.listTelemetry, args) as Promise<
+        MatchTelemetryEvent[]
+      >;
+    },
     enqueueCasualQueue(args) {
       return client.mutation(
         api.matchmaking.enqueue,
@@ -435,6 +463,12 @@ export function createConvexWalletAuthTransport(
         api.agents.sendLabPrompt,
         args,
       ) as Promise<AgentLabTurnResult>;
+    },
+    recoverStaleMatch(args) {
+      return client.mutation(
+        api.matches.recoverStaleMatch,
+        args,
+      ) as Promise<RecoverMatchResult>;
     },
     submitIntent(args) {
       return client.mutation(

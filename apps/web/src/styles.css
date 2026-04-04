@@ -455,6 +455,17 @@ h3 {
   font-weight: 600;
 }
 
+.telemetry-card {
+  gap: 0.6rem;
+}
+
+.telemetry-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(77, 52, 23, 0.72);
+  word-break: break-word;
+}
+
 .inline-actions {
   display: flex;
   gap: 0.75rem;

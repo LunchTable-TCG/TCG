@@ -10,7 +10,9 @@ import type {
   FormatRuntimeSettings,
   LobbyRecord,
   MatchShell,
+  MatchTelemetryEvent,
   QueueEntryRecord,
+  RecoverableMatchRecord,
   ReplayFrame,
   ReplaySummary,
   ViewerIdentity,
@@ -155,6 +157,26 @@ async function loadFormatSettingsSnapshot() {
   }
 
   return convexWalletAuthTransport.listFormatSettings();
+}
+
+async function loadRecoverableMatchesSnapshot() {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport.listRecoverableMatches({
+    limit: 8,
+  });
+}
+
+async function loadTelemetrySnapshot() {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport.listTelemetry({
+    limit: 18,
+  });
 }
 
 async function loadAgentLabSnapshot(matchId: string) {
@@ -946,6 +968,194 @@ function FormatAdminPanel({
   );
 }
 
+function MatchOpsPanel({
+  loading,
+  onRecoverMatch,
+  pendingAction,
+  recoverableMatches,
+  telemetryEvents,
+}: {
+  loading: boolean;
+  onRecoverMatch: (
+    matchId: string,
+    action: "cancel" | "forceConcede",
+    seat?: "seat-0" | "seat-1",
+  ) => void;
+  pendingAction: string | null;
+  recoverableMatches: RecoverableMatchRecord[];
+  telemetryEvents: MatchTelemetryEvent[];
+}) {
+  return (
+    <section className="panel panel-secondary">
+      <div className="workspace-header">
+        <div>
+          <p className="eyebrow">Operator Recovery</p>
+          <h2>Stale matches and telemetry feed</h2>
+        </div>
+        <p className="support-copy">
+          Recovery only unlocks active matches that have been idle beyond the
+          stale threshold. Force concession is seat-specific; cancellation
+          closes the shell without awarding a winner.
+        </p>
+      </div>
+
+      <div className="admin-grid">
+        <section className="workspace-card">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Recoverable matches</p>
+              <h3>Idle active shells</h3>
+            </div>
+            {loading ? (
+              <p className="support-copy">Loading stale-match candidates.</p>
+            ) : recoverableMatches.length === 0 ? (
+              <p className="support-copy">
+                No active matches have crossed the stale recovery threshold.
+              </p>
+            ) : (
+              <div className="deck-list">
+                {recoverableMatches.map((record) => (
+                  <article
+                    className="deck-card admin-card"
+                    key={record.match.id}
+                  >
+                    <div className="deck-card-header">
+                      <div>
+                        <p className="library-card-title">{record.match.id}</p>
+                        <p className="library-card-meta">
+                          {record.match.phase} · turn {record.match.turnNumber}{" "}
+                          · idle {(record.idleMs / 1000).toFixed(0)}s
+                        </p>
+                      </div>
+                      <span className="deck-status deck-status-illegal">
+                        stale {(record.staleThresholdMs / 1000).toFixed(0)}s
+                      </span>
+                    </div>
+                    <dl className="stats">
+                      <div>
+                        <dt>Pending prompts</dt>
+                        <dd>{record.pendingPromptCount}</dd>
+                      </div>
+                      <div>
+                        <dt>Latest event</dt>
+                        <dd>{record.latestEventKind ?? "none"}</dd>
+                      </div>
+                    </dl>
+                    <div className="inline-actions inline-actions-wrap">
+                      <button
+                        className="action secondary-action"
+                        disabled={loading || pendingAction !== null}
+                        onClick={() =>
+                          onRecoverMatch(record.match.id, "cancel")
+                        }
+                        type="button"
+                      >
+                        {pendingAction === `recover:cancel:${record.match.id}`
+                          ? "Cancelling..."
+                          : "Cancel match"}
+                      </button>
+                      <button
+                        className="action action-contrast"
+                        disabled={loading || pendingAction !== null}
+                        onClick={() =>
+                          onRecoverMatch(
+                            record.match.id,
+                            "forceConcede",
+                            "seat-0",
+                          )
+                        }
+                        type="button"
+                      >
+                        {pendingAction ===
+                        `recover:forceConcede:${record.match.id}:seat-0`
+                          ? "Recovering..."
+                          : "Force seat-0 concede"}
+                      </button>
+                      <button
+                        className="action action-contrast"
+                        disabled={loading || pendingAction !== null}
+                        onClick={() =>
+                          onRecoverMatch(
+                            record.match.id,
+                            "forceConcede",
+                            "seat-1",
+                          )
+                        }
+                        type="button"
+                      >
+                        {pendingAction ===
+                        `recover:forceConcede:${record.match.id}:seat-1`
+                          ? "Recovering..."
+                          : "Force seat-1 concede"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="workspace-card">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Telemetry</p>
+              <h3>Recent runtime events</h3>
+            </div>
+            {loading ? (
+              <p className="support-copy">Loading operator telemetry.</p>
+            ) : telemetryEvents.length === 0 ? (
+              <p className="support-copy">
+                Telemetry is enabled but there are no recorded events yet.
+              </p>
+            ) : (
+              <div className="deck-list admin-card-list">
+                {telemetryEvents.map((event, index) => (
+                  <article
+                    className="deck-card admin-card telemetry-card"
+                    key={`${event.name}-${event.at}-${index}`}
+                  >
+                    <div className="deck-card-header">
+                      <div>
+                        <p className="library-card-title">{event.name}</p>
+                        <p className="library-card-meta">
+                          {new Date(event.at).toLocaleString()}
+                        </p>
+                      </div>
+                      {event.matchId ? (
+                        <span className="deck-status deck-status-legal">
+                          {event.matchId}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="telemetry-meta">
+                      Seat {event.seat ?? "n/a"} · User {event.userId ?? "n/a"}
+                    </p>
+                    {event.tags ? (
+                      <p className="telemetry-meta">
+                        {Object.entries(event.tags)
+                          .map(([key, value]) => `${key}=${value}`)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                    {event.metrics ? (
+                      <p className="telemetry-meta">
+                        {Object.entries(event.metrics)
+                          .map(([key, value]) => `${key}=${value}`)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const match = createMatchSkeleton();
   const [signupEmail, setSignupEmail] = useState("");
@@ -1006,6 +1216,12 @@ export function App() {
   const [agentAction, setAgentAction] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
   const [formatSettings, setFormatSettings] = useState<FormatRuntimeSettings[]>(
+    [],
+  );
+  const [recoverableMatches, setRecoverableMatches] = useState<
+    RecoverableMatchRecord[]
+  >([]);
+  const [telemetryEvents, setTelemetryEvents] = useState<MatchTelemetryEvent[]>(
     [],
   );
   const [operatorLoading, setOperatorLoading] = useState(false);
@@ -1091,10 +1307,21 @@ export function App() {
     setQueueEntries(nextPlaySnapshot.queueEntries);
   }
 
-  async function refreshFormatSettings() {
-    const nextFormatSettings = await loadFormatSettingsSnapshot();
+  async function refreshOperatorSurface() {
+    const [nextFormatSettings, nextRecoverableMatches, nextTelemetryEvents] =
+      await Promise.all([
+        loadFormatSettingsSnapshot(),
+        loadRecoverableMatchesSnapshot(),
+        loadTelemetrySnapshot(),
+      ]);
     setFormatSettings(nextFormatSettings);
-    return nextFormatSettings;
+    setRecoverableMatches(nextRecoverableMatches);
+    setTelemetryEvents(nextTelemetryEvents);
+    return {
+      formatSettings: nextFormatSettings,
+      recoverableMatches: nextRecoverableMatches,
+      telemetryEvents: nextTelemetryEvents,
+    };
   }
 
   useEffect(() => {
@@ -1148,18 +1375,30 @@ export function App() {
     async function syncFormatSettings() {
       if (!convexWalletAuthTransport || !viewer?.isOperator) {
         setFormatSettings([]);
+        setRecoverableMatches([]);
+        setTelemetryEvents([]);
         setOperatorLoading(false);
         return;
       }
 
       setOperatorLoading(true);
       try {
-        const nextFormatSettings = await loadFormatSettingsSnapshot();
+        const [
+          nextFormatSettings,
+          nextRecoverableMatches,
+          nextTelemetryEvents,
+        ] = await Promise.all([
+          loadFormatSettingsSnapshot(),
+          loadRecoverableMatchesSnapshot(),
+          loadTelemetrySnapshot(),
+        ]);
         if (cancelled) {
           return;
         }
 
         setFormatSettings(nextFormatSettings);
+        setRecoverableMatches(nextRecoverableMatches);
+        setTelemetryEvents(nextTelemetryEvents);
       } catch (error) {
         if (!cancelled) {
           setNotice({
@@ -1526,6 +1765,8 @@ export function App() {
     setMatches([]);
     setQueueEntries([]);
     setFormatSettings([]);
+    setRecoverableMatches([]);
+    setTelemetryEvents([]);
     setSelectedMatchId(null);
     setAgentSessions([]);
     setSelectedAgentSessionId(null);
@@ -2034,8 +2275,8 @@ export function App() {
         formatId: currentFormatSettings.formatId,
         isPublished,
       });
-      const [nextFormatSettings, nextLibrary] = await Promise.all([
-        refreshFormatSettings(),
+      const [nextOperatorSurface, nextLibrary] = await Promise.all([
+        refreshOperatorSurface(),
         loadLibrarySnapshot(),
       ]);
       setCatalog(nextLibrary.catalog);
@@ -2043,7 +2284,7 @@ export function App() {
       setDecks(nextLibrary.decks);
       await Promise.all([refreshPlay(), refreshMatches()]);
       setNotice({
-        body: `${nextFormatSettings[0]?.name ?? currentFormatSettings.name} is now ${
+        body: `${nextOperatorSurface.formatSettings[0]?.name ?? currentFormatSettings.name} is now ${
           isPublished ? "published" : "unpublished"
         } for new deck saves and play entry.`,
         title: "Format status updated",
@@ -2081,7 +2322,7 @@ export function App() {
         isPublished: currentFormatSettings.isPublished,
       });
       await Promise.all([
-        refreshFormatSettings(),
+        refreshOperatorSurface(),
         refreshPlay(),
         refreshMatches(),
       ]);
@@ -2102,6 +2343,55 @@ export function App() {
       setNotice({
         body: getErrorMessage(error),
         title: "Ban list update failed",
+        tone: "error",
+      });
+    } finally {
+      setOperatorAction(null);
+    }
+  }
+
+  async function handleRecoverStaleMatch(
+    matchId: string,
+    action: "cancel" | "forceConcede",
+    seat?: "seat-0" | "seat-1",
+  ) {
+    if (!convexWalletAuthTransport) {
+      return;
+    }
+
+    const actionKey =
+      action === "cancel"
+        ? `recover:cancel:${matchId}`
+        : `recover:forceConcede:${matchId}:${seat ?? "active"}`;
+    setOperatorAction(actionKey);
+    try {
+      const result = await convexWalletAuthTransport.recoverStaleMatch({
+        action,
+        matchId,
+        seat,
+      });
+      await Promise.all([
+        refreshOperatorSurface(),
+        refreshMatches(),
+        refreshPlay(),
+      ]);
+      if (selectedMatchId === result.match.id) {
+        const nextReplay = await loadReplaySnapshot(result.match.id);
+        setReplayFrames(nextReplay.frames);
+        setReplaySummary(nextReplay.summary);
+      }
+      setNotice({
+        body:
+          result.outcome === "cancelled"
+            ? `${result.match.id} was cancelled by operator recovery.`
+            : `${result.match.id} forced ${result.recoveredSeat} to concede and awarded ${result.match.winnerSeat}.`,
+        title: "Stale match recovered",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Match recovery failed",
         tone: "error",
       });
     } finally {
@@ -2301,14 +2591,23 @@ export function App() {
       </section>
 
       {viewer?.isOperator ? (
-        <FormatAdminPanel
-          catalog={catalog}
-          formatSettings={currentFormatSettings}
-          loading={operatorLoading}
-          onToggleBan={handleToggleCardBan}
-          onTogglePublished={handleToggleFormatPublished}
-          pendingAction={operatorAction}
-        />
+        <>
+          <FormatAdminPanel
+            catalog={catalog}
+            formatSettings={currentFormatSettings}
+            loading={operatorLoading}
+            onToggleBan={handleToggleCardBan}
+            onTogglePublished={handleToggleFormatPublished}
+            pendingAction={operatorAction}
+          />
+          <MatchOpsPanel
+            loading={operatorLoading}
+            onRecoverMatch={handleRecoverStaleMatch}
+            pendingAction={operatorAction}
+            recoverableMatches={recoverableMatches}
+            telemetryEvents={telemetryEvents}
+          />
+        </>
       ) : null}
 
       <section className="panel panel-secondary">

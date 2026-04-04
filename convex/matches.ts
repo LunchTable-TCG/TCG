@@ -1,3 +1,8 @@
+import {
+  createMatchShellFromState,
+  createSeatView,
+  createSpectatorView,
+} from "@lunchtable/game-core";
 import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -42,9 +47,15 @@ import {
   deserializeReplayFrames,
   selectReplayAnchorEvent,
 } from "./lib/replays";
-import { requireViewerUser } from "./lib/viewer";
+import { recordTelemetryEvent } from "./lib/telemetry";
+import { requireOperatorUser, requireViewerUser } from "./lib/viewer";
 
 const gameplaySeatValidator = v.union(v.literal("seat-0"), v.literal("seat-1"));
+const staleRecoveryActionValidator = v.union(
+  v.literal("cancel"),
+  v.literal("forceConcede"),
+);
+const MINIMUM_STALE_RECOVERY_MS = 60 * 1000;
 const gameplayIntentValidator = v.union(
   v.object({
     intentId: v.string(),
@@ -338,6 +349,255 @@ async function deletePendingPromptsForSeat(
   );
 }
 
+function createAdministrativeEventFactory(
+  state: ReturnType<typeof deserializeMatchState>,
+  nextVersion: number,
+) {
+  let offset = 0;
+
+  return function createEvent<
+    TKind extends ReturnType<typeof deserializeMatchEvent>["kind"],
+  >(
+    kind: TKind,
+    payload: Extract<
+      ReturnType<typeof deserializeMatchEvent>,
+      { kind: TKind }
+    >["payload"],
+  ): Extract<ReturnType<typeof deserializeMatchEvent>, { kind: TKind }> {
+    offset += 1;
+    const sequence = state.eventSequence + offset;
+
+    return {
+      at: (state.shell.startedAt ?? state.shell.createdAt) + sequence,
+      eventId: `event_${sequence}`,
+      kind,
+      matchId: state.shell.id,
+      payload,
+      sequence,
+      stateVersion: nextVersion,
+    } as Extract<ReturnType<typeof deserializeMatchEvent>, { kind: TKind }>;
+  };
+}
+
+async function persistMatchProjectionUpdate(
+  ctx: Pick<MutationCtx, "db">,
+  input: {
+    appendedEvents: ReturnType<typeof deserializeMatchEvent>[];
+    match: Doc<"matches">;
+    matchId: Id<"matches">;
+    now: number;
+    replayOwnerUserId: Id<"users"> | null;
+    shell: ReturnType<typeof deserializeMatchShell>;
+    snapshot: Doc<"matchStates">;
+    spectatorView: ReturnType<typeof deserializeSpectatorView>;
+    state: ReturnType<typeof deserializeMatchState>;
+    viewOwnerBotIntentAt?: number | null;
+    views: Array<{
+      viewerSeat: string;
+      viewerUserId: Id<"users"> | null;
+      view: ReturnType<typeof deserializeSeatView>;
+    }>;
+  },
+) {
+  await ctx.db.patch(input.matchId, {
+    activeSeat: input.shell.activeSeat ?? undefined,
+    completedAt: input.shell.completedAt ?? undefined,
+    createdAt: input.shell.createdAt,
+    formatId: input.match.formatId,
+    phase: input.shell.phase,
+    shellJson: serializeMatchShell(input.shell),
+    startedAt: input.shell.startedAt ?? undefined,
+    status: input.shell.status,
+    turnNumber: input.shell.turnNumber,
+    updatedAt: input.now,
+    version: input.shell.version,
+    winnerSeat: input.shell.winnerSeat ?? undefined,
+  });
+  await ctx.db.patch(input.snapshot._id, {
+    snapshotJson: serializeMatchState(input.state),
+    updatedAt: input.now,
+    version: input.shell.version,
+  });
+
+  for (const event of input.appendedEvents) {
+    await ctx.db.insert("matchEvents", {
+      at: event.at,
+      eventJson: serializeMatchEvent(event),
+      kind: event.kind,
+      matchId: input.matchId,
+      seat: seatFromEvent(event),
+      sequence: event.sequence,
+      stateVersion: event.stateVersion,
+    });
+  }
+
+  const seatViewDocs = await listSeatViewDocs(ctx, input.matchId);
+  const seatViewDocsBySeat = new Map(
+    seatViewDocs
+      .filter((viewDoc) => viewDoc.kind === "seat" && !!viewDoc.viewerSeat)
+      .map((viewDoc) => [viewDoc.viewerSeat, viewDoc]),
+  );
+
+  for (const view of input.views) {
+    const existingView = seatViewDocsBySeat.get(view.viewerSeat);
+    if (existingView) {
+      await ctx.db.patch(existingView._id, {
+        updatedAt: input.now,
+        viewJson: serializeMatchView(view.view),
+        viewerSeat: view.viewerSeat,
+        viewerUserId: view.viewerUserId ?? undefined,
+      });
+      continue;
+    }
+
+    await ctx.db.insert("matchViews", {
+      kind: "seat",
+      matchId: input.matchId,
+      updatedAt: input.now,
+      viewJson: serializeMatchView(view.view),
+      viewerSeat: view.viewerSeat,
+      viewerUserId: view.viewerUserId ?? undefined,
+    });
+  }
+
+  const spectatorViewDoc = await getSpectatorViewDoc(ctx, input.matchId);
+  if (spectatorViewDoc) {
+    await ctx.db.patch(spectatorViewDoc._id, {
+      updatedAt: input.now,
+      viewJson: serializeMatchView(input.spectatorView),
+    });
+  } else {
+    await ctx.db.insert("matchViews", {
+      kind: "spectator",
+      matchId: input.matchId,
+      updatedAt: input.now,
+      viewJson: serializeMatchView(input.spectatorView),
+    });
+  }
+
+  const replayDoc = await getReplayDoc(ctx, input.matchId);
+  const replayFrame = createReplayFrame({
+    event: selectReplayAnchorEvent(input.appendedEvents),
+    fallbackLabel: "Match checkpoint updated",
+    frameIndex: replayDoc?.totalFrames ?? 0,
+    recordedAt: input.now,
+    view: input.spectatorView,
+  });
+
+  let replayFramePersisted = false;
+  if (replayDoc) {
+    const replayMeta = await appendReplayFrameToSlices(ctx, {
+      matchId: input.matchId,
+      now: input.now,
+      replayDoc,
+      replayFrame,
+    });
+
+    const replaySummary = buildReplaySummary({
+      completedAt: input.shell.completedAt ?? null,
+      createdAt: replayDoc.createdAt,
+      formatId: replayDoc.formatId,
+      lastEventSequence: replayMeta.lastEventSequence,
+      matchId: input.shell.id,
+      ownerUserId: replayDoc.ownerUserId ?? null,
+      status: input.shell.status,
+      totalFrames: replayMeta.totalFrames,
+      updatedAt: input.now,
+      winnerSeat: input.shell.winnerSeat ?? null,
+    });
+
+    await ctx.db.patch(replayDoc._id, {
+      completedAt: replaySummary.completedAt ?? undefined,
+      lastEventSequence: replaySummary.lastEventSequence,
+      status: replaySummary.status,
+      totalFrames: replaySummary.totalFrames,
+      updatedAt: replaySummary.updatedAt,
+      winnerSeat: replaySummary.winnerSeat ?? undefined,
+    });
+    replayFramePersisted = true;
+  } else {
+    const replaySummary = buildReplaySummary({
+      completedAt: input.shell.completedAt ?? null,
+      createdAt: input.now,
+      formatId: input.match.formatId,
+      lastEventSequence: replayFrame.eventSequence,
+      matchId: input.shell.id,
+      ownerUserId: input.replayOwnerUserId,
+      status: input.shell.status,
+      totalFrames: 1,
+      updatedAt: input.now,
+      winnerSeat: input.shell.winnerSeat ?? null,
+    });
+
+    const replayId = await ctx.db.insert("replays", {
+      completedAt: replaySummary.completedAt ?? undefined,
+      createdAt: replaySummary.createdAt,
+      formatId: replaySummary.formatId,
+      framesJson: "[]",
+      lastEventSequence: replaySummary.lastEventSequence,
+      matchId: input.matchId,
+      ownerUserId: replaySummary.ownerUserId ?? undefined,
+      status: replaySummary.status,
+      totalFrames: replaySummary.totalFrames,
+      updatedAt: replaySummary.updatedAt,
+      winnerSeat: replaySummary.winnerSeat ?? undefined,
+    });
+
+    const replaySlice = createReplayFrameSlice({
+      frames: [replayFrame],
+      sliceIndex: 0,
+    });
+    await ctx.db.insert("replayFrameSlices", {
+      createdAt: input.now,
+      endFrameIndex: replaySlice.endFrameIndex,
+      frameCount: replaySlice.frameCount,
+      framesJson: replaySlice.framesJson,
+      matchId: input.matchId,
+      replayId,
+      sliceIndex: replaySlice.sliceIndex,
+      startFrameIndex: replaySlice.startFrameIndex,
+      updatedAt: input.now,
+    });
+    replayFramePersisted = true;
+  }
+
+  for (const seat of Object.keys(input.state.seats) as Array<
+    "seat-0" | "seat-1"
+  >) {
+    await deletePendingPromptsForSeat(ctx, {
+      matchId: input.matchId,
+      seat,
+    });
+  }
+
+  for (const prompt of input.state.prompts.filter(
+    (matchPrompt) => matchPrompt.status === "pending",
+  )) {
+    await ctx.db.insert("matchPrompts", {
+      kind: prompt.kind,
+      matchId: input.matchId,
+      ownerSeat: prompt.ownerSeat,
+      promptId: prompt.promptId,
+      promptJson: serializeMatchPrompt(prompt),
+      status: "pending",
+      updatedAt: input.now,
+    });
+  }
+
+  await syncBotAssignmentsForMatch(ctx.db, {
+    completedAt: input.shell.completedAt,
+    lastIntentAt: input.viewOwnerBotIntentAt ?? null,
+    lastObservedVersion: input.shell.version,
+    matchId: input.matchId,
+    matchStatus: input.shell.status,
+    updatedAt: input.now,
+  });
+
+  return {
+    replayFramePersisted,
+  };
+}
+
 export const createPractice = mutation({
   args: {
     deckId: v.id("decks"),
@@ -446,9 +706,29 @@ export const submitIntent = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireViewerUser(ctx);
+    const telemetryBase = {
+      matchId: args.intent.matchId,
+      metrics: {
+        requestedStateVersion: args.intent.stateVersion,
+      },
+      seat: args.intent.seat,
+      tags: {
+        intentKind: args.intent.kind,
+      },
+      userId: user._id,
+    } as const;
     const matchId = ctx.db.normalizeId("matches", args.intent.matchId);
 
     if (!matchId) {
+      await recordTelemetryEvent(ctx.db, {
+        ...telemetryBase,
+        at: Date.now(),
+        name: "match.intent.rejected",
+        tags: {
+          ...telemetryBase.tags,
+          reason: "invalidMatch",
+        },
+      });
       return {
         accepted: false,
         outcome: "rejected" as const,
@@ -460,6 +740,15 @@ export const submitIntent = mutation({
 
     const match = await ctx.db.get(matchId);
     if (!match) {
+      await recordTelemetryEvent(ctx.db, {
+        ...telemetryBase,
+        at: Date.now(),
+        name: "match.intent.rejected",
+        tags: {
+          ...telemetryBase.tags,
+          reason: "invalidMatch",
+        },
+      });
       return {
         accepted: false,
         outcome: "rejected" as const,
@@ -474,6 +763,15 @@ export const submitIntent = mutation({
     const actingSeat = currentState.seats[args.intent.seat];
 
     if (!actingSeat || actingSeat.userId !== user._id) {
+      await recordTelemetryEvent(ctx.db, {
+        ...telemetryBase,
+        at: Date.now(),
+        name: "match.intent.rejected",
+        tags: {
+          ...telemetryBase.tags,
+          reason: "invalidSeat",
+        },
+      });
       return {
         accepted: false,
         outcome: "rejected" as const,
@@ -483,6 +781,16 @@ export const submitIntent = mutation({
       };
     }
 
+    await recordTelemetryEvent(ctx.db, {
+      ...telemetryBase,
+      at: Date.now(),
+      matchId: match._id,
+      name: "match.intent.received",
+      metrics: {
+        currentStateVersion: currentState.shell.version,
+        requestedStateVersion: args.intent.stateVersion,
+      },
+    });
     const existingEvents = await listMatchEvents(ctx, matchId);
     const result = buildPersistedIntentResult({
       events: existingEvents,
@@ -495,6 +803,37 @@ export const submitIntent = mutation({
       null;
 
     if (result.transition.outcome !== "applied") {
+      const rejectedAt = Date.now();
+      await recordTelemetryEvent(ctx.db, {
+        ...telemetryBase,
+        at: rejectedAt,
+        matchId: match._id,
+        name: "match.intent.rejected",
+        metrics: {
+          currentStateVersion: currentState.shell.version,
+          requestedStateVersion: args.intent.stateVersion,
+        },
+        tags: {
+          ...telemetryBase.tags,
+          reason: result.transition.reason ?? "unknown",
+        },
+      });
+      if (result.transition.reason === "staleStateVersion") {
+        await recordTelemetryEvent(ctx.db, {
+          at: rejectedAt,
+          matchId: match._id,
+          metrics: {
+            currentStateVersion: currentState.shell.version,
+            requestedStateVersion: args.intent.stateVersion,
+          },
+          name: "match.sync.staleVersion",
+          seat: args.intent.seat,
+          tags: {
+            intentKind: args.intent.kind,
+          },
+          userId: user._id,
+        });
+      }
       return {
         accepted: false,
         outcome: result.transition.outcome,
@@ -505,194 +844,71 @@ export const submitIntent = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(matchId, {
-      activeSeat: result.shell.activeSeat ?? undefined,
-      completedAt: result.shell.completedAt ?? undefined,
-      createdAt: result.shell.createdAt,
-      formatId: match.formatId,
-      phase: result.shell.phase,
-      shellJson: serializeMatchShell(result.shell),
-      startedAt: result.shell.startedAt ?? undefined,
-      status: result.shell.status,
-      turnNumber: result.shell.turnNumber,
-      updatedAt: now,
-      version: result.shell.version,
-      winnerSeat: result.shell.winnerSeat ?? undefined,
-    });
-    await ctx.db.patch(snapshot._id, {
-      snapshotJson: serializeMatchState(result.state),
-      updatedAt: now,
-      version: result.shell.version,
-    });
-
-    for (const event of result.appendedEvents) {
-      await ctx.db.insert("matchEvents", {
-        at: event.at,
-        eventJson: serializeMatchEvent(event),
-        kind: event.kind,
-        matchId,
-        seat: seatFromEvent(event),
-        sequence: event.sequence,
-        stateVersion: event.stateVersion,
-      });
-    }
-
-    const seatViewDocs = await listSeatViewDocs(ctx, matchId);
-    const seatViewDocsBySeat = new Map(
-      seatViewDocs
-        .filter((viewDoc) => viewDoc.kind === "seat" && !!viewDoc.viewerSeat)
-        .map((viewDoc) => [viewDoc.viewerSeat, viewDoc]),
-    );
-
-    for (const view of result.views) {
-      const existingView = seatViewDocsBySeat.get(view.viewerSeat);
-      if (existingView) {
-        await ctx.db.patch(existingView._id, {
-          updatedAt: now,
-          viewJson: serializeMatchView(view.view),
-          viewerSeat: view.viewerSeat,
-          viewerUserId: view.viewerUserId ?? undefined,
-        });
-        continue;
-      }
-
-      await ctx.db.insert("matchViews", {
-        kind: "seat",
-        matchId,
-        updatedAt: now,
-        viewJson: serializeMatchView(view.view),
-        viewerSeat: view.viewerSeat,
-        viewerUserId: view.viewerUserId ?? undefined,
-      });
-    }
-
-    const spectatorViewDoc = await getSpectatorViewDoc(ctx, matchId);
-    if (spectatorViewDoc) {
-      await ctx.db.patch(spectatorViewDoc._id, {
-        updatedAt: now,
-        viewJson: serializeMatchView(result.spectatorView),
-      });
-    } else {
-      await ctx.db.insert("matchViews", {
-        kind: "spectator",
-        matchId,
-        updatedAt: now,
-        viewJson: serializeMatchView(result.spectatorView),
-      });
-    }
-
-    const replayDoc = await getReplayDoc(ctx, matchId);
-    const replayFrame = createReplayFrame({
-      event: selectReplayAnchorEvent(result.appendedEvents),
-      fallbackLabel: "Match checkpoint updated",
-      frameIndex: replayDoc?.totalFrames ?? 0,
-      recordedAt: now,
-      view: result.spectatorView,
-    });
-
-    if (replayDoc) {
-      const replayMeta = await appendReplayFrameToSlices(ctx, {
-        matchId,
-        now,
-        replayDoc,
-        replayFrame,
-      });
-
-      const replaySummary = buildReplaySummary({
-        completedAt: result.shell.completedAt ?? null,
-        createdAt: replayDoc.createdAt,
-        formatId: replayDoc.formatId,
-        lastEventSequence: replayMeta.lastEventSequence,
-        matchId: result.shell.id,
-        ownerUserId: replayDoc.ownerUserId ?? null,
-        status: result.shell.status,
-        totalFrames: replayMeta.totalFrames,
-        updatedAt: now,
-        winnerSeat: result.shell.winnerSeat ?? null,
-      });
-
-      await ctx.db.patch(replayDoc._id, {
-        completedAt: replaySummary.completedAt ?? undefined,
-        lastEventSequence: replaySummary.lastEventSequence,
-        status: replaySummary.status,
-        totalFrames: replaySummary.totalFrames,
-        updatedAt: replaySummary.updatedAt,
-        winnerSeat: replaySummary.winnerSeat ?? undefined,
-      });
-    } else {
-      const replaySummary = buildReplaySummary({
-        completedAt: result.shell.completedAt ?? null,
-        createdAt: now,
-        formatId: match.formatId,
-        lastEventSequence: replayFrame.eventSequence,
-        matchId: result.shell.id,
-        ownerUserId: user._id,
-        status: result.shell.status,
-        totalFrames: 1,
-        updatedAt: now,
-        winnerSeat: result.shell.winnerSeat ?? null,
-      });
-
-      const replayId = await ctx.db.insert("replays", {
-        completedAt: replaySummary.completedAt ?? undefined,
-        createdAt: replaySummary.createdAt,
-        formatId: replaySummary.formatId,
-        framesJson: "[]",
-        lastEventSequence: replaySummary.lastEventSequence,
-        matchId,
-        ownerUserId: replaySummary.ownerUserId ?? undefined,
-        status: replaySummary.status,
-        totalFrames: replaySummary.totalFrames,
-        updatedAt: replaySummary.updatedAt,
-        winnerSeat: replaySummary.winnerSeat ?? undefined,
-      });
-
-      const replaySlice = createReplayFrameSlice({
-        frames: [replayFrame],
-        sliceIndex: 0,
-      });
-      await ctx.db.insert("replayFrameSlices", {
-        createdAt: now,
-        endFrameIndex: replaySlice.endFrameIndex,
-        frameCount: replaySlice.frameCount,
-        framesJson: replaySlice.framesJson,
-        matchId,
-        replayId,
-        sliceIndex: replaySlice.sliceIndex,
-        startFrameIndex: replaySlice.startFrameIndex,
-        updatedAt: now,
-      });
-    }
-
-    for (const seat of ["seat-0", "seat-1"] as const) {
-      await deletePendingPromptsForSeat(ctx, {
-        matchId,
-        seat,
-      });
-    }
-
-    for (const prompt of result.state.prompts.filter(
-      (matchPrompt) => matchPrompt.status === "pending",
-    )) {
-      await ctx.db.insert("matchPrompts", {
-        kind: prompt.kind,
-        matchId,
-        ownerSeat: prompt.ownerSeat,
-        promptId: prompt.promptId,
-        promptJson: serializeMatchPrompt(prompt),
-        status: "pending",
-        updatedAt: now,
-      });
-    }
-
-    await syncBotAssignmentsForMatch(ctx.db, {
-      completedAt: result.shell.completedAt,
-      lastIntentAt: actingSeat.actorType === "bot" ? now : null,
-      lastObservedVersion: result.shell.version,
+    const persistence = await persistMatchProjectionUpdate(ctx, {
+      appendedEvents: result.appendedEvents,
+      match,
       matchId,
-      matchStatus: result.shell.status,
-      updatedAt: now,
+      now,
+      replayOwnerUserId: user._id,
+      shell: result.shell,
+      snapshot,
+      spectatorView: result.spectatorView,
+      state: result.state,
+      viewOwnerBotIntentAt: actingSeat.actorType === "bot" ? now : null,
+      views: result.views,
     });
+    await recordTelemetryEvent(ctx.db, {
+      ...telemetryBase,
+      at: now,
+      matchId: match._id,
+      metrics: {
+        appendedEventCount: result.appendedEvents.length,
+        nextStateVersion: result.shell.version,
+      },
+      name: "match.intent.accepted",
+    });
+    await recordTelemetryEvent(ctx.db, {
+      at: now,
+      matchId: match._id,
+      metrics: {
+        eventCount: result.appendedEvents.length,
+        nextStateVersion: result.shell.version,
+      },
+      name: "match.state.persisted",
+      seat: args.intent.seat,
+      tags: {
+        intentKind: args.intent.kind,
+      },
+      userId: user._id,
+    });
+    await recordTelemetryEvent(ctx.db, {
+      at: now,
+      matchId: match._id,
+      metrics: {
+        seatViewCount: result.views.length,
+      },
+      name: "match.view.published",
+      seat: args.intent.seat,
+      tags: {
+        intentKind: args.intent.kind,
+      },
+      userId: user._id,
+    });
+    if (persistence.replayFramePersisted) {
+      await recordTelemetryEvent(ctx.db, {
+        at: now,
+        matchId: match._id,
+        metrics: {
+          appendedEventCount: result.appendedEvents.length,
+        },
+        name: "replay.chunkPersisted",
+        seat: args.intent.seat,
+        tags: {
+          intentKind: args.intent.kind,
+        },
+        userId: user._id,
+      });
+    }
 
     return {
       accepted: true,
@@ -701,6 +917,162 @@ export const submitIntent = mutation({
       reason: null,
       seatView,
       shell: result.shell,
+    };
+  },
+});
+
+export const recoverStaleMatch = mutation({
+  args: {
+    action: staleRecoveryActionValidator,
+    matchId: v.string(),
+    seat: v.optional(gameplaySeatValidator),
+    staleAfterMs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const operator = await requireOperatorUser(ctx);
+    const matchId = ctx.db.normalizeId("matches", args.matchId);
+    if (!matchId) {
+      throw new Error("Match not found");
+    }
+
+    const match = await ctx.db.get(matchId);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+    if (match.status !== "active") {
+      throw new Error("Only active matches can be recovered");
+    }
+
+    const staleAfterMs = Math.max(
+      args.staleAfterMs ?? 5 * 60 * 1000,
+      MINIMUM_STALE_RECOVERY_MS,
+    );
+    const now = Date.now();
+    if (now - match.updatedAt < staleAfterMs) {
+      throw new Error("Match is not stale enough to recover");
+    }
+
+    const snapshot = await getMatchStateOrThrow(ctx, matchId);
+    const currentState = deserializeMatchState(snapshot.snapshotJson);
+    const nextState = deserializeMatchState(serializeMatchState(currentState));
+    const nextVersion = currentState.shell.version + 1;
+    const createEvent = createAdministrativeEventFactory(
+      currentState,
+      nextVersion,
+    );
+    const recoveredSeat =
+      args.action === "forceConcede"
+        ? (args.seat ?? currentState.shell.activeSeat ?? null)
+        : null;
+
+    nextState.eventSequence = currentState.eventSequence;
+    nextState.shell.version = nextVersion;
+    nextState.shell.completedAt = now;
+    nextState.shell.activeSeat = null;
+    nextState.shell.prioritySeat = null;
+    nextState.shell.timers.activeDeadlineAt = null;
+    nextState.shell.timers.ropeDeadlineAt = null;
+    nextState.shell.timers.seatTimeRemainingMs = {};
+    nextState.lastPriorityPassSeat = null;
+    nextState.prompts = [];
+    nextState.stack = [];
+
+    let appendedEvents: ReturnType<typeof deserializeMatchEvent>[] = [];
+    let outcome: "cancelled" | "forcedConcession" = "cancelled";
+
+    if (args.action === "cancel") {
+      nextState.shell.status = "cancelled";
+      nextState.shell.winnerSeat = null;
+      appendedEvents = [
+        createEvent("matchCompleted", {
+          reason: "administrative",
+          winnerSeat: null,
+        }),
+      ];
+    } else {
+      if (!recoveredSeat || !(recoveredSeat in nextState.seats)) {
+        throw new Error("A valid seat is required for forced concession");
+      }
+
+      const losingSeat = nextState.seats[recoveredSeat];
+      const winnerSeat = recoveredSeat === "seat-0" ? "seat-1" : "seat-0";
+      losingSeat.status = "conceded";
+      nextState.shell.status = "complete";
+      nextState.shell.winnerSeat = winnerSeat;
+      outcome = "forcedConcession";
+      appendedEvents = [
+        createEvent("playerConceded", {
+          reason: "timeout",
+          seat: recoveredSeat,
+        }),
+        createEvent("matchCompleted", {
+          reason: "administrative",
+          winnerSeat,
+        }),
+      ];
+    }
+
+    const lastEvent = appendedEvents.at(-1);
+    nextState.eventSequence = lastEvent?.sequence ?? nextState.eventSequence;
+    const shell = createMatchShellFromState(nextState);
+    const spectatorView = createSpectatorView(nextState, appendedEvents);
+    const views = (["seat-0", "seat-1"] as const).map((seat) => {
+      const seatState = nextState.seats[seat];
+      return {
+        viewerSeat: seat,
+        viewerUserId: seatState.userId,
+        view: createSeatView(nextState, seat, appendedEvents),
+      };
+    });
+
+    const persistence = await persistMatchProjectionUpdate(ctx, {
+      appendedEvents,
+      match,
+      matchId,
+      now,
+      replayOwnerUserId: operator._id,
+      shell,
+      snapshot,
+      spectatorView,
+      state: nextState,
+      views,
+    });
+    await recordTelemetryEvent(ctx.db, {
+      at: now,
+      matchId: match._id,
+      metrics: {
+        appendedEventCount: appendedEvents.length,
+        idleMs: now - match.updatedAt,
+      },
+      name: "match.recovery.completed",
+      seat: recoveredSeat ?? undefined,
+      tags: {
+        action: args.action,
+        outcome,
+      },
+      userId: operator._id,
+    });
+    if (persistence.replayFramePersisted) {
+      await recordTelemetryEvent(ctx.db, {
+        at: now,
+        matchId: match._id,
+        metrics: {
+          appendedEventCount: appendedEvents.length,
+        },
+        name: "replay.chunkPersisted",
+        seat: recoveredSeat ?? undefined,
+        tags: {
+          intentKind: "recovery",
+        },
+        userId: operator._id,
+      });
+    }
+
+    return {
+      appendedEventKinds: appendedEvents.map((event) => event.kind),
+      match: shell,
+      outcome,
+      recoveredSeat,
     };
   },
 });

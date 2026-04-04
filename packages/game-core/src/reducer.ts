@@ -227,7 +227,12 @@ function completeMatch(
   createEvent: ReturnType<typeof createEventFactory>,
   input: {
     defeatedSeats: SeatId[];
-    reason: "concession" | "draw" | "elimination" | "objective";
+    reason:
+      | "administrative"
+      | "concession"
+      | "draw"
+      | "elimination"
+      | "objective";
   },
 ) {
   if (state.shell.status === "complete") {

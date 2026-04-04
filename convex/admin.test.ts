@@ -57,6 +57,25 @@ async function seedHumanSeat(
   });
 }
 
+async function markMatchStale(
+  t: TestConvex<typeof schema>,
+  input: {
+    matchId: string;
+    updatedAt: number;
+  },
+) {
+  await t.run(async (ctx) => {
+    const normalizedMatchId = ctx.db.normalizeId("matches", input.matchId);
+    if (!normalizedMatchId) {
+      throw new Error("Match id failed to normalize");
+    }
+
+    await ctx.db.patch(normalizedMatchId, {
+      updatedAt: input.updatedAt,
+    });
+  });
+}
+
 afterEach(() => {
   delete process.env[operatorAllowlistEnv];
 });
@@ -136,10 +155,122 @@ describe("admin backend", () => {
       catalog.find((card) => card.cardId === "mirror-warden")?.isBanned,
     ).toBe(false);
     expect(viewerIdentity?.isOperator).toBe(true);
+    await expect(viewer.query(api.admin.listTelemetry, {})).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "ops.format.updated",
+        }),
+      ]),
+    );
     await expect(
       viewer.mutation(api.matches.createPractice, {
         deckId: deck.id,
       }),
     ).rejects.toThrow("not currently published");
+  });
+
+  it("lists stale matches and lets an operator force concession or cancel them", async () => {
+    const t = convexTest({
+      modules,
+      schema,
+    });
+    const { userId } = await seedHumanSeat(t, {
+      address: "0x5555555555555555555555555555555555555555",
+      email: "operator@example.com",
+      username: "table_recovery_operator",
+    });
+    const viewer = t.withIdentity({
+      subject: `user:${userId}`,
+    });
+
+    process.env[operatorAllowlistEnv] = "operator@example.com";
+
+    const deck = await viewer.mutation(api.decks.create, {
+      formatId: starterFormat.formatId,
+      mainboard: createStarterDeckEntries(),
+      name: "Recovery Starter",
+      sideboard: [],
+    });
+    const shell = await viewer.mutation(api.matches.createPractice, {
+      deckId: deck.id,
+    });
+    await markMatchStale(t, {
+      matchId: shell.id,
+      updatedAt: Date.UTC(2026, 3, 3, 8, 0, 0),
+    });
+
+    const staleMatches = await viewer.query(api.admin.listRecoverableMatches, {
+      staleAfterMs: 60_000,
+    });
+
+    expect(staleMatches).toEqual([
+      expect.objectContaining({
+        latestEventKind: "promptOpened",
+        match: expect.objectContaining({
+          id: shell.id,
+          status: "active",
+        }),
+        pendingPromptCount: 2,
+      }),
+    ]);
+
+    const forced = await viewer.mutation(api.matches.recoverStaleMatch, {
+      action: "forceConcede",
+      matchId: shell.id,
+      seat: "seat-0",
+      staleAfterMs: 60_000,
+    });
+    const recoveredShell = await viewer.query(api.matches.getShell, {
+      matchId: shell.id,
+    });
+    const telemetry = await viewer.query(api.admin.listTelemetry, {
+      matchId: shell.id,
+    });
+
+    expect(forced.outcome).toBe("forcedConcession");
+    expect(forced.appendedEventKinds).toEqual([
+      "playerConceded",
+      "matchCompleted",
+    ]);
+    expect(recoveredShell?.status).toBe("complete");
+    expect(recoveredShell?.winnerSeat).toBe("seat-1");
+    expect(
+      telemetry.some((event) => event.name === "match.recovery.completed"),
+    ).toBe(true);
+    expect(
+      telemetry.some((event) => event.name === "replay.chunkPersisted"),
+    ).toBe(true);
+
+    const cancelDeck = await viewer.mutation(api.decks.create, {
+      formatId: starterFormat.formatId,
+      mainboard: createStarterDeckEntries(),
+      name: "Recovery Cancel Starter",
+      sideboard: [],
+    });
+    const cancelShell = await viewer.mutation(api.matches.createPractice, {
+      deckId: cancelDeck.id,
+    });
+    await markMatchStale(t, {
+      matchId: cancelShell.id,
+      updatedAt: Date.UTC(2026, 3, 3, 7, 0, 0),
+    });
+
+    const cancelled = await viewer.mutation(api.matches.recoverStaleMatch, {
+      action: "cancel",
+      matchId: cancelShell.id,
+      staleAfterMs: 60_000,
+    });
+    const cancelledShell = await viewer.query(api.matches.getShell, {
+      matchId: cancelShell.id,
+    });
+
+    expect(cancelled.outcome).toBe("cancelled");
+    expect(cancelled.recoveredSeat).toBeNull();
+    expect(cancelledShell?.status).toBe("cancelled");
+    await expect(
+      viewer.query(api.admin.listRecoverableMatches, {
+        staleAfterMs: 60_000,
+      }),
+    ).resolves.toEqual([]);
   });
 });

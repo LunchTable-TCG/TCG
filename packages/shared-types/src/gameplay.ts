@@ -401,7 +401,12 @@ export interface MatchCompletedEvent
   extends MatchEventBase<
     "matchCompleted",
     {
-      reason: "concession" | "elimination" | "objective" | "draw";
+      reason:
+        | "administrative"
+        | "concession"
+        | "draw"
+        | "elimination"
+        | "objective";
       winnerSeat: SeatId | null;
     }
   > {}

@@ -22,6 +22,7 @@ import type * as lib_matches from "../lib/matches.js";
 import type * as lib_participation from "../lib/participation.js";
 import type * as lib_play from "../lib/play.js";
 import type * as lib_replays from "../lib/replays.js";
+import type * as lib_telemetry from "../lib/telemetry.js";
 import type * as lib_viewer from "../lib/viewer.js";
 import type * as lib_walletAuth from "../lib/walletAuth.js";
 import type * as lobbies from "../lobbies.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/participation": typeof lib_participation;
   "lib/play": typeof lib_play;
   "lib/replays": typeof lib_replays;
+  "lib/telemetry": typeof lib_telemetry;
   "lib/viewer": typeof lib_viewer;
   "lib/walletAuth": typeof lib_walletAuth;
   lobbies: typeof lobbies;

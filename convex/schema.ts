@@ -296,6 +296,19 @@ export default defineSchema({
     .index("by_matchId_and_sliceIndex", ["matchId", "sliceIndex"])
     .index("by_replayId_and_sliceIndex", ["replayId", "sliceIndex"]),
 
+  telemetryEvents: defineTable({
+    at: v.number(),
+    matchId: v.optional(v.string()),
+    metrics: v.optional(v.record(v.string(), v.number())),
+    name: v.string(),
+    seat: v.optional(v.string()),
+    tags: v.optional(v.record(v.string(), v.string())),
+    userId: v.optional(v.id("users")),
+  })
+    .index("by_at", ["at"])
+    .index("by_matchId_and_at", ["matchId", "at"])
+    .index("by_name_and_at", ["name", "at"]),
+
   walletChallenges: defineTable({
     address: v.string(),
     addressNormalized: v.string(),

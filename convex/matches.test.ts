@@ -3,12 +3,17 @@
 
 import { starterFormat } from "@lunchtable/card-content";
 import { type TestConvex, convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { api } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+const operatorAllowlistEnv = "OPERATOR_EMAIL_ALLOWLIST";
+
+afterEach(() => {
+  delete process.env[operatorAllowlistEnv];
+});
 
 function createStarterDeckEntries() {
   return starterFormat.cardPool.map((card) => ({
@@ -125,12 +130,13 @@ describe("matches backend", () => {
     });
     const { userId } = await seedHumanSeat(t, {
       address: "0x2222222222222222222222222222222222222222",
-      email: "phase17-submit@example.com",
+      email: "operator@example.com",
       username: "phase17_submit",
     });
     const viewer = t.withIdentity({
       subject: `user:${userId}`,
     });
+    process.env[operatorAllowlistEnv] = "operator@example.com";
     const deck = await viewer.mutation(api.decks.create, {
       formatId: starterFormat.formatId,
       mainboard: createStarterDeckEntries(),
@@ -160,8 +166,22 @@ describe("matches backend", () => {
     const nextSeatView = await viewer.query(api.matches.getSeatView, {
       matchId: shell.id,
     });
+    const staleResult = await viewer.mutation(api.matches.submitIntent, {
+      intent: {
+        intentId: "phase17_keep_opening_hand_stale",
+        kind: "keepOpeningHand",
+        matchId: shell.id,
+        payload: {},
+        seat: "seat-0",
+        stateVersion: initialSeatView.match.version,
+      },
+    });
     const replaySummary = await t.query(api.replays.getSummary, {
       matchId: shell.id,
+    });
+    const telemetry = await viewer.query(api.admin.listTelemetry, {
+      matchId: shell.id,
+      limit: 12,
     });
 
     expect(submitResult.accepted).toBe(true);
@@ -169,8 +189,21 @@ describe("matches backend", () => {
       "openingHandKept",
       "promptResolved",
     ]);
+    expect(staleResult.accepted).toBe(false);
+    expect(staleResult.reason).toBe("staleStateVersion");
     expect(nextSeatView?.match.version).toBe(initialSeatView.match.version + 1);
     expect(nextSeatView?.prompt).toBeNull();
     expect(replaySummary?.totalFrames).toBe(2);
+    expect(telemetry.map((event) => event.name)).toEqual(
+      expect.arrayContaining([
+        "match.intent.received",
+        "match.intent.accepted",
+        "match.intent.rejected",
+        "match.state.persisted",
+        "match.view.published",
+        "match.sync.staleVersion",
+        "replay.chunkPersisted",
+      ]),
+    );
   });
 });
