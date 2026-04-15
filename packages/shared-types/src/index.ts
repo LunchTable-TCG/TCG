@@ -21,7 +21,7 @@ export {
 export {
   AUTHORITATIVE_INTENT_KINDS,
   MATCH_EVENT_KINDS,
-} from "./gameplay";
+} from "./gameplay-kinds";
 export {
   MATCH_ACTOR_TYPES,
   MATCH_BOARD_MODELS,
@@ -91,12 +91,14 @@ export type {
   FormatRuntimeSettings,
 } from "./library";
 export type {
+  GameplayIntentKind,
+  MatchEventKind,
+} from "./gameplay-kinds";
+export type {
   GameplayIntent,
   GameplayIntentBase,
-  GameplayIntentKind,
   MatchEvent,
   MatchEventBase,
-  MatchEventKind,
 } from "./gameplay";
 export type {
   CardInstanceId,

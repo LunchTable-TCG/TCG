@@ -1,3 +1,4 @@
+import { buildWalletChallengeMessage as buildSharedWalletChallengeMessage } from "@lunchtable/shared-types";
 import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 
@@ -7,6 +8,7 @@ import {
   createWalletChallengeRecord,
   normalizeAddress,
   normalizeEmail,
+  normalizeSignature,
   normalizeUsername,
   parseUserSubject,
   verifyWalletChallengeSignature,
@@ -14,10 +16,16 @@ import {
 
 describe("convex wallet auth helpers", () => {
   it("normalizes email, username, and address", () => {
+    const signature = `0x${"A".repeat(130)}`;
+
     expect(normalizeEmail("  Test@Example.com ")).toBe("test@example.com");
     expect(normalizeUsername("Table_Mage")).toBe("table_mage");
     expect(normalizeAddress("0xAbCdefabcdefabcdefabcdefabcdefabcdefabcd")).toBe(
       "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+    );
+    expect(normalizeSignature(`  ${signature}  `)).toBe(`0x${"a".repeat(130)}`);
+    expect(() => normalizeSignature("0x1234")).toThrow(
+      "Invalid wallet signature",
     );
   });
 
@@ -48,19 +56,20 @@ describe("convex wallet auth helpers", () => {
   });
 
   it("builds a deterministic raw challenge message", () => {
-    const message = buildWalletChallengeMessage({
+    const input = {
       address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
       domain: "lunchtable.gg",
       issuedAt: "2026-04-03T00:00:00.000Z",
       nonce: "nonce-xyz",
-      purpose: "login",
       statement: "Sign in to your Lunch-Table account.",
       uri: "https://lunchtable.gg/login",
       username: "tablemage",
-    });
+    } as const;
+    const message = buildWalletChallengeMessage(input);
 
     expect(message).toContain("nonce-xyz");
     expect(message).toContain("Sign in to your Lunch-Table account.");
+    expect(message).toBe(buildSharedWalletChallengeMessage(input));
   });
 
   it("verifies a signed wallet challenge against the expected address", async () => {
@@ -73,7 +82,6 @@ describe("convex wallet auth helpers", () => {
       email: "wizard@example.com",
       issuedAt: "2026-04-03T00:00:00.000Z",
       nonce: "nonce-signature-check",
-      purpose: "login",
       statement: "Sign in to your Lunch-Table account.",
       uri: "https://lunchtable.gg/login",
       username: "tablemage",

@@ -11,6 +11,7 @@ import {
   normalizeLobbyCode,
   pickQueueOpponent,
 } from "../convex/lib/play";
+import { buildStarterDeck } from "./helpers/starterDeck";
 
 describe("lobby and matchmaking helpers", () => {
   it("normalizes and derives deterministic lobby codes", () => {
@@ -104,13 +105,7 @@ describe("lobby and matchmaking helpers", () => {
       participants: [
         {
           actorType: "human",
-          deck: {
-            mainboard: starterFormat.cardPool.map((card) => ({
-              cardId: card.id,
-              count: starterFormat.deckRules.maxCopies,
-            })),
-            sideboard: [],
-          },
+          deck: buildStarterDeck(),
           seat: "seat-0",
           userId: "user_host" as never,
           username: "host",
@@ -118,13 +113,7 @@ describe("lobby and matchmaking helpers", () => {
         },
         {
           actorType: "human",
-          deck: {
-            mainboard: starterFormat.cardPool.map((card) => ({
-              cardId: card.id,
-              count: starterFormat.deckRules.maxCopies,
-            })),
-            sideboard: [],
-          },
+          deck: buildStarterDeck(),
           seat: "seat-1",
           userId: "user_guest" as never,
           username: "guest",

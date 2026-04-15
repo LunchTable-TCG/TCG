@@ -7,6 +7,7 @@ import {
   listCatalogEntries,
   validateDeckForUserCollection,
 } from "../convex/lib/library";
+import { buildStarterDeck } from "./helpers/starterDeck";
 
 describe("convex library helpers", () => {
   it("falls back to the seeded starter collection when no collection docs exist", () => {
@@ -21,13 +22,10 @@ describe("convex library helpers", () => {
 
   it("validates the default starter deck against the starter collection grant", () => {
     const runtime = createFormatRuntime(starterFormat.formatId);
-    const catalog = listCatalogEntries(runtime);
+    const starterDeck = buildStarterDeck();
     const validation = validateDeckForUserCollection({
       collectionEntries: [],
-      mainboard: catalog.map((card) => ({
-        cardId: card.cardId,
-        count: starterFormat.deckRules.maxCopies,
-      })),
+      mainboard: starterDeck.mainboard,
       runtime,
       sideboard: [],
     });
@@ -41,6 +39,8 @@ describe("convex library helpers", () => {
       banList: ["mirror-warden"],
     });
     const catalog = listCatalogEntries(runtime);
+    const starterDeck = buildStarterDeck();
+    const starterCopyCount = starterDeck.mainboard[0]?.count ?? 0;
     const validation = validateDeckForUserCollection({
       collectionEntries: [],
       mainboard: [
@@ -52,7 +52,7 @@ describe("convex library helpers", () => {
           .filter((card) => card.cardId !== "mirror-warden")
           .map((card) => ({
             cardId: card.cardId,
-            count: starterFormat.deckRules.maxCopies,
+            count: starterCopyCount,
           })),
       ],
       runtime,

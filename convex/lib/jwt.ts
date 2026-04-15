@@ -1,4 +1,7 @@
+import type { JWK } from "jose";
 import { SignJWT, importPKCS8 } from "jose";
+
+import { isJsonObject, parseJsonWithGuard } from "./domainGuards";
 
 const JWT_ALGORITHM = "ES256" as const;
 
@@ -43,12 +46,24 @@ async function getPrivateKey(): Promise<CryptoKey> {
   return cachedPrivateKeyPromise;
 }
 
+function isPublicJwk(value: unknown): value is JWK {
+  return isJsonObject(value) && typeof value.kty === "string";
+}
+
 export function buildJwksDataUri(): string {
   const settings = getJwtSettings();
-  const jwk = JSON.parse(settings.publicJwkJson) as Record<string, unknown>;
-  if (settings.keyId && !jwk.kid) {
-    jwk.kid = settings.keyId;
-  }
+  const parsedJwk = parseJsonWithGuard(
+    settings.publicJwkJson,
+    isPublicJwk,
+    "JWT public JWK",
+  );
+  const jwk =
+    settings.keyId && !parsedJwk.kid
+      ? {
+          ...parsedJwk,
+          kid: settings.keyId,
+        }
+      : parsedJwk;
   return `data:application/json,${encodeURIComponent(
     JSON.stringify({ keys: [jwk] }),
   )}`;

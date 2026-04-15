@@ -230,7 +230,7 @@ function MatchBoardScene({
               x={card.x}
               y={card.y - elevation}
             >
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: Pixi graphics do not expose DOM keyboard handlers; the HTML board inspector provides keyboard-reachable actions for the selected card. */}
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: Pixi graphics are pointer-only; keyboard access is handled by the HTML inspector. */}
               <pixiGraphics
                 cursor={card.interactive ? "pointer" : "default"}
                 draw={(graphics) => {

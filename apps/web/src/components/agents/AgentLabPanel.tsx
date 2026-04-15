@@ -7,6 +7,8 @@ import type {
 } from "@lunchtable/shared-types";
 import { useState } from "react";
 
+import { formatLocalTime } from "../shared";
+
 function getPromptPlaceholder(purpose: AgentLabPurpose | null) {
   if (purpose === "coach") {
     return "What is my best parity-safe line from this seat?";
@@ -232,7 +234,7 @@ export function AgentLabPanel({
                               (message.role === "user" ? "You" : message.role)}
                           </p>
                           <p className="library-card-meta">
-                            {new Date(message.createdAt).toLocaleTimeString()}
+                            {formatLocalTime(message.createdAt)}
                           </p>
                         </div>
                         <p className="agent-message-text">{message.text}</p>

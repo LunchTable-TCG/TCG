@@ -68,6 +68,25 @@ async function assertLegalDeckForUser(
     username: string;
   },
 ) {
+  const validation = await getDeckValidationForUser(ctx, {
+    deck: input.deck,
+    userId: input.userId,
+  });
+
+  if (!validation.isLegal) {
+    throw new Error(`${input.username} does not have a legal active deck`);
+  }
+}
+
+async function getDeckValidationForUser(
+  ctx: {
+    db: DatabaseReader | DatabaseWriter;
+  },
+  input: {
+    deck: Doc<"decks">;
+    userId: Id<"users">;
+  },
+) {
   const runtime = await loadFormatRuntime(ctx.db, input.deck.formatId);
   const collectionEntries = await listCollectionEntriesForUser(
     ctx.db,
@@ -81,9 +100,38 @@ async function assertLegalDeckForUser(
     sideboard: input.deck.sideboard,
   });
 
-  if (!validation.isLegal) {
-    throw new Error(`${input.username} does not have a legal active deck`);
+  return validation;
+}
+
+async function cancelQueueEntry(
+  ctx: {
+    db: DatabaseWriter;
+  },
+  entryId: Id<"queueEntries">,
+) {
+  await ctx.db.patch(entryId, {
+    status: "cancelled",
+    updatedAt: Date.now(),
+  });
+}
+
+async function getPlayableQueueDeck(
+  ctx: {
+    db: {
+      get: (id: Id<"decks">) => Promise<Doc<"decks"> | null>;
+    };
+  },
+  input: {
+    deckId: Id<"decks">;
+    userId: Id<"users">;
+  },
+) {
+  const deck = await ctx.db.get(input.deckId);
+  if (!deck || deck.userId !== input.userId || deck.status !== "active") {
+    return null;
   }
+
+  return deck;
 }
 
 async function getWalletAddress(
@@ -193,40 +241,27 @@ export const enqueue = mutation({
       return toQueueResult(currentEntry, null);
     }
 
-    const opponentDeck = await assertPlayableDeck(ctx, {
+    const opponentDeck = await getPlayableQueueDeck(ctx, {
       deckId: opponentEntry.deckId,
       userId: opponentEntry.userId,
-    }).catch(async () => {
-      await ctx.db.patch(opponentEntry._id, {
-        status: "cancelled",
-        updatedAt: Date.now(),
-      });
-      return null;
     });
     if (!opponentDeck) {
+      await cancelQueueEntry(ctx, opponentEntry._id);
       return toQueueResult(currentEntry, null);
     }
     if (
       await hasBlockingMatchmakingParticipation(ctx.db, opponentEntry.userId)
     ) {
-      await ctx.db.patch(opponentEntry._id, {
-        status: "cancelled",
-        updatedAt: Date.now(),
-      });
+      await cancelQueueEntry(ctx, opponentEntry._id);
       return toQueueResult(currentEntry, null);
     }
 
-    try {
-      await assertLegalDeckForUser(ctx, {
-        deck: opponentDeck,
-        userId: opponentEntry.userId,
-        username: opponentEntry.username,
-      });
-    } catch {
-      await ctx.db.patch(opponentEntry._id, {
-        status: "cancelled",
-        updatedAt: Date.now(),
-      });
+    const opponentDeckValidation = await getDeckValidationForUser(ctx, {
+      deck: opponentDeck,
+      userId: opponentEntry.userId,
+    });
+    if (!opponentDeckValidation.isLegal) {
+      await cancelQueueEntry(ctx, opponentEntry._id);
       return toQueueResult(currentEntry, null);
     }
 

@@ -32,6 +32,11 @@ import {
 import { AgentLabPanel } from "./components/agents/AgentLabPanel";
 import { MatchShell as LiveMatchShell } from "./components/match/MatchShell";
 import { ReplayPlayer } from "./components/replay/ReplayPlayer";
+import {
+  StatusBanner,
+  type StatusNotice,
+  getErrorMessage,
+} from "./components/shared";
 import { convexWalletAuthTransport, syncConvexAuth } from "./convex/client";
 
 const bootstrapChecklist = [
@@ -46,27 +51,21 @@ const bootstrapChecklist = [
 ];
 
 const defaultFormatId = starterFormat.formatId;
-
-type NoticeTone = "error" | "neutral" | "success" | "warning";
-
-interface Notice {
-  body: string;
-  title: string;
-  tone: NoticeTone;
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Unexpected error";
-}
+type Notice = StatusNotice;
 
 function buildStarterDeckEntries(catalog: CardCatalogEntry[]) {
   return catalog.map((card) => ({
     cardId: card.cardId,
     count: starterFormat.deckRules.maxCopies,
   }));
+}
+
+function getConvexTransport() {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport;
 }
 
 function getActiveLegalDeck(decks: DeckRecord[]) {
@@ -76,18 +75,16 @@ function getActiveLegalDeck(decks: DeckRecord[]) {
 }
 
 async function loadLibrarySnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
   const [catalog, collection, decks] = await Promise.all([
-    convexWalletAuthTransport.listCatalog({
+    transport.listCatalog({
       formatId: defaultFormatId,
     }),
-    convexWalletAuthTransport.getCollectionSummary({
+    transport.getCollectionSummary({
       formatId: defaultFormatId,
     }),
-    convexWalletAuthTransport.listDecks({
+    transport.listDecks({
       formatId: defaultFormatId,
     }),
   ]);
@@ -100,19 +97,15 @@ async function loadLibrarySnapshot() {
 }
 
 async function loadMatchSnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listMyMatches({});
+  return transport.listMyMatches({});
 }
 
 async function loadReplaySnapshot(matchId: string) {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  const summary = await convexWalletAuthTransport.getReplaySummary({
+  const summary = await transport.getReplaySummary({
     matchId,
   });
 
@@ -123,7 +116,7 @@ async function loadReplaySnapshot(matchId: string) {
     };
   }
 
-  const frameSlice = await convexWalletAuthTransport.getReplayFrames({
+  const frameSlice = await transport.getReplayFrames({
     limit: summary.totalFrames,
     matchId,
     start: 0,
@@ -136,13 +129,11 @@ async function loadReplaySnapshot(matchId: string) {
 }
 
 async function loadPlaySnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
   const [lobbies, queueEntries] = await Promise.all([
-    convexWalletAuthTransport.listMyLobbies(),
-    convexWalletAuthTransport.listMyQueueEntries({}),
+    transport.listMyLobbies(),
+    transport.listMyQueueEntries({}),
   ]);
 
   return {
@@ -152,49 +143,39 @@ async function loadPlaySnapshot() {
 }
 
 async function loadFormatSettingsSnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listFormatSettings();
+  return transport.listFormatSettings();
 }
 
 async function loadRecoverableMatchesSnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listRecoverableMatches({
+  return transport.listRecoverableMatches({
     limit: 8,
   });
 }
 
 async function loadTelemetrySnapshot() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listTelemetry({
+  return transport.listTelemetry({
     limit: 18,
   });
 }
 
 async function loadAgentLabSnapshot(matchId: string) {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listAgentSessions({
+  return transport.listAgentSessions({
     matchId,
   });
 }
 
 async function loadAgentSessionMessages(sessionId: string) {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
+  const transport = getConvexTransport();
 
-  return convexWalletAuthTransport.listAgentMessages({
+  return transport.listAgentMessages({
     sessionId,
   });
 }
@@ -212,19 +193,6 @@ function summarizeValidation(deck: DeckRecord) {
   return `${errorCount} error${errorCount === 1 ? "" : "s"}, ${warningCount} warning${
     warningCount === 1 ? "" : "s"
   }`;
-}
-
-function StatusBanner({ notice }: { notice: Notice | null }) {
-  if (!notice) {
-    return null;
-  }
-
-  return (
-    <output className={`status-banner status-banner-${notice.tone}`}>
-      <p className="status-title">{notice.title}</p>
-      <p className="status-body">{notice.body}</p>
-    </output>
-  );
 }
 
 function SessionPanel({

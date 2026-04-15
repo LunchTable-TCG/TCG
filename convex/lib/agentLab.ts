@@ -21,13 +21,6 @@ export const AGENT_REPLY_PREVIEW_LENGTH = 180;
 
 type AnySeatSummary = MatchSeatSummary | SeatStateView;
 
-function getSeatSummary<T extends { seats: AnySeatSummary[] }>(
-  view: T,
-  seat: SeatId,
-) {
-  return view.seats.find((candidate) => candidate.seat === seat) ?? null;
-}
-
 function getZoneCardCount<
   T extends {
     zones: {

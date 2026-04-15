@@ -10,8 +10,24 @@ import {
   buildReplaySummary,
   createReplayFrame,
   createReplayFrameSlice,
+  deserializeReplayFrames,
   selectReplayAnchorEvent,
+  serializeReplayFrames,
 } from "../convex/lib/replays";
+import { buildStarterDeck } from "./helpers/starterDeck";
+
+function requireFirstEvent() {
+  const bundle = createBundle();
+  const event = bundle.events[0];
+  if (!event) {
+    throw new Error("Expected replay bundle to contain an initial event.");
+  }
+
+  return {
+    bundle,
+    event,
+  };
+}
 
 function createBundle() {
   return buildPersistedMatchBundle({
@@ -22,13 +38,7 @@ function createBundle() {
     participants: [
       {
         actorType: "human",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-0",
         userId: "user_host" as never,
         username: "host",
@@ -36,13 +46,7 @@ function createBundle() {
       },
       {
         actorType: "human",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-1",
         userId: "user_guest" as never,
         username: "guest",
@@ -57,10 +61,9 @@ function createBundle() {
 
 describe("replay helpers", () => {
   it("creates a spectator-safe seed frame and summary", () => {
-    const bundle = createBundle();
+    const { bundle, event } = requireFirstEvent();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event,
       frameIndex: 0,
       recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
@@ -89,10 +92,9 @@ describe("replay helpers", () => {
   });
 
   it("appends only distinct post-intent checkpoints", () => {
-    const bundle = createBundle();
+    const { bundle, event } = requireFirstEvent();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event,
       frameIndex: 0,
       recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
@@ -113,7 +115,6 @@ describe("replay helpers", () => {
 
     const checkpoint = createReplayFrame({
       event: selectReplayAnchorEvent(keepSeat0.appendedEvents),
-      fallbackLabel: "Replay checkpoint",
       frameIndex: 1,
       recordedAt: keepSeat0.shell.createdAt,
       view: keepSeat0.spectatorView,
@@ -129,17 +130,15 @@ describe("replay helpers", () => {
   });
 
   it("creates bounded replay slices without depending on full replay history", () => {
-    const bundle = createBundle();
+    const { bundle, event } = requireFirstEvent();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event,
       frameIndex: 0,
       recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
     const nextFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match checkpoint",
+      event,
       frameIndex: 1,
       recordedAt: bundle.shell.createdAt + 1,
       view: bundle.spectatorView,
@@ -155,5 +154,33 @@ describe("replay helpers", () => {
     expect(slice.startFrameIndex).toBe(0);
     expect(slice.endFrameIndex).toBe(1);
     expect(slice.framesJson).toContain('"frameIndex":1');
+  });
+
+  it("rejects empty replay anchor input", () => {
+    expect(() => selectReplayAnchorEvent([])).toThrow(
+      "Replay events are required.",
+    );
+  });
+
+  it("round-trips replay frames through the typed deserializer", () => {
+    const { bundle, event } = requireFirstEvent();
+    const frames = [
+      createReplayFrame({
+        event,
+        frameIndex: 0,
+        recordedAt: bundle.shell.createdAt,
+        view: bundle.spectatorView,
+      }),
+    ];
+
+    expect(deserializeReplayFrames(serializeReplayFrames(frames))).toEqual(
+      frames,
+    );
+  });
+
+  it("rejects malformed replay frame payloads", () => {
+    expect(() =>
+      deserializeReplayFrames(JSON.stringify([{ frameIndex: 0 }])),
+    ).toThrow("Invalid replay frames JSON payload");
   });
 });

@@ -6,6 +6,8 @@ import type {
   UserId,
 } from "@lunchtable/shared-types";
 
+import { isReplayFrame, parseJsonWithGuard } from "./domainGuards";
+
 export const REPLAY_FRAME_SLICE_SIZE = 16;
 
 export function describeReplayEvent(event: MatchEvent): string {
@@ -55,9 +57,11 @@ export function describeReplayEvent(event: MatchEvent): string {
   }
 }
 
-export function selectReplayAnchorEvent(
-  events: MatchEvent[],
-): MatchEvent | null {
+export function selectReplayAnchorEvent(events: MatchEvent[]): MatchEvent {
+  if (events.length === 0) {
+    throw new Error("Replay events are required.");
+  }
+
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
     if (!event) {
@@ -71,7 +75,12 @@ export function selectReplayAnchorEvent(
     return event;
   }
 
-  return events.at(-1) ?? null;
+  const lastEvent = events[events.length - 1];
+  if (!lastEvent) {
+    throw new Error("Replay events are required.");
+  }
+
+  return lastEvent;
 }
 
 export function serializeReplayFrames(frames: ReplayFrame[]): string {
@@ -79,7 +88,12 @@ export function serializeReplayFrames(frames: ReplayFrame[]): string {
 }
 
 export function deserializeReplayFrames(framesJson: string): ReplayFrame[] {
-  return JSON.parse(framesJson) as ReplayFrame[];
+  return parseJsonWithGuard(
+    framesJson,
+    (value): value is ReplayFrame[] =>
+      Array.isArray(value) && value.every(isReplayFrame),
+    "replay frames",
+  );
 }
 
 export function buildReplaySummary(input: {
@@ -109,27 +123,24 @@ export function buildReplaySummary(input: {
 }
 
 export function createReplayFrame(input: {
-  event: MatchEvent | null;
+  event: MatchEvent;
   frameIndex: number;
-  fallbackLabel: string;
   recordedAt: number;
   view: MatchSpectatorView;
 }): ReplayFrame {
   const recentEvent = input.view.recentEvents.at(-1);
 
   return {
-    eventKind: input.event?.kind ?? "matchSnapshot",
-    eventSequence: input.event?.sequence ?? 0,
+    eventKind: input.event.kind,
+    eventSequence: input.event.sequence,
     frameIndex: input.frameIndex,
     label:
       recentEvent &&
-      recentEvent.kind === input.event?.kind &&
+      recentEvent.kind === input.event.kind &&
       recentEvent.label !== recentEvent.kind
         ? recentEvent.label
-        : input.event
-          ? describeReplayEvent(input.event)
-          : input.fallbackLabel,
-    recordedAt: input.event?.at ?? input.recordedAt,
+        : describeReplayEvent(input.event),
+    recordedAt: input.event.at,
     view: input.view,
   };
 }

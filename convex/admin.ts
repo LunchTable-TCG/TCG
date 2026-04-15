@@ -1,6 +1,5 @@
 import type {
   FormatRuntimeSettings,
-  MatchTelemetryEventName,
   RecoverableMatchRecord,
 } from "@lunchtable/shared-types";
 import { v } from "convex/values";
@@ -8,11 +7,13 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { isMatchEventKind } from "./lib/domainGuards";
 import {
   listSupportedFormatIds,
   loadFormatRuntime,
   saveFormatRuntime,
 } from "./lib/library";
+import { deserializeMatchShell } from "./lib/matches";
 import {
   listRecentTelemetryEvents,
   recordTelemetryEvent,
@@ -86,7 +87,7 @@ async function buildRecoverableMatchRecord(
     return null;
   }
 
-  const shell = JSON.parse(match.shellJson) as RecoverableMatchRecord["match"];
+  const shell = deserializeMatchShell(match.shellJson);
   const [latestEventDoc, seat0Prompts, seat1Prompts] = await Promise.all([
     ctx.db
       .query("matchEvents")
@@ -118,9 +119,9 @@ async function buildRecoverableMatchRecord(
   return {
     idleMs: Date.now() - match.updatedAt,
     latestEventAt: latestEventDoc[0]?.at ?? null,
-    latestEventKind:
-      (latestEventDoc[0]?.kind as RecoverableMatchRecord["latestEventKind"]) ??
-      null,
+    latestEventKind: isMatchEventKind(latestEventDoc[0]?.kind)
+      ? latestEventDoc[0].kind
+      : null,
     match: shell,
     pendingPromptCount: seat0Prompts.length + seat1Prompts.length,
     staleThresholdMs: input.staleThresholdMs,
@@ -175,7 +176,7 @@ export const listTelemetry = query({
     return listRecentTelemetryEvents(ctx.db, {
       limit: args.limit ?? 25,
       matchId: args.matchId,
-      name: args.name as MatchTelemetryEventName | undefined,
+      name: args.name,
     });
   },
 });

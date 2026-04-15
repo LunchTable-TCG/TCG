@@ -7,8 +7,6 @@ import {
 import type {
   AgentLabTurnResult,
   BotRunnerSession,
-  MatchSeatView,
-  MatchSpectatorView,
 } from "@lunchtable/shared-types";
 import { v } from "convex/values";
 
@@ -39,6 +37,7 @@ import {
   toBotIdentityRecord,
 } from "./lib/agents";
 import { issueActorAuthToken } from "./lib/jwt";
+import { deserializeSeatView, deserializeSpectatorView } from "./lib/matches";
 import { requireViewerUser } from "./lib/viewer";
 
 function requireRunnerSecret(secret: string) {
@@ -452,11 +451,9 @@ export const sendLabPrompt = mutation({
             totalFrames: replayDoc.totalFrames,
           }
         : null,
-      seatView: seatViewDoc
-        ? (JSON.parse(seatViewDoc.viewJson) as MatchSeatView)
-        : null,
+      seatView: seatViewDoc ? deserializeSeatView(seatViewDoc.viewJson) : null,
       spectatorView: spectatorViewDoc
-        ? (JSON.parse(spectatorViewDoc.viewJson) as MatchSpectatorView)
+        ? deserializeSpectatorView(spectatorViewDoc.viewJson)
         : null,
     });
 

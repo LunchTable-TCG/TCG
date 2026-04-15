@@ -9,6 +9,7 @@ import {
   nextSessionPreview,
 } from "../convex/lib/agentLab";
 import { buildPersistedMatchBundle } from "../convex/lib/matches";
+import { buildStarterDeck } from "./helpers/starterDeck";
 
 function createViews() {
   const bundle = buildPersistedMatchBundle({
@@ -19,13 +20,7 @@ function createViews() {
     participants: [
       {
         actorType: "human",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-0",
         userId: "user_human" as never,
         username: "human",
@@ -33,13 +28,7 @@ function createViews() {
       },
       {
         actorType: "bot",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-1",
         userId: "user_bot" as never,
         username: "Table Bot",

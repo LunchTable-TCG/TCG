@@ -269,29 +269,24 @@ async function appendReplayFrameToSlices(
     ctx,
     input.replayDoc._id,
   );
-  const legacyFrames = deserializeReplayFrames(input.replayDoc.framesJson);
-  const lastSliceFrames = lastSliceDoc
+  const currentFrames = lastSliceDoc
     ? deserializeReplayFrames(lastSliceDoc.framesJson)
-    : [];
-  const previousFrames = lastSliceDoc ? lastSliceFrames : legacyFrames;
-  const nextFrames = appendReplayFrame(previousFrames, input.replayFrame);
+    : deserializeReplayFrames(input.replayDoc.framesJson);
+  const nextFrames = appendReplayFrame(currentFrames, input.replayFrame);
 
-  if (nextFrames.length === previousFrames.length) {
+  if (nextFrames.length === currentFrames.length) {
     return {
       lastEventSequence: input.replayDoc.lastEventSequence,
       totalFrames: input.replayDoc.totalFrames,
     };
   }
 
-  const appendedFrame = nextFrames.at(-1);
+  const appendedFrame = nextFrames[nextFrames.length - 1];
   if (!appendedFrame) {
-    return {
-      lastEventSequence: input.replayDoc.lastEventSequence,
-      totalFrames: input.replayDoc.totalFrames,
-    };
+    throw new Error("Replay frame append must produce a frame.");
   }
 
-  if (lastSliceDoc && lastSliceFrames.length < REPLAY_FRAME_SLICE_SIZE) {
+  if (lastSliceDoc && currentFrames.length < REPLAY_FRAME_SLICE_SIZE) {
     const updatedSlice = createReplayFrameSlice({
       frames: nextFrames,
       sliceIndex: lastSliceDoc.sliceIndex,
@@ -478,7 +473,6 @@ async function persistMatchProjectionUpdate(
   const replayDoc = await getReplayDoc(ctx, input.matchId);
   const replayFrame = createReplayFrame({
     event: selectReplayAnchorEvent(input.appendedEvents),
-    fallbackLabel: "Match checkpoint updated",
     frameIndex: replayDoc?.totalFrames ?? 0,
     recordedAt: input.now,
     view: input.spectatorView,

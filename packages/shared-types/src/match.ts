@@ -1,5 +1,5 @@
 import type { UserId } from "./auth";
-import type { GameplayIntentKind, MatchEventKind } from "./gameplay";
+import type { GameplayIntentKind, MatchEventKind } from "./gameplay-kinds";
 
 export type MatchId = string;
 export type SeatId = string;

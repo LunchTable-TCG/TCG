@@ -4,7 +4,7 @@ import type {
   MatchShell as MatchShellRecord,
   MatchView,
 } from "@lunchtable/shared-types";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import type {
   SubmitIntent,
@@ -12,27 +12,13 @@ import type {
   WalletLibraryTransport,
 } from "../../convex/api";
 import { useSeatView } from "../../hooks/useSeatView";
+import { StatusBanner, type StatusNotice, getErrorMessage } from "../shared";
+import { LazyBoardCanvas } from "./LazyBoardCanvas";
 import {
   type MatchRenderMode,
   getZoneView,
   resolveRenderableView,
 } from "./model";
-
-const BoardCanvas = lazy(async () => {
-  const module = await import("./BoardCanvas");
-
-  return {
-    default: module.BoardCanvas,
-  };
-});
-
-type MatchNoticeTone = "error" | "neutral" | "success" | "warning";
-
-interface MatchNotice {
-  body: string;
-  title: string;
-  tone: MatchNoticeTone;
-}
 
 function createIntentId(kind: SubmitIntent["kind"]) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -50,14 +36,6 @@ function toGameplaySeat(seat: string): "seat-0" | "seat-1" {
   }
 
   return seat;
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Unexpected error";
 }
 
 function formatDeadline(timestamp: number | null) {
@@ -124,19 +102,6 @@ function buildPromptIntent(input: {
   return null;
 }
 
-function MatchStatusBanner({ notice }: { notice: MatchNotice | null }) {
-  if (!notice) {
-    return null;
-  }
-
-  return (
-    <output className={`status-banner status-banner-${notice.tone}`}>
-      <p className="status-title">{notice.title}</p>
-      <p className="status-body">{notice.body}</p>
-    </output>
-  );
-}
-
 function MatchSeatStrip({
   shell,
   view,
@@ -197,7 +162,7 @@ export function MatchShell({
   transport: WalletLibraryTransport | null;
   viewerEnabled: boolean;
 }) {
-  const [notice, setNotice] = useState<MatchNotice | null>(null);
+  const [notice, setNotice] = useState<StatusNotice | null>(null);
   const [pendingIntent, setPendingIntent] = useState<string | null>(null);
   const [preferredMode, setPreferredMode] = useState<MatchRenderMode>("seat");
   const {
@@ -334,7 +299,7 @@ export function MatchShell({
           </div>
         </div>
 
-        <MatchStatusBanner notice={notice} />
+        <StatusBanner notice={notice} />
 
         <div className="inline-actions inline-actions-tight">
           <button
@@ -392,7 +357,7 @@ export function MatchShell({
                     </div>
                   }
                 >
-                  <BoardCanvas
+                  <LazyBoardCanvas
                     catalog={catalog}
                     disabled={pendingIntent !== null}
                     onActivateAbility={submitActivateAbility}

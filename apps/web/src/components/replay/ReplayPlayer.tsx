@@ -1,17 +1,8 @@
 import type { ReplayFrame, ReplaySummary } from "@lunchtable/shared-types";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
-const BoardCanvas = lazy(async () => {
-  const module = await import("../match/BoardCanvas");
-
-  return {
-    default: module.BoardCanvas,
-  };
-});
-
-function formatTimestamp(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString();
-}
+import { LazyBoardCanvas } from "../match/LazyBoardCanvas";
+import { formatLocalTime } from "../shared";
 
 export function ReplayPlayer({
   frames,
@@ -140,7 +131,7 @@ export function ReplayPlayer({
                     {activeFrame.eventKind}
                   </p>
                   <p className="microcopy">
-                    Captured at {formatTimestamp(activeFrame.recordedAt)}
+                    Captured at {formatLocalTime(activeFrame.recordedAt)}
                   </p>
                 </div>
               </div>
@@ -159,7 +150,7 @@ export function ReplayPlayer({
                   </div>
                 }
               >
-                <BoardCanvas
+                <LazyBoardCanvas
                   catalog={[]}
                   disabled
                   onActivateAbility={() => undefined}

@@ -5,6 +5,7 @@ import {
   buildPersistedIntentResult,
   buildPersistedMatchBundle,
 } from "../convex/lib/matches";
+import { buildStarterDeck } from "./helpers/starterDeck";
 
 function createActiveBundle() {
   return buildPersistedMatchBundle({
@@ -15,13 +16,7 @@ function createActiveBundle() {
     participants: [
       {
         actorType: "human",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-0",
         userId: "user_host" as never,
         username: "host",
@@ -29,13 +24,7 @@ function createActiveBundle() {
       },
       {
         actorType: "human",
-        deck: {
-          mainboard: starterFormat.cardPool.map((card) => ({
-            cardId: card.id,
-            count: starterFormat.deckRules.maxCopies,
-          })),
-          sideboard: [],
-        },
+        deck: buildStarterDeck(),
         seat: "seat-1",
         userId: "user_guest" as never,
         username: "guest",

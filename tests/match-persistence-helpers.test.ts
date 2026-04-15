@@ -2,15 +2,48 @@ import { starterFormat } from "@lunchtable/card-content";
 import type { UserId } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 
-import { buildPracticeMatchBundle } from "../convex/lib/matches";
+import {
+  buildPracticeMatchBundle,
+  deserializeMatchEvent,
+  deserializeMatchShell,
+  deserializeMatchState,
+  deserializeSeatView,
+  deserializeSpectatorView,
+  serializeMatchEvent,
+  serializeMatchShell,
+  serializeMatchState,
+  serializeMatchView,
+} from "../convex/lib/matches";
+import { buildStarterDeck } from "./helpers/starterDeck";
 
-const starterDeck = {
-  mainboard: starterFormat.cardPool.map((card) => ({
-    cardId: card.id,
-    count: starterFormat.deckRules.maxCopies,
-  })),
-  sideboard: [],
-};
+const starterDeck = buildStarterDeck();
+
+function requireFirstEvent() {
+  const bundle = buildPracticeMatchBundle({
+    createdAt: 123,
+    format: starterFormat,
+    matchId: "match_123",
+    player: {
+      userId: "user_123" as UserId,
+      username: "tablemage",
+      walletAddress: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+    },
+    primaryDeck: starterDeck,
+  });
+  const firstEvent = bundle.events[0];
+  const firstView = bundle.views[0]?.view;
+  if (!firstEvent || !firstView) {
+    throw new Error(
+      "Expected practice match bundle to include initial projections.",
+    );
+  }
+
+  return {
+    bundle,
+    firstEvent,
+    firstView,
+  };
+}
 
 describe("match persistence helpers", () => {
   it("builds an initial practice match shell with cached views", () => {
@@ -94,5 +127,34 @@ describe("match persistence helpers", () => {
           ability.kind === "replacement" && ability.id.endsWith(":ward1"),
       ),
     ).toBe(true);
+  });
+
+  it("round-trips persisted match JSON through typed deserializers", () => {
+    const { bundle, firstEvent, firstView } = requireFirstEvent();
+
+    expect(deserializeMatchShell(serializeMatchShell(bundle.shell))).toEqual(
+      bundle.shell,
+    );
+    expect(deserializeMatchState(serializeMatchState(bundle.state))).toEqual(
+      bundle.state,
+    );
+    expect(deserializeMatchEvent(serializeMatchEvent(firstEvent))).toEqual(
+      firstEvent,
+    );
+    expect(deserializeSeatView(serializeMatchView(firstView))).toEqual(
+      firstView,
+    );
+    expect(
+      deserializeSpectatorView(serializeMatchView(bundle.spectatorView)),
+    ).toEqual(bundle.spectatorView);
+  });
+
+  it("rejects malformed persisted match JSON", () => {
+    expect(() =>
+      deserializeMatchShell(JSON.stringify({ id: "match_123" })),
+    ).toThrow("Invalid match shell JSON payload");
+    expect(() => deserializeSeatView(JSON.stringify({ kind: "seat" }))).toThrow(
+      "Invalid seat view JSON payload",
+    );
   });
 });
