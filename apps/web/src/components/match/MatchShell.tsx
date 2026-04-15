@@ -12,9 +12,8 @@ import type {
   SubmitIntentResult,
   WalletLibraryTransport,
 } from "../../convex/api";
-import { getErrorMessage } from "../../errors";
-import { useSeatView } from "../../hooks/useSeatView";
 import { StatusBanner, type StatusNotice, getErrorMessage } from "../shared";
+import { useSeatView } from "../../hooks/useSeatView";
 import { LazyBoardCanvas } from "./LazyBoardCanvas";
 import {
   type MatchRenderMode,

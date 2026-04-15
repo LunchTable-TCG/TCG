@@ -144,25 +144,6 @@ async function getWalletAddress(
   return wallet?.address ?? null;
 }
 
-async function getPlayableDeckForUser(
-  ctx: {
-    db: {
-      get: (id: Id<"decks">) => Promise<Doc<"decks"> | null>;
-    };
-  },
-  input: {
-    deckId: Id<"decks">;
-    userId: Id<"users">;
-  },
-) {
-  const deck = await ctx.db.get(input.deckId);
-  if (!deck || deck.userId !== input.userId || deck.status !== "active") {
-    return null;
-  }
-
-  return deck;
-}
-
 function toQueueResult(
   entry: Doc<"queueEntries">,
   match: Doc<"matches"> | null,

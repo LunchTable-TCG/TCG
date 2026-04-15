@@ -5,11 +5,6 @@ import { isJsonObject, parseJsonWithGuard } from "./domainGuards";
 
 const JWT_ALGORITHM = "ES256" as const;
 
-interface PublicJwk {
-  [key: string]: unknown;
-  kid?: string;
-}
-
 interface ActorAuthTokenInput {
   actorType: "bot" | "human";
   email: string;
@@ -112,8 +107,4 @@ export async function issueWalletAuthToken(
     ...input,
     actorType: "human",
   });
-}
-
-function isPublicJwk(value: unknown): value is PublicJwk {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

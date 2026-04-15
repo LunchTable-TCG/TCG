@@ -69,14 +69,6 @@ export function normalizeSignature(signature: string): HexString {
   return normalized;
 }
 
-export function normalizeSignature(signature: string): `0x${string}` {
-  const normalized = signature.trim().toLowerCase();
-  if (!SIGNATURE_RE.test(normalized)) {
-    throw new Error("Invalid wallet signature");
-  }
-  return normalized as `0x${string}`;
-}
-
 export function createChallengeNonce(bytes = 16): string {
   const buffer = new Uint8Array(bytes);
   crypto.getRandomValues(buffer);
