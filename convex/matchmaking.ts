@@ -58,7 +58,7 @@ async function assertPlayableDeck(
   return deck;
 }
 
-async function assertLegalDeckForUser(
+async function getLegalDeckValidation(
   ctx: {
     db: DatabaseReader | DatabaseWriter;
   },
@@ -74,13 +74,25 @@ async function assertLegalDeckForUser(
     input.userId,
     input.deck.formatId,
   );
-  const validation = validateDeckForUserCollection({
+  return validateDeckForUserCollection({
     collectionEntries,
     runtime,
     mainboard: input.deck.mainboard,
     sideboard: input.deck.sideboard,
   });
+}
 
+async function assertLegalDeckForUser(
+  ctx: {
+    db: DatabaseReader | DatabaseWriter;
+  },
+  input: {
+    deck: Doc<"decks">;
+    userId: Id<"users">;
+    username: string;
+  },
+) {
+  const validation = await getLegalDeckValidation(ctx, input);
   if (!validation.isLegal) {
     throw new Error(`${input.username} does not have a legal active deck`);
   }
@@ -99,6 +111,25 @@ async function getWalletAddress(
   }
   const wallet = await ctx.db.get(walletId);
   return wallet?.address ?? null;
+}
+
+async function getPlayableDeckForUser(
+  ctx: {
+    db: {
+      get: (id: Id<"decks">) => Promise<Doc<"decks"> | null>;
+    };
+  },
+  input: {
+    deckId: Id<"decks">;
+    userId: Id<"users">;
+  },
+) {
+  const deck = await ctx.db.get(input.deckId);
+  if (!deck || deck.userId !== input.userId || deck.status !== "active") {
+    return null;
+  }
+
+  return deck;
 }
 
 function toQueueResult(
@@ -193,17 +224,15 @@ export const enqueue = mutation({
       return toQueueResult(currentEntry, null);
     }
 
-    const opponentDeck = await assertPlayableDeck(ctx, {
+    const opponentDeck = await getPlayableDeckForUser(ctx, {
       deckId: opponentEntry.deckId,
       userId: opponentEntry.userId,
-    }).catch(async () => {
+    });
+    if (!opponentDeck) {
       await ctx.db.patch(opponentEntry._id, {
         status: "cancelled",
         updatedAt: Date.now(),
       });
-      return null;
-    });
-    if (!opponentDeck) {
       return toQueueResult(currentEntry, null);
     }
     if (
@@ -216,13 +245,12 @@ export const enqueue = mutation({
       return toQueueResult(currentEntry, null);
     }
 
-    try {
-      await assertLegalDeckForUser(ctx, {
-        deck: opponentDeck,
-        userId: opponentEntry.userId,
-        username: opponentEntry.username,
-      });
-    } catch {
+    const opponentValidation = await getLegalDeckValidation(ctx, {
+      deck: opponentDeck,
+      userId: opponentEntry.userId,
+      username: opponentEntry.username,
+    });
+    if (!opponentValidation.isLegal) {
       await ctx.db.patch(opponentEntry._id, {
         status: "cancelled",
         updatedAt: Date.now(),

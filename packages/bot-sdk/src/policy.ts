@@ -1,17 +1,6 @@
+import { assertMatchSeatId } from "@lunchtable/shared-types";
 import { listLegalBotActions } from "./legal-actions";
-import type {
-  BotDecisionFrame,
-  BotPlannedIntent,
-  BotPolicy,
-  BotSeatId,
-} from "./types";
-
-function assertBotSeatId(seat: string): BotSeatId {
-  if (seat === "seat-0" || seat === "seat-1") {
-    return seat;
-  }
-  throw new Error(`Unsupported bot seat: ${seat}`);
-}
+import type { BotDecisionFrame, BotPlannedIntent, BotPolicy } from "./types";
 
 export function createDecisionFrame(input: {
   catalog: BotDecisionFrame["catalog"];
@@ -24,7 +13,7 @@ export function createDecisionFrame(input: {
     deadlineAt: input.view.match.timers.activeDeadlineAt,
     matchId: input.view.match.id,
     receivedAt: input.receivedAt ?? Date.now(),
-    seat: assertBotSeatId(input.view.viewerSeat),
+    seat: assertMatchSeatId(input.view.viewerSeat),
     view: input.view,
   };
 }

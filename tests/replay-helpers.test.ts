@@ -55,14 +55,21 @@ function createBundle() {
   });
 }
 
+function getInitialReplayEvent(bundle: ReturnType<typeof createBundle>) {
+  const event = bundle.events[0];
+  if (!event) {
+    throw new Error("Expected the seeded replay bundle to include an event.");
+  }
+
+  return event;
+}
+
 describe("replay helpers", () => {
   it("creates a spectator-safe seed frame and summary", () => {
     const bundle = createBundle();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event: getInitialReplayEvent(bundle),
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
 
@@ -91,10 +98,8 @@ describe("replay helpers", () => {
   it("appends only distinct post-intent checkpoints", () => {
     const bundle = createBundle();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event: getInitialReplayEvent(bundle),
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
 
@@ -113,9 +118,7 @@ describe("replay helpers", () => {
 
     const checkpoint = createReplayFrame({
       event: selectReplayAnchorEvent(keepSeat0.appendedEvents),
-      fallbackLabel: "Replay checkpoint",
       frameIndex: 1,
-      recordedAt: keepSeat0.shell.createdAt,
       view: keepSeat0.spectatorView,
     });
 
@@ -131,17 +134,13 @@ describe("replay helpers", () => {
   it("creates bounded replay slices without depending on full replay history", () => {
     const bundle = createBundle();
     const initialFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match created",
+      event: getInitialReplayEvent(bundle),
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
     const nextFrame = createReplayFrame({
-      event: bundle.events[0] ?? null,
-      fallbackLabel: "Match checkpoint",
+      event: getInitialReplayEvent(bundle),
       frameIndex: 1,
-      recordedAt: bundle.shell.createdAt + 1,
       view: bundle.spectatorView,
     });
 

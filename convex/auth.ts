@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import type { WalletAuthSession } from "@lunchtable/shared-types";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, internalMutation, mutation } from "./_generated/server";
@@ -12,6 +13,7 @@ import {
   createWalletChallengeRecord,
   normalizeAddress,
   normalizeEmail,
+  normalizeSignature,
   normalizeUsername,
   verifyWalletChallengeSignature,
 } from "./lib/walletAuth";
@@ -79,14 +81,6 @@ interface WalletAuthCompletionRecord {
   address: `0x${string}`;
   chainId: typeof AUTH_CHAIN_ID;
   email: string;
-  userId: Id<"users">;
-  username: string;
-}
-
-interface WalletAuthCompletionSession {
-  address: `0x${string}`;
-  chainId: typeof AUTH_CHAIN_ID;
-  token: string;
   userId: Id<"users">;
   username: string;
 }
@@ -224,7 +218,7 @@ export const completeWalletSignupTransaction = internalMutation({
     const verified = await verifyWalletChallengeSignature({
       address: normalizeAddress(challenge.address),
       message: challenge.message,
-      signature: args.signature as `0x${string}`,
+      signature: normalizeSignature(args.signature),
     });
 
     if (!verified) {
@@ -317,7 +311,7 @@ export const completeWalletSignup = action({
     challengeId: v.id("walletChallenges"),
     signature: v.string(),
   },
-  handler: async (ctx, args): Promise<WalletAuthCompletionSession> => {
+  handler: async (ctx, args): Promise<WalletAuthSession> => {
     const result: WalletAuthCompletionRecord = await ctx.runMutation(
       internal.auth.completeWalletSignupTransaction,
       args,
@@ -360,7 +354,7 @@ export const completeWalletLoginTransaction = internalMutation({
     const verified = await verifyWalletChallengeSignature({
       address,
       message: challenge.message,
-      signature: args.signature as `0x${string}`,
+      signature: normalizeSignature(args.signature),
     });
 
     if (!verified) {
@@ -416,7 +410,7 @@ export const completeWalletLogin = action({
     challengeId: v.id("walletChallenges"),
     signature: v.string(),
   },
-  handler: async (ctx, args): Promise<WalletAuthCompletionSession> => {
+  handler: async (ctx, args): Promise<WalletAuthSession> => {
     const result: WalletAuthCompletionRecord = await ctx.runMutation(
       internal.auth.completeWalletLoginTransaction,
       args,

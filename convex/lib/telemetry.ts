@@ -1,6 +1,7 @@
-import type {
-  MatchTelemetryEvent,
-  MatchTelemetryEventName,
+import {
+  MATCH_TELEMETRY_EVENT_NAMES,
+  type MatchTelemetryEvent,
+  type MatchTelemetryEventName,
 } from "@lunchtable/shared-types";
 
 import type { Doc } from "../_generated/dataModel";
@@ -24,11 +25,15 @@ export async function recordTelemetryEvent(
 function toTelemetryEvent(
   doc: Doc<"telemetryEvents">,
 ): MatchTelemetryEvent<MatchTelemetryEventName> {
+  if (!isTelemetryEventName(doc.name)) {
+    throw new Error(`Unexpected telemetry event name: ${doc.name}`);
+  }
+
   return {
     at: doc.at,
     matchId: doc.matchId,
     metrics: doc.metrics,
-    name: doc.name as MatchTelemetryEventName,
+    name: doc.name,
     seat: doc.seat,
     tags: doc.tags,
     userId: doc.userId ?? null,
@@ -78,4 +83,8 @@ export async function listRecentTelemetryEvents(
     .order("desc")
     .take(limit);
   return docs.map(toTelemetryEvent);
+}
+
+function isTelemetryEventName(value: string): value is MatchTelemetryEventName {
+  return MATCH_TELEMETRY_EVENT_NAMES.some((name) => name === value);
 }

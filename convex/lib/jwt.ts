@@ -2,6 +2,11 @@ import { SignJWT, importPKCS8 } from "jose";
 
 const JWT_ALGORITHM = "ES256" as const;
 
+interface PublicJwk {
+  [key: string]: unknown;
+  kid?: string;
+}
+
 interface ActorAuthTokenInput {
   actorType: "bot" | "human";
   email: string;
@@ -45,7 +50,16 @@ async function getPrivateKey(): Promise<CryptoKey> {
 
 export function buildJwksDataUri(): string {
   const settings = getJwtSettings();
-  const jwk = JSON.parse(settings.publicJwkJson) as Record<string, unknown>;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(settings.publicJwkJson);
+  } catch {
+    throw new Error("JWT public JWK must be a JSON object");
+  }
+  if (!isPublicJwk(parsed)) {
+    throw new Error("JWT public JWK must be a JSON object");
+  }
+  const jwk = parsed;
   if (settings.keyId && !jwk.kid) {
     jwk.kid = settings.keyId;
   }
@@ -92,4 +106,8 @@ export async function issueWalletAuthToken(
     ...input,
     actorType: "human",
   });
+}
+
+function isPublicJwk(value: unknown): value is PublicJwk {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

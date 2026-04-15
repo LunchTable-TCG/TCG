@@ -7,6 +7,7 @@ import {
   createWalletChallengeRecord,
   normalizeAddress,
   normalizeEmail,
+  normalizeSignature,
   normalizeUsername,
   parseUserSubject,
   verifyWalletChallengeSignature,
@@ -18,6 +19,14 @@ describe("convex wallet auth helpers", () => {
     expect(normalizeUsername("Table_Mage")).toBe("table_mage");
     expect(normalizeAddress("0xAbCdefabcdefabcdefabcdefabcdefabcdefabcd")).toBe(
       "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+    );
+  });
+
+  it("normalizes and validates wallet signatures", () => {
+    const rawSignature = ` 0x${"a".repeat(130)} `;
+    expect(normalizeSignature(rawSignature)).toBe(`0x${"a".repeat(130)}`);
+    expect(() => normalizeSignature("0x1234")).toThrow(
+      "Invalid wallet signature",
     );
   });
 

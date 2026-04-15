@@ -30,6 +30,13 @@ import type {
 
 import type { MutationCtx } from "../_generated/server";
 import {
+  parseMatchEventJson,
+  parseMatchSeatViewJson,
+  parseMatchShellJson,
+  parseMatchSpectatorViewJson,
+  parseMatchStateJson,
+} from "./matchJson";
+import {
   createReplayFrame,
   createReplayFrameSlice,
   serializeReplayFrames,
@@ -536,11 +543,14 @@ export async function createPersistedMatch(
     viewJson: serializeMatchView(bundle.spectatorView),
   });
 
+  const initialReplayEvent = bundle.events[0];
+  if (!initialReplayEvent) {
+    throw new Error("Persisted matches must record an initial replay event.");
+  }
+
   const initialReplayFrame = createReplayFrame({
-    event: bundle.events[0] ?? null,
-    fallbackLabel: "Match created",
+    event: initialReplayEvent,
     frameIndex: 0,
-    recordedAt: input.createdAt,
     view: bundle.spectatorView,
   });
 
@@ -582,7 +592,7 @@ export function serializeMatchShell(shell: MatchShell): string {
 }
 
 export function deserializeMatchShell(shellJson: string): MatchShell {
-  return JSON.parse(shellJson) as MatchShell;
+  return parseMatchShellJson(shellJson);
 }
 
 export function serializeMatchState(state: MatchState): string {
@@ -590,7 +600,7 @@ export function serializeMatchState(state: MatchState): string {
 }
 
 export function deserializeMatchState(snapshotJson: string): MatchState {
-  return JSON.parse(snapshotJson) as MatchState;
+  return parseMatchStateJson(snapshotJson);
 }
 
 export function serializeMatchEvent(event: MatchEvent): string {
@@ -598,7 +608,7 @@ export function serializeMatchEvent(event: MatchEvent): string {
 }
 
 export function deserializeMatchEvent(eventJson: string): MatchEvent {
-  return JSON.parse(eventJson) as MatchEvent;
+  return parseMatchEventJson(eventJson);
 }
 
 export function serializeMatchView(
@@ -614,11 +624,11 @@ export function serializeMatchPrompt(
 }
 
 export function deserializeSeatView(viewJson: string): MatchSeatView {
-  return JSON.parse(viewJson) as MatchSeatView;
+  return parseMatchSeatViewJson(viewJson);
 }
 
 export function deserializeSpectatorView(viewJson: string): MatchSpectatorView {
-  return JSON.parse(viewJson) as MatchSpectatorView;
+  return parseMatchSpectatorViewJson(viewJson);
 }
 
 export function seatFromEvent(event: MatchEvent): string | undefined {

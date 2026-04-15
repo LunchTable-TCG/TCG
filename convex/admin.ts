@@ -1,7 +1,10 @@
-import type {
-  FormatRuntimeSettings,
-  MatchTelemetryEventName,
-  RecoverableMatchRecord,
+import {
+  type FormatRuntimeSettings,
+  MATCH_EVENT_KINDS,
+  MATCH_TELEMETRY_EVENT_NAMES,
+  type MatchEventKind,
+  type MatchTelemetryEventName,
+  type RecoverableMatchRecord,
 } from "@lunchtable/shared-types";
 import { v } from "convex/values";
 
@@ -13,6 +16,7 @@ import {
   loadFormatRuntime,
   saveFormatRuntime,
 } from "./lib/library";
+import { deserializeMatchShell } from "./lib/matches";
 import {
   listRecentTelemetryEvents,
   recordTelemetryEvent,
@@ -86,7 +90,7 @@ async function buildRecoverableMatchRecord(
     return null;
   }
 
-  const shell = JSON.parse(match.shellJson) as RecoverableMatchRecord["match"];
+  const shell = deserializeMatchShell(match.shellJson);
   const [latestEventDoc, seat0Prompts, seat1Prompts] = await Promise.all([
     ctx.db
       .query("matchEvents")
@@ -115,12 +119,14 @@ async function buildRecoverableMatchRecord(
       .collect(),
   ]);
 
+  const latestEventKind = latestEventDoc[0]
+    ? toMatchEventKind(latestEventDoc[0].kind)
+    : null;
+
   return {
     idleMs: Date.now() - match.updatedAt,
     latestEventAt: latestEventDoc[0]?.at ?? null,
-    latestEventKind:
-      (latestEventDoc[0]?.kind as RecoverableMatchRecord["latestEventKind"]) ??
-      null,
+    latestEventKind,
     match: shell,
     pendingPromptCount: seat0Prompts.length + seat1Prompts.length,
     staleThresholdMs: input.staleThresholdMs,
@@ -175,7 +181,37 @@ export const listTelemetry = query({
     return listRecentTelemetryEvents(ctx.db, {
       limit: args.limit ?? 25,
       matchId: args.matchId,
-      name: args.name as MatchTelemetryEventName | undefined,
+      name: parseTelemetryEventName(args.name),
     });
   },
 });
+
+function parseTelemetryEventName(
+  value: string | undefined,
+): MatchTelemetryEventName | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (!isTelemetryEventName(value)) {
+    throw new Error(`Invalid telemetry event name: ${value}`);
+  }
+
+  return value;
+}
+
+function toMatchEventKind(value: string): MatchEventKind {
+  if (!isMatchEventKind(value)) {
+    throw new Error(`Unexpected match event kind: ${value}`);
+  }
+
+  return value;
+}
+
+function isTelemetryEventName(value: string): value is MatchTelemetryEventName {
+  return MATCH_TELEMETRY_EVENT_NAMES.some((name) => name === value);
+}
+
+function isMatchEventKind(value: string): value is MatchEventKind {
+  return MATCH_EVENT_KINDS.some((kind) => kind === value);
+}

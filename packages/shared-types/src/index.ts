@@ -2,6 +2,10 @@ export const APP_NAME = "Lunch-Table";
 
 export { MATCH_RECOVERY_ACTIONS } from "./admin";
 export {
+  AUTHORITATIVE_INTENT_KINDS,
+  MATCH_EVENT_KINDS,
+} from "./kinds";
+export {
   AGENT_LAB_PURPOSES,
   AGENT_LAB_SESSION_STATUSES,
 } from "./agent-lab";
@@ -19,10 +23,6 @@ export {
   buildWalletChallengeMessage,
 } from "./auth";
 export {
-  AUTHORITATIVE_INTENT_KINDS,
-  MATCH_EVENT_KINDS,
-} from "./gameplay";
-export {
   MATCH_ACTOR_TYPES,
   MATCH_BOARD_MODELS,
   MATCH_PHASES,
@@ -36,6 +36,7 @@ export {
   MATCH_VICTORY_MODELS,
   MATCH_ZONE_KINDS,
 } from "./match";
+export { assertMatchSeatId } from "./match";
 export {
   LOBBY_SLOTS,
   LOBBY_STATUSES,
@@ -44,6 +45,10 @@ export {
 } from "./play";
 export { MATCH_TELEMETRY_EVENT_NAMES } from "./telemetry";
 
+export type {
+  GameplayIntentKind,
+  MatchEventKind,
+} from "./kinds";
 export type {
   MatchRecoveryAction,
   RecoverableMatchRecord,
@@ -93,10 +98,8 @@ export type {
 export type {
   GameplayIntent,
   GameplayIntentBase,
-  GameplayIntentKind,
   MatchEvent,
   MatchEventBase,
-  MatchEventKind,
 } from "./gameplay";
 export type {
   CardInstanceId,
@@ -123,6 +126,7 @@ export type {
   MatchView,
   MatchVisibility,
   MatchZoneView,
+  MatchSeatId,
   PromptId,
   SeatId,
   SeatResourceView,

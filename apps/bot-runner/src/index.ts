@@ -6,6 +6,7 @@ import {
 } from "@lunchtable/bot-sdk";
 import { APP_NAME } from "@lunchtable/shared-types";
 import type {
+  BotAssignmentId,
   BotAssignmentSnapshot,
   MatchSeatView,
 } from "@lunchtable/shared-types";
@@ -51,7 +52,7 @@ class BotRunner {
   private readonly client: ConvexClient;
   private readonly httpClient: ConvexHttpClient;
   private readonly policy = baselineBotPolicy;
-  private readonly watchers = new Map<string, AssignmentWatcher>();
+  private readonly watchers = new Map<BotAssignmentId, AssignmentWatcher>();
 
   constructor(private readonly config: RunnerConfig) {
     this.client = new ConvexClient(config.convexUrl, {
@@ -108,7 +109,7 @@ class BotRunner {
 
   private async syncAssignments(assignments: BotAssignmentSnapshot[]) {
     const activeAssignmentIds = new Set(
-      assignments.map((assignment) => assignment.assignment.id as string),
+      assignments.map((assignment) => assignment.assignment.id),
     );
 
     for (const [assignmentId, watcher] of this.watchers) {
@@ -121,7 +122,7 @@ class BotRunner {
     }
 
     for (const assignment of assignments) {
-      const assignmentId = assignment.assignment.id as string;
+      const assignmentId = assignment.assignment.id;
       if (this.watchers.has(assignmentId)) {
         continue;
       }
@@ -152,7 +153,7 @@ class BotRunner {
     assignment: BotAssignmentSnapshot,
     seatView: MatchSeatView | null,
   ) {
-    const watcher = this.watchers.get(assignment.assignment.id as string);
+    const watcher = this.watchers.get(assignment.assignment.id);
     if (!watcher || !seatView) {
       return;
     }

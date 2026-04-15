@@ -1,3 +1,4 @@
+import type { GameplayIntentKind, MatchEventKind } from "./kinds";
 import type {
   CardInstanceId,
   MatchId,
@@ -9,25 +10,6 @@ import type {
   StackObjectId,
   ZoneKind,
 } from "./match";
-
-export const AUTHORITATIVE_INTENT_KINDS = [
-  "keepOpeningHand",
-  "takeMulligan",
-  "playCard",
-  "activateAbility",
-  "declareAttackers",
-  "declareBlockers",
-  "assignCombatDamage",
-  "choosePromptOptions",
-  "chooseTargets",
-  "chooseModes",
-  "chooseCosts",
-  "passPriority",
-  "toggleAutoPass",
-  "concede",
-] as const;
-
-export type GameplayIntentKind = (typeof AUTHORITATIVE_INTENT_KINDS)[number];
 
 export interface GameplayIntentBase<
   TKind extends GameplayIntentKind,
@@ -177,32 +159,6 @@ export type GameplayIntent =
   | PlayCardIntent
   | TakeMulliganIntent
   | ToggleAutoPassIntent;
-
-export const MATCH_EVENT_KINDS = [
-  "matchCreated",
-  "openingHandKept",
-  "mulliganTaken",
-  "cardsDrawn",
-  "cardPlayed",
-  "abilityActivated",
-  "attackersDeclared",
-  "blockersDeclared",
-  "combatDamageAssigned",
-  "promptOpened",
-  "promptResolved",
-  "priorityPassed",
-  "phaseAdvanced",
-  "turnAdvanced",
-  "stackObjectCreated",
-  "stackObjectResolved",
-  "cardMoved",
-  "lifeTotalChanged",
-  "autoPassToggled",
-  "playerConceded",
-  "matchCompleted",
-] as const;
-
-export type MatchEventKind = (typeof MATCH_EVENT_KINDS)[number];
 
 export interface MatchEventBase<TKind extends MatchEventKind, TPayload> {
   at: number;

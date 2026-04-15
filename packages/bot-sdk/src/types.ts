@@ -1,72 +1,42 @@
 import type {
   CardCatalogEntry,
+  GameplayIntent,
   GameplayIntentKind,
   MatchId,
+  MatchSeatId,
   MatchSeatView,
 } from "@lunchtable/shared-types";
 
-export type BotSeatId = "seat-0" | "seat-1";
+export type BotSeatId = MatchSeatId;
+
+type BotSupportedIntentKind =
+  | "activateAbility"
+  | "keepOpeningHand"
+  | "passPriority"
+  | "playCard"
+  | "takeMulligan";
+
+type BotSupportedIntentBase = Extract<
+  GameplayIntent,
+  { kind: BotSupportedIntentKind }
+>;
+
+type BotPlayCardIntent = Extract<BotSupportedIntentBase, { kind: "playCard" }>;
+type BotNonPlayCardIntent = Exclude<BotSupportedIntentBase, BotPlayCardIntent>;
+
+type WithBotSeat<T extends { seat: unknown }> = T extends unknown
+  ? Omit<T, "seat"> & { seat: BotSeatId }
+  : never;
+
+type BotPlayableCardIntent = Omit<WithBotSeat<BotPlayCardIntent>, "payload"> & {
+  payload: Omit<BotPlayCardIntent["payload"], "sourceZone"> & {
+    sourceZone: Exclude<BotPlayCardIntent["payload"]["sourceZone"], "stack">;
+  };
+};
 
 export type BotSupportedIntent =
-  | {
-      intentId: string;
-      kind: "activateAbility";
-      matchId: MatchId;
-      payload: {
-        abilityId: string;
-        sourceInstanceId: string;
-      };
-      seat: BotSeatId;
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "keepOpeningHand";
-      matchId: MatchId;
-      payload: Record<string, never>;
-      seat: BotSeatId;
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "passPriority";
-      matchId: MatchId;
-      payload: Record<string, never>;
-      seat: BotSeatId;
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "playCard";
-      matchId: MatchId;
-      payload: {
-        alternativeCostId: string | null;
-        cardInstanceId: string;
-        sourceZone:
-          | "battlefield"
-          | "command"
-          | "deck"
-          | "graveyard"
-          | "hand"
-          | "laneReserve"
-          | "objective"
-          | "sideboard"
-          | "exile";
-        targetSlotId: string | null;
-      };
-      seat: BotSeatId;
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "takeMulligan";
-      matchId: MatchId;
-      payload: {
-        targetHandSize: number | null;
-      };
-      seat: BotSeatId;
-      stateVersion: number;
-    };
+  | WithBotSeat<BotNonPlayCardIntent>
+  | BotPlayableCardIntent;
 
 export interface BotDecisionFrame {
   availableIntentKinds: GameplayIntentKind[];

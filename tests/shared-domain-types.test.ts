@@ -10,6 +10,7 @@ import {
   MATCH_EVENT_KINDS,
   MATCH_PHASES,
   MATCH_TELEMETRY_EVENT_NAMES,
+  assertMatchSeatId,
 } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 
@@ -128,5 +129,13 @@ describe("shared domain types", () => {
     expect(intent.kind).toBe("passPriority");
     expect(event.payload.to).toBe("ready");
     expect(telemetryEvent.metrics?.latencyMs).toBe(4);
+  });
+
+  it("accepts only gameplay seat ids", () => {
+    expect(assertMatchSeatId("seat-0")).toBe("seat-0");
+    expect(assertMatchSeatId("seat-1")).toBe("seat-1");
+    expect(() => assertMatchSeatId("seat-2")).toThrow(
+      "Unsupported match seat: seat-2",
+    );
   });
 });

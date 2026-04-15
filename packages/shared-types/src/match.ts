@@ -1,11 +1,20 @@
 import type { UserId } from "./auth";
-import type { GameplayIntentKind, MatchEventKind } from "./gameplay";
+import type { GameplayIntentKind, MatchEventKind } from "./kinds";
 
 export type MatchId = string;
 export type SeatId = string;
+export type MatchSeatId = "seat-0" | "seat-1";
 export type CardInstanceId = string;
 export type PromptId = string;
 export type StackObjectId = string;
+
+export function assertMatchSeatId(seat: string): MatchSeatId {
+  if (seat === "seat-0" || seat === "seat-1") {
+    return seat;
+  }
+
+  throw new Error(`Unsupported match seat: ${seat}`);
+}
 
 export const MATCH_PHASES = [
   "bootstrap",
