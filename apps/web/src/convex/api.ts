@@ -12,9 +12,11 @@ import type {
   DeckStatus,
   DeckValidationResult,
   FormatRuntimeSettings,
+  GameplayIntent,
   LobbyMutationResult,
   LobbyRecord,
   MatchEventKind,
+  MatchSeatId,
   MatchSeatView,
   MatchShell,
   MatchSpectatorView,
@@ -66,86 +68,36 @@ export interface SubmitIntentResult {
   shell: MatchShell | null;
 }
 
+type SubmitIntentKind =
+  | "activateAbility"
+  | "concede"
+  | "keepOpeningHand"
+  | "passPriority"
+  | "playCard"
+  | "takeMulligan"
+  | "toggleAutoPass";
+
+type SubmitIntentBase = Extract<GameplayIntent, { kind: SubmitIntentKind }>;
+
+type SubmitPlayCardIntent = Extract<SubmitIntentBase, { kind: "playCard" }>;
+type SubmitNonPlayCardIntent = Exclude<SubmitIntentBase, SubmitPlayCardIntent>;
+
+type WithSubmitSeat<T extends { seat: unknown }> = T extends unknown
+  ? Omit<T, "seat"> & { seat: MatchSeatId }
+  : never;
+
+type SubmitPlayableCardIntent = Omit<
+  WithSubmitSeat<SubmitPlayCardIntent>,
+  "payload"
+> & {
+  payload: Omit<SubmitPlayCardIntent["payload"], "sourceZone"> & {
+    sourceZone: Exclude<SubmitPlayCardIntent["payload"]["sourceZone"], "stack">;
+  };
+};
+
 export type SubmitIntent =
-  | {
-      intentId: string;
-      kind: "keepOpeningHand";
-      matchId: string;
-      payload: Record<string, never>;
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "takeMulligan";
-      matchId: string;
-      payload: {
-        targetHandSize: number | null;
-      };
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "activateAbility";
-      matchId: string;
-      payload: {
-        abilityId: string;
-        sourceInstanceId: string;
-      };
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "playCard";
-      matchId: string;
-      payload: {
-        alternativeCostId: string | null;
-        cardInstanceId: string;
-        sourceZone:
-          | "battlefield"
-          | "command"
-          | "deck"
-          | "graveyard"
-          | "hand"
-          | "laneReserve"
-          | "objective"
-          | "sideboard"
-          | "exile";
-        targetSlotId: string | null;
-      };
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "passPriority";
-      matchId: string;
-      payload: Record<string, never>;
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "toggleAutoPass";
-      matchId: string;
-      payload: {
-        enabled: boolean;
-      };
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    }
-  | {
-      intentId: string;
-      kind: "concede";
-      matchId: string;
-      payload: {
-        reason: "disconnect" | "manual" | "timeout";
-      };
-      seat: "seat-0" | "seat-1";
-      stateVersion: number;
-    };
+  | WithSubmitSeat<SubmitNonPlayCardIntent>
+  | SubmitPlayableCardIntent;
 
 export interface WalletLibraryTransport extends WalletAuthTransport {
   archiveDeck(args: {
@@ -262,7 +214,7 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   recoverStaleMatch(args: {
     action: "cancel" | "forceConcede";
     matchId: string;
-    seat?: "seat-0" | "seat-1";
+    seat?: MatchSeatId;
     staleAfterMs?: number;
   }): Promise<RecoverMatchResult>;
   submitIntent(args: {

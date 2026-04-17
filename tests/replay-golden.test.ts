@@ -84,24 +84,25 @@ describe("replay golden", () => {
     });
     const keepSeat0Anchor = selectReplayAnchorEvent(keepSeat0.appendedEvents);
     const keepSeat1Anchor = selectReplayAnchorEvent(keepSeat1.appendedEvents);
+    const initialReplayEvent = bundle.events[0];
+    if (!initialReplayEvent) {
+      throw new Error("Expected the seeded replay bundle to include an event.");
+    }
 
     const frames = [
       createReplayFrame({
-        event,
+        event: initialReplayEvent,
         frameIndex: 0,
-        recordedAt: bundle.shell.createdAt,
         view: bundle.spectatorView,
       }),
       createReplayFrame({
         event: keepSeat0Anchor,
         frameIndex: 1,
-        recordedAt: keepSeat0Anchor.at,
         view: keepSeat0.spectatorView,
       }),
       createReplayFrame({
         event: keepSeat1Anchor,
         frameIndex: 2,
-        recordedAt: keepSeat1Anchor.at,
         view: keepSeat1.spectatorView,
       }),
     ];

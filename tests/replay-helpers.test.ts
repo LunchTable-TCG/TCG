@@ -59,13 +59,21 @@ function createBundle() {
   });
 }
 
+function getInitialReplayEvent(bundle: ReturnType<typeof createBundle>) {
+  const event = bundle.events[0];
+  if (!event) {
+    throw new Error("Expected the seeded replay bundle to include an event.");
+  }
+
+  return event;
+}
+
 describe("replay helpers", () => {
   it("creates a spectator-safe seed frame and summary", () => {
     const { bundle, event } = requireFirstEvent();
     const initialFrame = createReplayFrame({
       event,
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
 
@@ -96,7 +104,6 @@ describe("replay helpers", () => {
     const initialFrame = createReplayFrame({
       event,
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
 
@@ -116,7 +123,6 @@ describe("replay helpers", () => {
     const checkpoint = createReplayFrame({
       event: selectReplayAnchorEvent(keepSeat0.appendedEvents),
       frameIndex: 1,
-      recordedAt: keepSeat0.shell.createdAt,
       view: keepSeat0.spectatorView,
     });
 
@@ -134,13 +140,11 @@ describe("replay helpers", () => {
     const initialFrame = createReplayFrame({
       event,
       frameIndex: 0,
-      recordedAt: bundle.shell.createdAt,
       view: bundle.spectatorView,
     });
     const nextFrame = createReplayFrame({
       event,
       frameIndex: 1,
-      recordedAt: bundle.shell.createdAt + 1,
       view: bundle.spectatorView,
     });
 
@@ -168,7 +172,6 @@ describe("replay helpers", () => {
       createReplayFrame({
         event,
         frameIndex: 0,
-        recordedAt: bundle.shell.createdAt,
         view: bundle.spectatorView,
       }),
     ];
@@ -181,6 +184,6 @@ describe("replay helpers", () => {
   it("rejects malformed replay frame payloads", () => {
     expect(() =>
       deserializeReplayFrames(JSON.stringify([{ frameIndex: 0 }])),
-    ).toThrow("Invalid replay frames JSON payload");
+    ).toThrow("Invalid replay frames[0].eventKind");
   });
 });

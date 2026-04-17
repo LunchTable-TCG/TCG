@@ -1,5 +1,5 @@
 import type { UserId } from "./auth";
-import type { MatchEventKind } from "./gameplay";
+import type { MatchEventKind } from "./kinds";
 import type { MatchId, MatchSpectatorView, MatchStatus, SeatId } from "./match";
 
 export interface ReplayFrame {

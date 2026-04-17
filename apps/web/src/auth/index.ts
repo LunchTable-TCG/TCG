@@ -1,5 +1,6 @@
 export { BSC_CHAIN_ID } from "@lunchtable/shared-types";
 export { clearAuthToken, getStoredAuthToken, storeAuthToken } from "./session";
+export type { WalletChallengeMessageInput as WalletChallengePayload } from "@lunchtable/shared-types";
 export {
   buildSignupChallengeMessage,
   createLocalBscWallet,
@@ -14,5 +15,5 @@ export {
   signUpWithGeneratedWallet,
 } from "./service";
 
-export type { LocalBscWallet, WalletChallengePayload } from "./wallet";
+export type { LocalBscWallet } from "./wallet";
 export type { SignupInput, WalletAuthResult } from "./service";

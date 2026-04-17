@@ -17,6 +17,8 @@ const USERNAME_RE = /^[a-zA-Z0-9_]{3,24}$/;
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SIGNATURE_RE = /^0x[a-fA-F0-9]{130}$/;
 
+type HexString = `0x${string}`;
+
 export interface WalletChallengeRecordInput
   extends Omit<WalletChallengeMessageInput, "issuedAt" | "nonce"> {
   now?: number;
@@ -53,18 +55,18 @@ export function normalizeUsername(username: string): string {
 
 export function normalizeAddress(address: string): `0x${string}` {
   const normalized = address.trim().toLowerCase();
-  if (!ADDRESS_RE.test(normalized)) {
+  if (!isAddress(normalized)) {
     throw new Error("Invalid wallet address");
   }
-  return normalized as `0x${string}`;
+  return normalized;
 }
 
-export function normalizeSignature(signature: string): `0x${string}` {
+export function normalizeSignature(signature: string): HexString {
   const normalized = signature.trim().toLowerCase();
-  if (!SIGNATURE_RE.test(normalized)) {
+  if (!isSignature(normalized)) {
     throw new Error("Invalid wallet signature");
   }
-  return normalized as `0x${string}`;
+  return normalized;
 }
 
 export function createChallengeNonce(bytes = 16): string {
@@ -151,4 +153,12 @@ export function parseUserSubject(subject: string): string {
     throw new Error("Invalid auth subject");
   }
   return subject.slice("user:".length);
+}
+
+function isAddress(value: string): value is HexString {
+  return ADDRESS_RE.test(value);
+}
+
+function isSignature(value: string): value is HexString {
+  return SIGNATURE_RE.test(value);
 }

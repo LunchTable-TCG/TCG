@@ -58,6 +58,30 @@ async function assertPlayableDeck(
   return deck;
 }
 
+async function getLegalDeckValidation(
+  ctx: {
+    db: DatabaseReader | DatabaseWriter;
+  },
+  input: {
+    deck: Doc<"decks">;
+    userId: Id<"users">;
+    username: string;
+  },
+) {
+  const runtime = await loadFormatRuntime(ctx.db, input.deck.formatId);
+  const collectionEntries = await listCollectionEntriesForUser(
+    ctx.db,
+    input.userId,
+    input.deck.formatId,
+  );
+  return validateDeckForUserCollection({
+    collectionEntries,
+    runtime,
+    mainboard: input.deck.mainboard,
+    sideboard: input.deck.sideboard,
+  });
+}
+
 async function assertLegalDeckForUser(
   ctx: {
     db: DatabaseReader | DatabaseWriter;
@@ -68,39 +92,10 @@ async function assertLegalDeckForUser(
     username: string;
   },
 ) {
-  const validation = await getDeckValidationForUser(ctx, {
-    deck: input.deck,
-    userId: input.userId,
-  });
-
+  const validation = await getLegalDeckValidation(ctx, input);
   if (!validation.isLegal) {
     throw new Error(`${input.username} does not have a legal active deck`);
   }
-}
-
-async function getDeckValidationForUser(
-  ctx: {
-    db: DatabaseReader | DatabaseWriter;
-  },
-  input: {
-    deck: Doc<"decks">;
-    userId: Id<"users">;
-  },
-) {
-  const runtime = await loadFormatRuntime(ctx.db, input.deck.formatId);
-  const collectionEntries = await listCollectionEntriesForUser(
-    ctx.db,
-    input.userId,
-    input.deck.formatId,
-  );
-  const validation = validateDeckForUserCollection({
-    collectionEntries,
-    runtime,
-    mainboard: input.deck.mainboard,
-    sideboard: input.deck.sideboard,
-  });
-
-  return validation;
 }
 
 async function cancelQueueEntry(
@@ -115,7 +110,7 @@ async function cancelQueueEntry(
   });
 }
 
-async function getPlayableQueueDeck(
+async function getPlayableDeckForUser(
   ctx: {
     db: {
       get: (id: Id<"decks">) => Promise<Doc<"decks"> | null>;
@@ -241,7 +236,7 @@ export const enqueue = mutation({
       return toQueueResult(currentEntry, null);
     }
 
-    const opponentDeck = await getPlayableQueueDeck(ctx, {
+    const opponentDeck = await getPlayableDeckForUser(ctx, {
       deckId: opponentEntry.deckId,
       userId: opponentEntry.userId,
     });
@@ -256,11 +251,12 @@ export const enqueue = mutation({
       return toQueueResult(currentEntry, null);
     }
 
-    const opponentDeckValidation = await getDeckValidationForUser(ctx, {
+    const opponentValidation = await getLegalDeckValidation(ctx, {
       deck: opponentDeck,
       userId: opponentEntry.userId,
+      username: opponentEntry.username,
     });
-    if (!opponentDeckValidation.isLegal) {
+    if (!opponentValidation.isLegal) {
       await cancelQueueEntry(ctx, opponentEntry._id);
       return toQueueResult(currentEntry, null);
     }

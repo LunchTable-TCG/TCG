@@ -1,4 +1,4 @@
-import type { MatchEventKind } from "./gameplay";
+import type { MatchEventKind } from "./kinds";
 import type { MatchShell, SeatId } from "./match";
 
 export const MATCH_RECOVERY_ACTIONS = ["cancel", "forceConcede"] as const;

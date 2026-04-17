@@ -1,8 +1,9 @@
-import type {
-  CardCatalogEntry,
-  MatchPromptChoiceView,
-  MatchShell as MatchShellRecord,
-  MatchView,
+import {
+  type CardCatalogEntry,
+  type MatchPromptChoiceView,
+  type MatchShell as MatchShellRecord,
+  type MatchView,
+  assertMatchSeatId,
 } from "@lunchtable/shared-types";
 import { Suspense, useEffect, useState } from "react";
 
@@ -28,14 +29,6 @@ function createIntentId(kind: SubmitIntent["kind"]) {
   return `${kind}:${Date.now().toString(36)}:${Math.random()
     .toString(36)
     .slice(2, 8)}`;
-}
-
-function toGameplaySeat(seat: string): "seat-0" | "seat-1" {
-  if (seat !== "seat-0" && seat !== "seat-1") {
-    throw new Error(`Unsupported gameplay seat: ${seat}`);
-  }
-
-  return seat;
 }
 
 function formatDeadline(timestamp: number | null) {
@@ -69,37 +62,44 @@ function buildPromptIntent(input: {
   choice: MatchPromptChoiceView;
   view: Extract<MatchView, { kind: "seat" }>;
 }): SubmitIntent | null {
-  const seat = toGameplaySeat(input.view.viewerSeat);
+  const seat = assertMatchSeatId(input.view.viewerSeat);
+  const promptKind = input.view.prompt?.kind;
 
-  if (input.view.prompt?.kind !== "mulligan") {
-    return null;
+  switch (promptKind) {
+    case undefined:
+      return null;
+    case "mulligan":
+      if (input.choice.choiceId === "keep") {
+        return {
+          intentId: createIntentId("keepOpeningHand"),
+          kind: "keepOpeningHand",
+          matchId: input.view.match.id,
+          payload: {},
+          seat,
+          stateVersion: input.view.match.version,
+        };
+      }
+
+      if (input.choice.choiceId.startsWith("mulligan:")) {
+        return {
+          intentId: createIntentId("takeMulligan"),
+          kind: "takeMulligan",
+          matchId: input.view.match.id,
+          payload: {
+            targetHandSize: Number(input.choice.choiceId.split(":")[1] ?? ""),
+          },
+          seat,
+          stateVersion: input.view.match.version,
+        };
+      }
+
+      return null;
+    default:
+      console.warn(
+        `Unsupported prompt intent kind in MatchShell: ${promptKind}`,
+      );
+      return null;
   }
-
-  if (input.choice.choiceId === "keep") {
-    return {
-      intentId: createIntentId("keepOpeningHand"),
-      kind: "keepOpeningHand",
-      matchId: input.view.match.id,
-      payload: {},
-      seat,
-      stateVersion: input.view.match.version,
-    };
-  }
-
-  if (input.choice.choiceId.startsWith("mulligan:")) {
-    return {
-      intentId: createIntentId("takeMulligan"),
-      kind: "takeMulligan",
-      matchId: input.view.match.id,
-      payload: {
-        targetHandSize: Number(input.choice.choiceId.split(":")[1] ?? ""),
-      },
-      seat,
-      stateVersion: input.view.match.version,
-    };
-  }
-
-  return null;
 }
 
 function formatActorType(actorType: MatchView["seats"][number]["actorType"]) {
@@ -209,7 +209,7 @@ export function MatchShell({
   });
   const tableParity = view ? summarizeTableParity(view) : null;
   const gameplaySeat =
-    view?.kind === "seat" ? toGameplaySeat(view.viewerSeat) : null;
+    view?.kind === "seat" ? assertMatchSeatId(view.viewerSeat) : null;
 
   useEffect(() => {
     if (!seatView && spectatorView && preferredMode === "seat") {
@@ -248,6 +248,21 @@ export function MatchShell({
     } finally {
       setPendingIntent(null);
     }
+  }
+
+  function submitViewerSeatIntent(
+    factory: (seat: NonNullable<typeof gameplaySeat>) => SubmitIntent,
+  ) {
+    if (!shell || !gameplaySeat) {
+      setNotice({
+        body: "The live seat is unavailable for this action.",
+        title: "Seat unavailable",
+        tone: "warning",
+      });
+      return;
+    }
+
+    void submitIntent(factory(gameplaySeat));
   }
 
   function submitPlayCard(cardInstanceId: string) {
@@ -573,18 +588,19 @@ export function MatchShell({
                         <button
                           className="action secondary-action"
                           disabled={
+                            !gameplaySeat ||
                             !view.availableIntents.includes("passPriority") ||
                             pendingIntent !== null
                           }
                           onClick={() =>
-                            submitIntent({
+                            submitViewerSeatIntent((seat) => ({
                               intentId: createIntentId("passPriority"),
                               kind: "passPriority",
                               matchId: shell.id,
                               payload: {},
-                              seat: gameplaySeat ?? "seat-0",
+                              seat,
                               stateVersion: shell.version,
-                            })
+                            }))
                           }
                           type="button"
                         >
@@ -592,20 +608,21 @@ export function MatchShell({
                         </button>
                         <button
                           className="action secondary-action"
-                          disabled={pendingIntent !== null}
+                          disabled={!gameplaySeat || pendingIntent !== null}
                           onClick={() =>
-                            submitIntent({
+                            submitViewerSeatIntent((seat) => ({
                               intentId: createIntentId("toggleAutoPass"),
                               kind: "toggleAutoPass",
                               matchId: shell.id,
                               payload: {
                                 enabled: !view.seats.find(
-                                  (seat) => seat.seat === view.viewerSeat,
+                                  (seatState) =>
+                                    seatState.seat === view.viewerSeat,
                                 )?.autoPassEnabled,
                               },
-                              seat: gameplaySeat ?? "seat-0",
+                              seat,
                               stateVersion: shell.version,
-                            })
+                            }))
                           }
                           type="button"
                         >
@@ -613,18 +630,18 @@ export function MatchShell({
                         </button>
                         <button
                           className="action secondary-action"
-                          disabled={pendingIntent !== null}
+                          disabled={!gameplaySeat || pendingIntent !== null}
                           onClick={() =>
-                            submitIntent({
+                            submitViewerSeatIntent((seat) => ({
                               intentId: createIntentId("concede"),
                               kind: "concede",
                               matchId: shell.id,
                               payload: {
                                 reason: "manual",
                               },
-                              seat: gameplaySeat ?? "seat-0",
+                              seat,
                               stateVersion: shell.version,
-                            })
+                            }))
                           }
                           type="button"
                         >

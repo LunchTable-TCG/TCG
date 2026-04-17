@@ -1,6 +1,17 @@
 :root {
   color-scheme: light;
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --match-panel-active-bg: rgba(231, 181, 97, 0.1);
+  --match-panel-bg: rgba(255, 246, 228, 0.06);
+  --match-panel-border: rgba(255, 224, 176, 0.12);
+  --match-panel-priority-border: rgba(246, 198, 112, 0.34);
+  --match-seat-actor-bg: rgba(181, 224, 247, 0.12);
+  --match-seat-actor-border: rgba(181, 224, 247, 0.22);
+  --match-seat-actor-text: rgba(221, 241, 255, 0.88);
+  --match-shell-chip-bg: rgba(255, 238, 206, 0.1);
+  --match-shell-chip-border: rgba(255, 221, 171, 0.16);
+  --match-shell-chip-text: rgba(255, 236, 205, 0.86);
+  --match-stat-bg: rgba(255, 248, 238, 0.08);
   background: radial-gradient(
       circle at top,
       rgba(250, 231, 181, 0.75),
@@ -539,18 +550,18 @@ h3 {
   align-items: center;
   border-radius: 999px;
   padding: 0.3rem 0.7rem;
-  background: rgba(255, 238, 206, 0.1);
-  border: 1px solid rgba(255, 221, 171, 0.16);
-  color: rgba(255, 236, 205, 0.86);
+  background: var(--match-shell-chip-bg);
+  border: 1px solid var(--match-shell-chip-border);
+  color: var(--match-shell-chip-text);
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .match-seat-actor {
-  background: rgba(181, 224, 247, 0.12);
-  border-color: rgba(181, 224, 247, 0.22);
-  color: rgba(221, 241, 255, 0.88);
+  background: var(--match-seat-actor-bg);
+  border-color: var(--match-seat-actor-border);
+  color: var(--match-seat-actor-text);
 }
 
 .match-seat-strip {
@@ -570,8 +581,8 @@ h3 {
 .match-sidebar-card,
 .match-player-zone {
   border-radius: 22px;
-  border: 1px solid rgba(255, 224, 176, 0.12);
-  background: rgba(255, 246, 228, 0.06);
+  border: 1px solid var(--match-panel-border);
+  background: var(--match-panel-bg);
 }
 
 .match-seat-card {
@@ -583,11 +594,11 @@ h3 {
 }
 
 .match-seat-card-active {
-  background: rgba(231, 181, 97, 0.1);
+  background: var(--match-panel-active-bg);
 }
 
 .match-seat-card-priority {
-  border-color: rgba(246, 198, 112, 0.34);
+  border-color: var(--match-panel-priority-border);
 }
 
 .match-seat-header,
@@ -623,7 +634,7 @@ h3 {
 .match-seat-stats div,
 .match-zone-stats div {
   padding: 0.75rem;
-  background: rgba(255, 248, 238, 0.08);
+  background: var(--match-stat-bg);
 }
 
 .match-layout {

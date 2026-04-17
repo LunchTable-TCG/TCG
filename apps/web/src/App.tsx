@@ -9,6 +9,7 @@ import type {
   DeckRecord,
   FormatRuntimeSettings,
   LobbyRecord,
+  MatchSeatId,
   MatchShell,
   MatchTelemetryEvent,
   QueueEntryRecord,
@@ -37,7 +38,7 @@ import {
   type StatusNotice,
   getErrorMessage,
 } from "./components/shared";
-import { convexWalletAuthTransport, syncConvexAuth } from "./convex/client";
+import { convexWalletAuthTransport, requireConvexWalletAuthTransport, syncConvexAuth } from "./convex/client";
 
 const bootstrapChecklist = [
   "Bun workspace configured",
@@ -60,13 +61,6 @@ function buildStarterDeckEntries(catalog: CardCatalogEntry[]) {
   }));
 }
 
-function getConvexTransport() {
-  if (!convexWalletAuthTransport) {
-    throw new Error("Convex transport unavailable");
-  }
-
-  return convexWalletAuthTransport;
-}
 
 function getActiveLegalDeck(decks: DeckRecord[]) {
   return decks.find(
@@ -75,7 +69,7 @@ function getActiveLegalDeck(decks: DeckRecord[]) {
 }
 
 async function loadLibrarySnapshot() {
-  const transport = getConvexTransport();
+  const transport = requireConvexWalletAuthTransport();
 
   const [catalog, collection, decks] = await Promise.all([
     transport.listCatalog({
@@ -97,13 +91,11 @@ async function loadLibrarySnapshot() {
 }
 
 async function loadMatchSnapshot() {
-  const transport = getConvexTransport();
-
-  return transport.listMyMatches({});
+  return requireConvexWalletAuthTransport().listMyMatches({});
 }
 
 async function loadReplaySnapshot(matchId: string) {
-  const transport = getConvexTransport();
+  const transport = requireConvexWalletAuthTransport();
 
   const summary = await transport.getReplaySummary({
     matchId,
@@ -129,7 +121,7 @@ async function loadReplaySnapshot(matchId: string) {
 }
 
 async function loadPlaySnapshot() {
-  const transport = getConvexTransport();
+  const transport = requireConvexWalletAuthTransport();
 
   const [lobbies, queueEntries] = await Promise.all([
     transport.listMyLobbies(),
@@ -143,39 +135,29 @@ async function loadPlaySnapshot() {
 }
 
 async function loadFormatSettingsSnapshot() {
-  const transport = getConvexTransport();
-
-  return transport.listFormatSettings();
+  return requireConvexWalletAuthTransport().listFormatSettings();
 }
 
 async function loadRecoverableMatchesSnapshot() {
-  const transport = getConvexTransport();
-
-  return transport.listRecoverableMatches({
+  return requireConvexWalletAuthTransport().listRecoverableMatches({
     limit: 8,
   });
 }
 
 async function loadTelemetrySnapshot() {
-  const transport = getConvexTransport();
-
-  return transport.listTelemetry({
+  return requireConvexWalletAuthTransport().listTelemetry({
     limit: 18,
   });
 }
 
 async function loadAgentLabSnapshot(matchId: string) {
-  const transport = getConvexTransport();
-
-  return transport.listAgentSessions({
+  return requireConvexWalletAuthTransport().listAgentSessions({
     matchId,
   });
 }
 
 async function loadAgentSessionMessages(sessionId: string) {
-  const transport = getConvexTransport();
-
-  return transport.listAgentMessages({
+  return requireConvexWalletAuthTransport().listAgentMessages({
     sessionId,
   });
 }
@@ -952,7 +934,7 @@ function MatchOpsPanel({
   onRecoverMatch: (
     matchId: string,
     action: "cancel" | "forceConcede",
-    seat?: "seat-0" | "seat-1",
+    seat?: MatchSeatId,
   ) => void;
   pendingAction: string | null;
   recoverableMatches: RecoverableMatchRecord[];
@@ -2326,7 +2308,7 @@ export function App() {
   async function handleRecoverStaleMatch(
     matchId: string,
     action: "cancel" | "forceConcede",
-    seat?: "seat-0" | "seat-1",
+    seat?: MatchSeatId,
   ) {
     if (!convexWalletAuthTransport) {
       return;

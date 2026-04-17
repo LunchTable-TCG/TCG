@@ -3,7 +3,11 @@ import {
   createExternalDecisionEnvelope,
   resolveExternalDecisionResponse,
 } from "@lunchtable/bot-sdk";
-import type { BotDecisionFrame, BotPlannedIntent } from "@lunchtable/bot-sdk";
+import type {
+  BotDecisionFrame,
+  BotExternalDecisionResponse,
+  BotPlannedIntent,
+} from "@lunchtable/bot-sdk";
 
 export type DecisionPolicyMode = "baseline" | "external-http";
 
@@ -23,13 +27,13 @@ export interface DecisionPolicyConfig {
 export function loadDecisionPolicyConfig(
   env: NodeJS.ProcessEnv,
 ): DecisionPolicyConfig {
-  const mode = (env.BOT_POLICY_MODE?.trim() ??
+  const mode = (env.BOT_POLICY_MODE?.trim() ||
     "baseline") as DecisionPolicyMode;
   if (mode !== "baseline" && mode !== "external-http") {
     throw new Error(`Unsupported BOT_POLICY_MODE: ${mode}`);
   }
 
-  const timeoutMsRaw = env.BOT_EXTERNAL_DECISION_TIMEOUT_MS?.trim() ?? "6000";
+  const timeoutMsRaw = env.BOT_EXTERNAL_DECISION_TIMEOUT_MS?.trim() || "6000";
   const timeoutMs = Number(timeoutMsRaw);
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error(
@@ -56,16 +60,56 @@ export function loadDecisionPolicyConfig(
   };
 }
 
-function parseExternalDecisionBody(body: string) {
+function parseExternalDecisionBody(body: string): BotExternalDecisionResponse {
   const trimmed = body.trim();
   if (!trimmed) {
     return { actionId: null };
   }
 
   try {
-    return JSON.parse(trimmed);
-  } catch {
-    return trimmed;
+    const parsed: unknown = JSON.parse(trimmed);
+    if (parsed === null) {
+      return { actionId: null };
+    }
+    if (typeof parsed === "string") {
+      return {
+        actionId: parsed,
+      };
+    }
+    if (
+      typeof parsed !== "object" ||
+      !parsed ||
+      !("actionId" in parsed) ||
+      !(typeof parsed.actionId === "string" || parsed.actionId === null)
+    ) {
+      throw new Error("External decision response must include actionId");
+    }
+    const parsedResponse = parsed as {
+      actionId: string | null;
+      confidence?: unknown;
+      rationale?: unknown;
+    };
+
+    return {
+      actionId: parsedResponse.actionId,
+      ...(typeof parsedResponse.confidence === "number"
+        ? {
+            confidence: parsedResponse.confidence,
+          }
+        : {}),
+      ...(typeof parsedResponse.rationale === "string"
+        ? {
+            rationale: parsedResponse.rationale,
+          }
+        : {}),
+    };
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return {
+        actionId: trimmed,
+      };
+    }
+    throw error;
   }
 }
 
@@ -106,6 +150,13 @@ async function decideWithExternalHttp(input: {
       frame: input.frame,
       response: parseExternalDecisionBody(await response.text()),
     });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `External decision request timed out after ${input.config.timeoutMs}ms`,
+      );
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

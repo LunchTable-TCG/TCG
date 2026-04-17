@@ -21,3 +21,11 @@ if (convexClient) {
 export const convexWalletAuthTransport = convexClient
   ? createConvexWalletAuthTransport(convexClient)
   : null;
+
+export function requireConvexWalletAuthTransport() {
+  if (!convexWalletAuthTransport) {
+    throw new Error("Convex transport unavailable");
+  }
+
+  return convexWalletAuthTransport;
+}

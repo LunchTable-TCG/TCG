@@ -152,9 +152,9 @@ describe("match persistence helpers", () => {
   it("rejects malformed persisted match JSON", () => {
     expect(() =>
       deserializeMatchShell(JSON.stringify({ id: "match_123" })),
-    ).toThrow("Invalid match shell JSON payload");
+    ).toThrow("Invalid match shell.activeSeat");
     expect(() => deserializeSeatView(JSON.stringify({ kind: "seat" }))).toThrow(
-      "Invalid seat view JSON payload",
+      "Invalid seat view.availableIntents",
     );
   });
 });

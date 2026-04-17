@@ -14,7 +14,10 @@ export function getErrorMessage(error: unknown): string {
 }
 
 export function formatLocalTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString();
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime())
+    ? "Invalid time"
+    : date.toLocaleTimeString();
 }
 
 export function getStatusBannerA11yProps() {
@@ -38,6 +41,7 @@ export function StatusBanner({
       className={`status-banner status-banner-${notice.tone}`}
       {...getStatusBannerA11yProps()}
     >
+      {/* Keep this surface text-only; React escapes strings here by default. */}
       <p className="status-title">{notice.title}</p>
       <p className="status-body">{notice.body}</p>
     </output>

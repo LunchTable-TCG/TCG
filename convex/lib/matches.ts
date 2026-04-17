@@ -30,13 +30,12 @@ import type {
 
 import type { MutationCtx } from "../_generated/server";
 import {
-  isMatchEvent,
-  isMatchSeatView,
-  isMatchShell,
-  isMatchSpectatorView,
-  isMatchState,
-  parseJsonWithGuard,
-} from "./domainGuards";
+  parseMatchEventJson,
+  parseMatchSeatViewJson,
+  parseMatchShellJson,
+  parseMatchSpectatorViewJson,
+  parseMatchStateJson,
+} from "./matchJson";
 import {
   createReplayFrame,
   createReplayFrameSlice,
@@ -544,17 +543,14 @@ export async function createPersistedMatch(
     viewJson: serializeMatchView(bundle.spectatorView),
   });
 
-  const initialReplayFrame = createReplayFrame({
-    event: (() => {
-      const initialEvent = bundle.events[0];
-      if (!initialEvent) {
-        throw new Error("Persisted matches must include an initial event.");
-      }
+  const initialReplayEvent = bundle.events[0];
+  if (!initialReplayEvent) {
+    throw new Error("Persisted matches must record an initial replay event.");
+  }
 
-      return initialEvent;
-    })(),
+  const initialReplayFrame = createReplayFrame({
+    event: initialReplayEvent,
     frameIndex: 0,
-    recordedAt: input.createdAt,
     view: bundle.spectatorView,
   });
 
@@ -596,7 +592,7 @@ export function serializeMatchShell(shell: MatchShell): string {
 }
 
 export function deserializeMatchShell(shellJson: string): MatchShell {
-  return parseJsonWithGuard(shellJson, isMatchShell, "match shell");
+  return parseMatchShellJson(shellJson);
 }
 
 export function serializeMatchState(state: MatchState): string {
@@ -604,7 +600,7 @@ export function serializeMatchState(state: MatchState): string {
 }
 
 export function deserializeMatchState(snapshotJson: string): MatchState {
-  return parseJsonWithGuard(snapshotJson, isMatchState, "match state");
+  return parseMatchStateJson(snapshotJson);
 }
 
 export function serializeMatchEvent(event: MatchEvent): string {
@@ -612,7 +608,7 @@ export function serializeMatchEvent(event: MatchEvent): string {
 }
 
 export function deserializeMatchEvent(eventJson: string): MatchEvent {
-  return parseJsonWithGuard(eventJson, isMatchEvent, "match event");
+  return parseMatchEventJson(eventJson);
 }
 
 export function serializeMatchView(
@@ -628,11 +624,11 @@ export function serializeMatchPrompt(
 }
 
 export function deserializeSeatView(viewJson: string): MatchSeatView {
-  return parseJsonWithGuard(viewJson, isMatchSeatView, "seat view");
+  return parseMatchSeatViewJson(viewJson);
 }
 
 export function deserializeSpectatorView(viewJson: string): MatchSpectatorView {
-  return parseJsonWithGuard(viewJson, isMatchSpectatorView, "spectator view");
+  return parseMatchSpectatorViewJson(viewJson);
 }
 
 export function seatFromEvent(event: MatchEvent): string | undefined {

@@ -5,8 +5,8 @@ import type {
   ReplaySummary,
   UserId,
 } from "@lunchtable/shared-types";
+import { parseReplayFramesJson } from "./matchJson";
 
-import { isReplayFrame, parseJsonWithGuard } from "./domainGuards";
 
 export const REPLAY_FRAME_SLICE_SIZE = 16;
 
@@ -58,10 +58,6 @@ export function describeReplayEvent(event: MatchEvent): string {
 }
 
 export function selectReplayAnchorEvent(events: MatchEvent[]): MatchEvent {
-  if (events.length === 0) {
-    throw new Error("Replay events are required.");
-  }
-
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const event = events[index];
     if (!event) {
@@ -75,12 +71,12 @@ export function selectReplayAnchorEvent(events: MatchEvent[]): MatchEvent {
     return event;
   }
 
-  const lastEvent = events[events.length - 1];
-  if (!lastEvent) {
+  const fallbackEvent = events.at(-1);
+  if (!fallbackEvent) {
     throw new Error("Replay events are required.");
   }
 
-  return lastEvent;
+  return fallbackEvent;
 }
 
 export function serializeReplayFrames(frames: ReplayFrame[]): string {
@@ -88,12 +84,7 @@ export function serializeReplayFrames(frames: ReplayFrame[]): string {
 }
 
 export function deserializeReplayFrames(framesJson: string): ReplayFrame[] {
-  return parseJsonWithGuard(
-    framesJson,
-    (value): value is ReplayFrame[] =>
-      Array.isArray(value) && value.every(isReplayFrame),
-    "replay frames",
-  );
+  return parseReplayFramesJson(framesJson);
 }
 
 export function buildReplaySummary(input: {
@@ -125,7 +116,6 @@ export function buildReplaySummary(input: {
 export function createReplayFrame(input: {
   event: MatchEvent;
   frameIndex: number;
-  recordedAt: number;
   view: MatchSpectatorView;
 }): ReplayFrame {
   const recentEvent = input.view.recentEvents.at(-1);

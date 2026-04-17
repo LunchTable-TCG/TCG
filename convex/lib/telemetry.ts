@@ -1,6 +1,7 @@
-import type {
-  MatchTelemetryEvent,
-  MatchTelemetryEventName,
+import {
+  MATCH_TELEMETRY_EVENT_NAMES,
+  type MatchTelemetryEvent,
+  type MatchTelemetryEventName,
 } from "@lunchtable/shared-types";
 
 import type { Doc } from "../_generated/dataModel";
@@ -83,4 +84,8 @@ export async function listRecentTelemetryEvents(
     .order("desc")
     .take(limit);
   return docs.map(toTelemetryEvent);
+}
+
+function isTelemetryEventName(value: string): value is MatchTelemetryEventName {
+  return MATCH_TELEMETRY_EVENT_NAMES.some((name) => name === value);
 }

@@ -29,6 +29,7 @@ export function createExternalDecisionPrompt(frame: BotDecisionFrame): string {
     "Choose exactly one provided actionId or return null if no action should be taken right now.",
     "Never invent a new gameplay mutation. Only select from the legal actions below.",
     `Match: ${frame.matchId}`,
+    `Current time: ${new Date(frame.receivedAt).toISOString()} (${frame.receivedAt})`,
     `Format: ${frame.view.match.format.name} (${frame.view.match.format.id})`,
     `Phase: ${frame.view.match.phase} on turn ${frame.view.match.turnNumber}`,
     `State version: ${frame.view.match.version}`,
@@ -112,8 +113,15 @@ export function resolveExternalDecisionResponse(input: {
     throw new Error("External agent returned an unknown actionId");
   }
 
+  const confidence =
+    typeof parsed.confidence === "number" &&
+    parsed.confidence >= 0 &&
+    parsed.confidence <= 1
+      ? parsed.confidence
+      : 0.5;
+
   return {
-    confidence: parsed.confidence ?? 0.5,
+    confidence,
     intent: action.intent,
     requestedAt: input.frame.receivedAt,
     seat: input.frame.seat,

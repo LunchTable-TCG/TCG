@@ -1,18 +1,14 @@
-import {
-  BSC_CHAIN_ID,
-  type WalletChallengeMessageInput,
-  buildWalletChallengeMessage,
-} from "@lunchtable/shared-types";
+import { BSC_CHAIN_ID } from "@lunchtable/shared-types";
 import { isHex, verifyMessage } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+
+type HexString = `0x${string}`;
 
 export interface LocalBscWallet {
   address: `0x${string}`;
   chainId: typeof BSC_CHAIN_ID;
   privateKey: `0x${string}`;
 }
-
-export type WalletChallengePayload = WalletChallengeMessageInput;
 
 export function createLocalBscWallet(): LocalBscWallet {
   const privateKey = generatePrivateKey();
@@ -36,24 +32,22 @@ export function importLocalBscWallet(privateKeyInput: string): LocalBscWallet {
   };
 }
 
-export function normalizePrivateKey(value: string): `0x${string}` {
-  const trimmed = value.trim();
-  const prefixed = trimmed.startsWith("0x")
-    ? (trimmed as `0x${string}`)
-    : (`0x${trimmed}` as `0x${string}`);
+function isPrivateKey(value: string): value is HexString {
+  return isHex(value, { strict: true }) && value.length === 66;
+}
 
-  if (!isHex(prefixed, { strict: true }) || prefixed.length !== 66) {
+export function normalizePrivateKey(value: string): HexString {
+  const trimmed = value.trim();
+  const prefixed = trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+
+  if (!isPrivateKey(prefixed)) {
     throw new Error("Invalid private key format");
   }
 
   return prefixed;
 }
 
-export function buildSignupChallengeMessage(
-  payload: WalletChallengePayload,
-): string {
-  return buildWalletChallengeMessage(payload);
-}
+export { buildWalletChallengeMessage as buildSignupChallengeMessage } from "@lunchtable/shared-types";
 
 export async function signChallenge(
   privateKey: `0x${string}`,

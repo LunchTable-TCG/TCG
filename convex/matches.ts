@@ -3,6 +3,7 @@ import {
   createSeatView,
   createSpectatorView,
 } from "@lunchtable/game-core";
+import type { MatchSeatId } from "@lunchtable/shared-types";
 import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -326,7 +327,7 @@ async function deletePendingPromptsForSeat(
   ctx: Pick<MutationCtx, "db">,
   input: {
     matchId: Id<"matches">;
-    seat: "seat-0" | "seat-1";
+    seat: MatchSeatId;
   },
 ) {
   const promptDocs = await ctx.db
@@ -474,7 +475,6 @@ async function persistMatchProjectionUpdate(
   const replayFrame = createReplayFrame({
     event: selectReplayAnchorEvent(input.appendedEvents),
     frameIndex: replayDoc?.totalFrames ?? 0,
-    recordedAt: input.now,
     view: input.spectatorView,
   });
 
@@ -555,9 +555,7 @@ async function persistMatchProjectionUpdate(
     replayFramePersisted = true;
   }
 
-  for (const seat of Object.keys(input.state.seats) as Array<
-    "seat-0" | "seat-1"
-  >) {
+  for (const seat of Object.keys(input.state.seats) as MatchSeatId[]) {
     await deletePendingPromptsForSeat(ctx, {
       matchId: input.matchId,
       seat,

@@ -29,6 +29,14 @@ describe("convex wallet auth helpers", () => {
     );
   });
 
+  it("normalizes and validates wallet signatures", () => {
+    const rawSignature = ` 0x${"a".repeat(130)} `;
+    expect(normalizeSignature(rawSignature)).toBe(`0x${"a".repeat(130)}`);
+    expect(() => normalizeSignature("0x1234")).toThrow(
+      "Invalid wallet signature",
+    );
+  });
+
   it("creates a bounded challenge record", () => {
     const challenge = createWalletChallengeRecord({
       address: "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",

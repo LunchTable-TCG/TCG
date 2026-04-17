@@ -1,4 +1,4 @@
-import type { GameplayIntentKind, MatchEventKind } from "./gameplay-kinds";
+import type { GameplayIntentKind, MatchEventKind } from "./kinds";
 import type {
   CardInstanceId,
   MatchId,
@@ -10,11 +10,7 @@ import type {
   StackObjectId,
   ZoneKind,
 } from "./match";
-export {
-  AUTHORITATIVE_INTENT_KINDS,
-  MATCH_EVENT_KINDS,
-} from "./gameplay-kinds";
-export type { GameplayIntentKind, MatchEventKind } from "./gameplay-kinds";
+
 
 export interface GameplayIntentBase<
   TKind extends GameplayIntentKind,

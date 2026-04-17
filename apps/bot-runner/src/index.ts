@@ -5,6 +5,7 @@ import {
 } from "@lunchtable/bot-sdk";
 import { APP_NAME } from "@lunchtable/shared-types";
 import type {
+  BotAssignmentId,
   BotAssignmentSnapshot,
   MatchSeatView,
 } from "@lunchtable/shared-types";
@@ -31,7 +32,7 @@ interface AssignmentWatcher {
 }
 
 function requireEnv(name: string) {
-  const value = process.env[name];
+  const value = process.env[name]?.trim();
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
@@ -41,8 +42,8 @@ function requireEnv(name: string) {
 function loadConfig(): RunnerConfig {
   const policyConfig = loadDecisionPolicyConfig(process.env);
   return {
-    botSlug: process.env.BOT_SLUG ?? "table-bot",
-    convexUrl: process.env.CONVEX_URL ?? requireEnv("VITE_CONVEX_URL"),
+    botSlug: process.env.BOT_SLUG?.trim() || "table-bot",
+    convexUrl: process.env.CONVEX_URL?.trim() || requireEnv("VITE_CONVEX_URL"),
     policyKey: policyConfig.key,
     runnerSecret: requireEnv("BOT_RUNNER_SECRET"),
   };
@@ -56,7 +57,7 @@ class BotRunner {
   private readonly planner = createDecisionPlanner(
     loadDecisionPolicyConfig(process.env),
   );
-  private readonly watchers = new Map<string, AssignmentWatcher>();
+  private readonly watchers = new Map<BotAssignmentId, AssignmentWatcher>();
 
   constructor(private readonly config: RunnerConfig) {
     this.client = new ConvexClient(config.convexUrl, {
@@ -69,11 +70,18 @@ class BotRunner {
   }
 
   async start() {
-    const session = await this.httpClient.action(api.agents.issueBotSession, {
-      policyKey: this.config.policyKey,
-      runnerSecret: this.config.runnerSecret,
-      slug: this.config.botSlug,
-    });
+    const session = await (async () => {
+      try {
+        return await this.httpClient.action(api.agents.issueBotSession, {
+          policyKey: this.config.policyKey,
+          runnerSecret: this.config.runnerSecret,
+          slug: this.config.botSlug,
+        });
+      } catch (error) {
+        console.error(`[${APP_NAME}] failed to issue bot session`, error);
+        throw error;
+      }
+    })();
 
     this.client.setAuth(async () => session.token);
     this.client.subscribeToConnectionState((state) => {
@@ -114,7 +122,7 @@ class BotRunner {
 
   private async syncAssignments(assignments: BotAssignmentSnapshot[]) {
     const activeAssignmentIds = new Set(
-      assignments.map((assignment) => assignment.assignment.id as string),
+      assignments.map((assignment) => assignment.assignment.id),
     );
 
     for (const [assignmentId, watcher] of this.watchers) {
@@ -127,7 +135,7 @@ class BotRunner {
     }
 
     for (const assignment of assignments) {
-      const assignmentId = assignment.assignment.id as string;
+      const assignmentId = assignment.assignment.id;
       if (this.watchers.has(assignmentId)) {
         continue;
       }
@@ -158,7 +166,7 @@ class BotRunner {
     assignment: BotAssignmentSnapshot,
     seatView: MatchSeatView | null,
   ) {
-    const watcher = this.watchers.get(assignment.assignment.id as string);
+    const watcher = this.watchers.get(assignment.assignment.id);
     if (!watcher || !seatView) {
       return;
     }
@@ -181,7 +189,18 @@ class BotRunner {
       return;
     }
 
-    const plan = await this.planner.decide(frame);
+    const plan = await (async () => {
+      try {
+        return await this.planner.decide(frame);
+      } catch (error) {
+        console.error(
+          `[${APP_NAME}] failed to plan ${assignment.assignment.matchId} for ${assignment.assignment.seat}`,
+          error,
+        );
+        return null;
+      }
+    })();
+
     if (!plan) {
       return;
     }

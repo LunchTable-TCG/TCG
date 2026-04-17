@@ -132,14 +132,8 @@ export async function ensureBotIdentity(
     }
 
     return {
-      botIdentity: {
-        ...(await db.get(existingIdentity._id)),
-        _id: existingIdentity._id,
-      } as Doc<"botIdentities">,
-      user: {
-        ...(await db.get(existingUser._id)),
-        _id: existingUser._id,
-      } as Doc<"users">,
+      botIdentity: existingIdentity,
+      user: existingUser,
     };
   }
 
