@@ -11,12 +11,12 @@ import { formatLocalTime } from "../shared";
 
 function getPromptPlaceholder(purpose: AgentLabPurpose | null) {
   if (purpose === "coach") {
-    return "What is my best parity-safe line from this seat?";
+    return "Explain the strongest line available from this seat.";
   }
   if (purpose === "commentator") {
     return "Summarize the public board and recent swing points.";
   }
-  return "Open a coach or commentator thread first.";
+  return "Open a notes thread first.";
 }
 
 export function AgentLabPanel({
@@ -54,13 +54,13 @@ export function AgentLabPanel({
     <section className="panel panel-secondary">
       <div className="workspace-header">
         <div>
-          <p className="eyebrow">Agent Lab</p>
-          <h2>Non-authoritative coach and commentator threads</h2>
+          <p className="eyebrow">Optional Analysis</p>
+          <h2>Out-of-band coach and commentator notes</h2>
         </div>
         <p className="support-copy">
-          These helper threads are stored outside live match state and can never
-          advance a turn. Coach uses your seat view. Commentator uses
-          spectator-safe public state only.
+          These threads are separate from live player seats. They can explain a
+          position, but they never submit intents or advance the authoritative
+          match.
         </p>
       </div>
 
@@ -70,7 +70,7 @@ export function AgentLabPanel({
             <div className="panel-header-row">
               <div>
                 <p className="eyebrow">Thread control</p>
-                <h3>Match-scoped sessions</h3>
+                <h3>Optional review sessions</h3>
               </div>
               <div className="inline-actions inline-actions-tight">
                 <button
@@ -80,8 +80,8 @@ export function AgentLabPanel({
                   type="button"
                 >
                   {pendingAction === "ensure:coach"
-                    ? "Opening coach..."
-                    : "Open coach"}
+                    ? "Opening coach notes..."
+                    : "Open coach notes"}
                 </button>
                 <button
                   className="action secondary-action"
@@ -90,14 +90,14 @@ export function AgentLabPanel({
                   type="button"
                 >
                   {pendingAction === "ensure:commentator"
-                    ? "Opening commentator..."
-                    : "Open commentator"}
+                    ? "Opening commentator notes..."
+                    : "Open commentator notes"}
                 </button>
               </div>
             </div>
             {!selectedMatchId ? (
               <p className="support-copy">
-                Select a persisted match shell first to open a lab thread.
+                Select a persisted match shell first to open a notes thread.
               </p>
             ) : (
               <dl className="stats">
@@ -123,7 +123,7 @@ export function AgentLabPanel({
               <p className="support-copy">Loading agent sessions.</p>
             ) : sessions.length === 0 ? (
               <p className="support-copy">
-                No active helper threads for this match yet.
+                No optional notes threads for this match yet.
               </p>
             ) : (
               <div className="deck-list">
@@ -189,8 +189,7 @@ export function AgentLabPanel({
             </div>
             {!selectedSession ? (
               <p className="support-copy">
-                Open a coach or commentator thread to inspect the saved helper
-                history for this match.
+                Open a notes thread to inspect saved analysis for this match.
               </p>
             ) : (
               <>
@@ -211,7 +210,7 @@ export function AgentLabPanel({
                   type="button"
                 >
                   {pendingAction === `send-session:${selectedSession.id}`
-                    ? "Generating helper reply..."
+                    ? "Generating analysis..."
                     : "Send prompt"}
                 </button>
                 {loadingMessages ? (
@@ -219,7 +218,7 @@ export function AgentLabPanel({
                 ) : messages.length === 0 ? (
                   <p className="support-copy">
                     No saved messages yet. Send a prompt to generate the first
-                    helper reply.
+                    analysis reply.
                   </p>
                 ) : (
                   <div className="agent-message-list">

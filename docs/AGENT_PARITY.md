@@ -36,6 +36,8 @@ Every live match seat binds to exactly one actor. A seat never changes transport
 - useful for externally hosted agents
 - converts external responses into validated public intents
 - never writes match state directly
+- current implementation path: `apps/bot-runner` `BOT_POLICY_MODE=external-http`
+  with legal-action envelopes from `packages/bot-sdk`
 
 ### Convex Agent Component
 

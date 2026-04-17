@@ -37,6 +37,21 @@ bun run dev:web
 bun run dev:bot
 ```
 
+## External Agent Seats
+
+The bot runner can delegate a bot seat to an external decision service while
+keeping Convex as the only match authority.
+
+```bash
+BOT_POLICY_MODE=external-http \
+BOT_EXTERNAL_DECISION_URL=http://127.0.0.1:8787/lunchtable/decide \
+bun run dev:bot
+```
+
+The endpoint receives a validated seat-decision envelope from
+`@lunchtable/bot-sdk` and must reply with one legal `actionId` or `null`. See
+[docs/MILADY_INTEGRATION.md](docs/MILADY_INTEGRATION.md).
+
 ## Convex Local Auth
 
 Bootstrap the local wallet-auth issuer and sync those variables into the local

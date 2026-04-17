@@ -406,12 +406,17 @@ function DeckPanel({
             ? "Creating practice match..."
             : "Create practice match"}
         </button>
+        <p className="support-copy">
+          Practice match seats your active legal deck against one agent player
+          on the same prompts, timers, and authoritative intent rail a human
+          opponent would use.
+        </p>
         {loading ? (
           <p className="support-copy">Loading deck records from Convex.</p>
         ) : decks.length === 0 ? (
           <p className="support-copy">
-            No saved decks yet. Create the default 40-card starter list to prove
-            the validation path end to end.
+            No saved decks yet. Create the default 40-card starter list so you
+            can seat it into a human or agent table.
           </p>
         ) : (
           <div className="deck-list">
@@ -507,8 +512,8 @@ function MatchShellPanel({
           <p className="support-copy">Loading persisted match shells.</p>
         ) : matches.length === 0 ? (
           <p className="support-copy">
-            No persisted matches yet. Create a practice match from one of your
-            legal decks.
+            No persisted matches yet. Create a practice match to seat one human
+            deck against one agent deck.
           </p>
         ) : (
           <div className="deck-list">
@@ -1894,7 +1899,7 @@ export function App() {
       await refreshMatches();
       setSelectedMatchId(shell.id);
       setNotice({
-        body: `${shell.id} persisted with seat and spectator projections.`,
+        body: `${shell.id} created with one human seat and one agent seat on the same authoritative rules path.`,
         title: "Practice match created",
         tone: "success",
       });
@@ -2367,22 +2372,31 @@ export function App() {
     }
   }
 
+  const selectedMatch =
+    matches.find((matchRecord) => matchRecord.id === selectedMatchId) ?? null;
+  const selectedHumanSeatCount = selectedMatch
+    ? selectedMatch.seats.filter((seat) => seat.actorType === "human").length
+    : 0;
+  const selectedAgentSeatCount = selectedMatch
+    ? selectedMatch.seats.filter((seat) => seat.actorType === "bot").length
+    : 0;
+
   return (
     <main className="app-shell">
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Phase 18 Ops Hardening And Release Gating</p>
+          <p className="eyebrow">Human + Agent Seat Parity</p>
           <h1>{APP_NAME}</h1>
           <p className="lede">
-            Email and username create the player record. A fresh BSC wallet is
-            generated in-browser, challenged by Convex, and signed locally so
-            the private key never leaves the player’s machine.
+            Lunch Table treats agents as normal players. A human wallet seat and
+            an agent seat both move through the same Convex reducer, prompt
+            windows, timers, and replay-safe projections.
           </p>
           <p className="support-copy">
-            This phase hardens the live product for external testing: operator
-            controls now sit on top of the existing match, replay, and agent
-            surfaces so format publication and ban-list changes propagate
-            through the same canonical Convex rules path.
+            That keeps the table playable for people and understandable for
+            external agent runtimes without inventing bot-only powers or helper
+            shortcuts. Practice matches are the clearest path: one human seat,
+            one agent seat, one rules rail.
           </p>
         </div>
         <div className="hero-metrics">
@@ -2403,13 +2417,11 @@ export function App() {
             </strong>
           </div>
           <div className="metric-card">
-            <span className="metric-label">Agent Lab</span>
+            <span className="metric-label">Seat Parity</span>
             <strong>
-              {selectedMatchId
-                ? `${agentSessions.length} active thread${
-                    agentSessions.length === 1 ? "" : "s"
-                  }`
-                : "Awaiting match"}
+              {selectedMatch
+                ? `${selectedHumanSeatCount} human · ${selectedAgentSeatCount} agent`
+                : "Select a live table"}
             </strong>
           </div>
         </div>
@@ -2438,6 +2450,7 @@ export function App() {
               <input
                 autoComplete="email"
                 disabled={pendingAction !== null}
+                name="signupEmail"
                 onChange={(event) => setSignupEmail(event.target.value)}
                 placeholder="mage@lunchtable.gg"
                 required
@@ -2453,6 +2466,7 @@ export function App() {
                 disabled={pendingAction !== null}
                 maxLength={24}
                 minLength={3}
+                name="signupUsername"
                 onChange={(event) => setSignupUsername(event.target.value)}
                 pattern="[A-Za-z0-9_]{3,24}"
                 placeholder="tablemage"
@@ -2488,6 +2502,7 @@ export function App() {
               <textarea
                 autoCapitalize="off"
                 disabled={pendingAction !== null}
+                name="loginPrivateKey"
                 onChange={(event) => setLoginPrivateKey(event.target.value)}
                 placeholder="0x..."
                 required
@@ -2534,12 +2549,12 @@ export function App() {
         <div className="workspace-header">
           <div>
             <p className="eyebrow">Deck Workspace</p>
-            <h2>Collection and legal deck records</h2>
+            <h2>Collection, deck legality, and seat-ready lists</h2>
           </div>
           <p className="support-copy">
             The starter catalog is static, but collection ownership and deck
             legality are resolved through canonical Convex tables for the
-            signed-in user.
+            signed-in user before a deck can enter a human or agent table.
           </p>
         </div>
         <div className="library-grid">
@@ -2619,12 +2634,12 @@ export function App() {
         <div className="workspace-header">
           <div>
             <p className="eyebrow">Match Persistence</p>
-            <h2>Shells and isolated cached views</h2>
+            <h2>Seat shells and public fallback views</h2>
           </div>
           <p className="support-copy">
             Choose a persisted match and mount the live seat shell. The same
             section can fall back to the spectator projection without exposing
-            private hand data.
+            private hand data, even when one of the seats is agent-controlled.
           </p>
         </div>
         <div className="library-grid">

@@ -6,9 +6,12 @@ import type { MatchSeatView } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 import {
   createDecisionFrame,
+  createExternalDecisionEnvelope,
+  createExternalDecisionPrompt,
   getCatalogForFormat,
   listLegalBotActions,
   planBaselineIntent,
+  resolveExternalDecisionResponse,
 } from "../packages/bot-sdk/src/index";
 
 import {
@@ -256,5 +259,57 @@ describe("bot foundation helpers", () => {
     expect(actions[0].intent.payload.cardInstanceId).toBe(
       "seat-1:ember-summoner:hand:1",
     );
+  });
+
+  it("builds a stable external decision envelope for external runtimes", () => {
+    const frame = createDecisionFrame({
+      catalog: createCatalogEntriesForFormat(starterFormat),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 0),
+      view: createPrioritySeatView(),
+    });
+    const envelope = createExternalDecisionEnvelope(frame);
+
+    expect(envelope.seat).toBe("seat-1");
+    expect(envelope.legalActions[0]?.actionId).toBe(
+      envelope.legalActions[0]?.intent.intentId,
+    );
+    expect(envelope.prompt).toContain("Choose exactly one provided actionId");
+    expect(createExternalDecisionPrompt(frame)).toContain("Legal actions:");
+  });
+
+  it("resolves external action selections back into validated intents", () => {
+    const frame = createDecisionFrame({
+      catalog: createCatalogEntriesForFormat(starterFormat),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 0),
+      view: createPrioritySeatView(),
+    });
+    const topAction = createExternalDecisionEnvelope(frame).legalActions[0];
+    if (!topAction) {
+      throw new Error("Expected at least one legal action");
+    }
+
+    const plan = resolveExternalDecisionResponse({
+      frame,
+      response: {
+        actionId: topAction.actionId,
+        confidence: 0.91,
+      },
+    });
+
+    expect(plan).toEqual({
+      confidence: 0.91,
+      intent: topAction.intent,
+      requestedAt: frame.receivedAt,
+      seat: "seat-1",
+    });
+
+    expect(() =>
+      resolveExternalDecisionResponse({
+        frame,
+        response: {
+          actionId: "not-a-real-action",
+        },
+      }),
+    ).toThrow("External agent returned an unknown actionId");
   });
 });

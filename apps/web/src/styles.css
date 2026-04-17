@@ -533,7 +533,8 @@ h3 {
 }
 
 .match-shell-chip,
-.match-seat-status {
+.match-seat-status,
+.match-seat-actor {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -546,13 +547,26 @@ h3 {
   text-transform: uppercase;
 }
 
+.match-seat-actor {
+  background: rgba(181, 224, 247, 0.12);
+  border-color: rgba(181, 224, 247, 0.22);
+  color: rgba(221, 241, 255, 0.88);
+}
+
 .match-seat-strip {
   display: grid;
   gap: 0.85rem;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.match-parity-strip {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 .match-seat-card,
+.match-parity-card,
 .match-sidebar-card,
 .match-player-zone {
   border-radius: 22px;
@@ -561,6 +575,10 @@ h3 {
 }
 
 .match-seat-card {
+  padding: 1rem;
+}
+
+.match-parity-card {
   padding: 1rem;
 }
 
@@ -580,6 +598,13 @@ h3 {
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
+}
+
+.match-seat-badges {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .match-seat-name,

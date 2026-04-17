@@ -1,5 +1,4 @@
 import {
-  baselineBotPolicy,
   createDecisionFrame,
   createDecisionKey,
   getCatalogForFormat,
@@ -12,11 +11,13 @@ import type {
 import { ConvexClient, ConvexHttpClient } from "convex/browser";
 
 import { api } from "../../../convex/_generated/api";
+import { createDecisionPlanner, loadDecisionPolicyConfig } from "./policy";
 import { shouldRefreshSeatViewAfterSubmit } from "./refresh";
 
 interface RunnerConfig {
   botSlug: string;
   convexUrl: string;
+  policyKey: string;
   runnerSecret: string;
 }
 
@@ -38,9 +39,11 @@ function requireEnv(name: string) {
 }
 
 function loadConfig(): RunnerConfig {
+  const policyConfig = loadDecisionPolicyConfig(process.env);
   return {
     botSlug: process.env.BOT_SLUG ?? "table-bot",
     convexUrl: process.env.CONVEX_URL ?? requireEnv("VITE_CONVEX_URL"),
+    policyKey: policyConfig.key,
     runnerSecret: requireEnv("BOT_RUNNER_SECRET"),
   };
 }
@@ -50,7 +53,9 @@ class BotRunner {
     null;
   private readonly client: ConvexClient;
   private readonly httpClient: ConvexHttpClient;
-  private readonly policy = baselineBotPolicy;
+  private readonly planner = createDecisionPlanner(
+    loadDecisionPolicyConfig(process.env),
+  );
   private readonly watchers = new Map<string, AssignmentWatcher>();
 
   constructor(private readonly config: RunnerConfig) {
@@ -65,6 +70,7 @@ class BotRunner {
 
   async start() {
     const session = await this.httpClient.action(api.agents.issueBotSession, {
+      policyKey: this.config.policyKey,
       runnerSecret: this.config.runnerSecret,
       slug: this.config.botSlug,
     });
@@ -90,7 +96,7 @@ class BotRunner {
     );
 
     console.log(
-      `[${APP_NAME}] bot runner ready for ${session.botIdentity.displayName} (${session.botIdentity.slug}) using policy ${this.policy.key}.`,
+      `[${APP_NAME}] bot runner ready for ${session.botIdentity.displayName} (${session.botIdentity.slug}) using policy ${this.planner.key}.`,
     );
   }
 
@@ -175,7 +181,7 @@ class BotRunner {
       return;
     }
 
-    const plan = this.policy.decide(frame);
+    const plan = await this.planner.decide(frame);
     if (!plan) {
       return;
     }
