@@ -206,9 +206,14 @@ export function AgentLabPanel({
                 <button
                   className="action action-contrast"
                   disabled={pendingAction !== null || prompt.trim() === ""}
-                  onClick={() =>
-                    onSendPrompt(selectedSession.id, prompt.trim())
-                  }
+                  onClick={() => {
+                    const trimmedPrompt = prompt.trim();
+                    if (!trimmedPrompt) {
+                      return;
+                    }
+                    onSendPrompt(selectedSession.id, trimmedPrompt);
+                    setPrompt("");
+                  }}
                   type="button"
                 >
                   {pendingAction === `send-session:${selectedSession.id}`

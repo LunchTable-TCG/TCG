@@ -203,10 +203,15 @@ class BotRunner {
       return;
     }
 
+    watcher.inFlight = true;
+    watcher.lastDecisionKey = decisionKey;
+
+    let plannerFailed = false;
     const plan = await (async () => {
       try {
         return await this.planner.decide(frame);
       } catch (error) {
+        plannerFailed = true;
         console.error(
           `[${APP_NAME}] failed to plan ${assignment.assignment.matchId} for ${assignment.assignment.seat}`,
           error,
@@ -216,11 +221,12 @@ class BotRunner {
     })();
 
     if (!plan) {
+      if (plannerFailed) {
+        watcher.lastDecisionKey = null;
+      }
+      watcher.inFlight = false;
       return;
     }
-
-    watcher.inFlight = true;
-    watcher.lastDecisionKey = decisionKey;
 
     let shouldRefreshSeatView = false;
     let shouldExitAfterSubmit = false;
