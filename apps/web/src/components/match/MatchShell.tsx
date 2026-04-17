@@ -210,6 +210,10 @@ export function MatchShell({
   const tableParity = view ? summarizeTableParity(view) : null;
   const gameplaySeat =
     view?.kind === "seat" ? assertMatchSeatId(view.viewerSeat) : null;
+  const viewerSeatState =
+    view?.kind === "seat"
+      ? (view.seats.find((seat) => seat.seat === view.viewerSeat) ?? null)
+      : null;
 
   useEffect(() => {
     if (!seatView && spectatorView && preferredMode === "seat") {
@@ -608,22 +612,26 @@ export function MatchShell({
                         </button>
                         <button
                           className="action secondary-action"
-                          disabled={!gameplaySeat || pendingIntent !== null}
-                          onClick={() =>
+                          disabled={
+                            !gameplaySeat ||
+                            !viewerSeatState ||
+                            pendingIntent !== null
+                          }
+                          onClick={() => {
+                            if (!viewerSeatState) {
+                              return;
+                            }
                             submitViewerSeatIntent((seat) => ({
                               intentId: createIntentId("toggleAutoPass"),
                               kind: "toggleAutoPass",
                               matchId: shell.id,
                               payload: {
-                                enabled: !view.seats.find(
-                                  (seatState) =>
-                                    seatState.seat === view.viewerSeat,
-                                )?.autoPassEnabled,
+                                enabled: !viewerSeatState.autoPassEnabled,
                               },
                               seat,
                               stateVersion: shell.version,
-                            }))
-                          }
+                            }));
+                          }}
                           type="button"
                         >
                           Toggle auto-pass

@@ -39,11 +39,25 @@ function requireEnv(name: string) {
   return value;
 }
 
+function readOptionalEnv(name: string) {
+  return process.env[name]?.trim() || null;
+}
+
 function loadConfig(): RunnerConfig {
   const policyConfig = loadDecisionPolicyConfig(process.env);
+  const botSlug = readOptionalEnv("BOT_SLUG") || "table-bot";
+  const convexUrl =
+    readOptionalEnv("CONVEX_URL") || readOptionalEnv("VITE_CONVEX_URL");
+
+  if (!convexUrl) {
+    throw new Error(
+      "Missing required environment variable: CONVEX_URL or VITE_CONVEX_URL",
+    );
+  }
+
   return {
-    botSlug: process.env.BOT_SLUG?.trim() || "table-bot",
-    convexUrl: process.env.CONVEX_URL?.trim() || requireEnv("VITE_CONVEX_URL"),
+    botSlug,
+    convexUrl,
     policyKey: policyConfig.key,
     runnerSecret: requireEnv("BOT_RUNNER_SECRET"),
   };

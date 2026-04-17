@@ -102,7 +102,7 @@ export function resolveExternalDecisionResponse(input: {
       ? { actionId: input.response }
       : input.response;
 
-  if (!parsed || parsed.actionId === null) {
+  if (!parsed || parsed.actionId == null) {
     return null;
   }
 
