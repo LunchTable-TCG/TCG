@@ -44,7 +44,7 @@ describe("convex JWT helpers", () => {
     process.env.JWT_PUBLIC_JWK_JSON = "[]";
 
     expect(() => buildJwksDataUri()).toThrow(
-      "JWT public JWK must be a JSON object",
+      "Invalid JWT public JWK JSON payload",
     );
   });
 });

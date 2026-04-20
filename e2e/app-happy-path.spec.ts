@@ -112,6 +112,7 @@ test("creates a starter deck, a practice match, and non-authoritative agent thre
   await clickControl(page, "Open coach");
   await expect(page.getByText("Coach thread ready")).toBeVisible();
 
+  await page.getByLabel("Prompt").fill("Explain the strongest line.");
   await clickControl(page, "Send prompt");
   await expect(page.getByText("Coach reply generated")).toBeVisible();
   await expect(

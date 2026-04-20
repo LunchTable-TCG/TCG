@@ -60,7 +60,7 @@ describe("bot runner policy selection", () => {
     expect(loadDecisionPolicyConfig({})).toEqual({
       authToken: null,
       decisionUrl: null,
-      key: "baseline-v1",
+      key: "baseline-v2-legal-actions",
       mode: "baseline",
       timeoutMs: 6000,
     });
