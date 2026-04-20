@@ -68,6 +68,13 @@ configured to read root-level env files, so you do not need to copy
 `BOT_RUNNER_SECRET` for the local bot runner and syncs it into the Convex
 deployment so `agents.issueBotSession` can work locally.
 
+Bundled sample summon assets live under `apps/web/public/cinematics/` and load
+locally by default. Set `VITE_ASSET_CDN_BASE_URL` to override that root with a
+CDN. When the selected asset root includes `cards/<card-id>/summon.glb`, the
+summon portal upgrades from the procedural glyph to that model and uses an
+optional `cards/<card-id>/poster.*` backdrop when present. Asset sources and
+licenses are listed in [docs/CINEMATIC_ASSETS.md](docs/CINEMATIC_ASSETS.md).
+
 ## Phase 16 Agent Lab
 
 The agent lab is intentionally non-authoritative:
@@ -91,6 +98,21 @@ Use the phase loop scripts to work through `IMPLEMENTATION_PHASES.md`:
 ./scripts/phase-loop.sh --status "In Progress" --summary "..." --next "..."
 ```
 
+For the agent-playable current-format program, use these docs as the active
+source of truth:
+
+- [docs/program/EXECUTION_PLAN.md](docs/program/EXECUTION_PLAN.md)
+- [docs/program/CHURN_TRACKER.md](docs/program/CHURN_TRACKER.md)
+- [docs/program/VERIFICATION_MATRIX.md](docs/program/VERIFICATION_MATRIX.md)
+- [docs/program/BENCHMARK_BUDGETS.md](docs/program/BENCHMARK_BUDGETS.md)
+
+Run the deterministic benchmark harness directly when working on gameplay-agent
+context, legal actions, or replay/golden performance:
+
+```bash
+bun run benchmark:deterministic
+```
+
 ## Release Proof
 
 Run the release-ready gate sequence and local Convex bootstrap in one command:
@@ -100,3 +122,10 @@ bun run release:proof
 ```
 
 The full release handoff is documented in [docs/RELEASE.md](docs/RELEASE.md).
+
+Generate release notes or cut an annotated tag locally:
+
+```bash
+bun run release:notes -- v0.1.0
+bun run release:cut -- v0.1.0 --dry-run
+```

@@ -183,11 +183,13 @@ function MatchSeatStrip({
 export function MatchShell({
   catalog,
   matchId,
+  onShellChange,
   transport,
   viewerEnabled,
 }: {
   catalog: CardCatalogEntry[];
   matchId: string | null;
+  onShellChange?: (shell: MatchShellRecord | null) => void;
   transport: WalletLibraryTransport | null;
   viewerEnabled: boolean;
 }) {
@@ -220,6 +222,10 @@ export function MatchShell({
       setPreferredMode("spectator");
     }
   }, [preferredMode, seatView, spectatorView]);
+
+  useEffect(() => {
+    onShellChange?.(shell);
+  }, [onShellChange, shell]);
 
   async function submitIntent(intent: SubmitIntent) {
     if (!transport) {
@@ -292,6 +298,7 @@ export function MatchShell({
   function submitActivateAbility(input: {
     abilityId: string;
     cardInstanceId: string;
+    targetIds?: string[];
   }) {
     if (!shell || !gameplaySeat) {
       return;
@@ -304,6 +311,7 @@ export function MatchShell({
       payload: {
         abilityId: input.abilityId,
         sourceInstanceId: input.cardInstanceId,
+        targetIds: input.targetIds,
       },
       seat: gameplaySeat,
       stateVersion: shell.version,

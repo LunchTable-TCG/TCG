@@ -9,6 +9,13 @@ import {
   query,
 } from "./_generated/server";
 import {
+  DEFAULT_BOT_DISPLAY_NAME,
+  DEFAULT_BOT_POLICY_KEY,
+  DEFAULT_BOT_SLUG,
+  deriveBotAssignmentStatus,
+  ensureBotIdentity,
+} from "./lib/agents";
+import {
   assertFormatPublishedForOperation,
   listCollectionEntriesForUser,
   loadFormatRuntime,
@@ -112,6 +119,10 @@ async function getLobbyOrThrow(
     throw new Error("Lobby not found");
   }
   return lobby;
+}
+
+function getGuestActorType(lobby: Pick<Doc<"lobbies">, "guestActorType">) {
+  return lobby.guestActorType ?? "human";
 }
 
 function toLobbyResult(
@@ -285,6 +296,8 @@ export const join = mutation({
       matchId: lobby.matchId,
     });
     await ctx.db.patch(lobby._id, {
+      guestActorType: "human",
+      guestBotIdentityId: undefined,
       guestDeckId: deck._id,
       guestJoinedAt: nextUpdatedAt,
       guestReady: false,
@@ -294,6 +307,73 @@ export const join = mutation({
       guestWalletAddress: walletAddress ?? undefined,
       status: nextStatus,
       updatedAt: nextUpdatedAt,
+    });
+
+    const nextLobby = await getLobbyOrThrow(ctx, lobby._id);
+    return toLobbyResult(nextLobby, null);
+  },
+});
+
+export const addBotGuest = mutation({
+  args: {
+    lobbyId: v.id("lobbies"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireViewerUser(ctx);
+    const lobby = await getLobbyOrThrow(ctx, args.lobbyId);
+
+    if (lobby.hostUserId !== user._id) {
+      throw new Error("Only the lobby host can add a gameplay agent");
+    }
+    if (lobby.status === "matched" || lobby.status === "cancelled") {
+      throw new Error("Lobby is no longer editable");
+    }
+    if (lobby.guestUserId) {
+      throw new Error("Lobby already has an opponent");
+    }
+
+    const hostDeck = await assertPlayableDeck(ctx, {
+      deckId: lobby.hostDeckId,
+      userId: lobby.hostUserId,
+    });
+    await assertFormatPublishedForOperation(
+      ctx.db,
+      lobby.formatId,
+      "adding a gameplay agent to a private lobby",
+    );
+    await assertLegalDeckForUser(ctx, {
+      deck: hostDeck,
+      userId: lobby.hostUserId,
+      username: lobby.hostUsername,
+    });
+
+    const now = Date.now();
+    const botIdentity = await ensureBotIdentity(ctx.db, {
+      displayName: DEFAULT_BOT_DISPLAY_NAME,
+      now,
+      policyKey: DEFAULT_BOT_POLICY_KEY,
+      slug: DEFAULT_BOT_SLUG,
+    });
+    const nextStatus = deriveLobbyStatus({
+      cancelled: false,
+      guestReady: true,
+      guestUserId: botIdentity.user._id,
+      hostReady: false,
+      matchId: lobby.matchId,
+    });
+
+    await ctx.db.patch(lobby._id, {
+      guestActorType: "bot",
+      guestBotIdentityId: botIdentity.botIdentity._id,
+      guestDeckId: lobby.hostDeckId,
+      guestJoinedAt: now,
+      guestReady: true,
+      guestUserId: botIdentity.user._id,
+      guestUsername: botIdentity.botIdentity.displayName,
+      guestWalletAddress: undefined,
+      hostReady: false,
+      status: nextStatus,
+      updatedAt: now,
     });
 
     const nextLobby = await getLobbyOrThrow(ctx, lobby._id);
@@ -323,6 +403,8 @@ export const leave = mutation({
       });
     } else {
       await ctx.db.patch(lobby._id, {
+        guestActorType: undefined,
+        guestBotIdentityId: undefined,
         guestDeckId: undefined,
         guestJoinedAt: undefined,
         guestReady: undefined,
@@ -384,33 +466,35 @@ export const setReady = mutation({
       return toLobbyResult(readyLobby, null);
     }
 
-    const [hostDeck, guestDeck] = await Promise.all([
-      assertPlayableDeck(ctx, {
-        deckId: readyLobby.hostDeckId,
-        userId: readyLobby.hostUserId,
-      }),
-      assertPlayableDeck(ctx, {
-        deckId: readyLobby.guestDeckId,
-        userId: readyLobby.guestUserId,
-      }),
-    ]);
+    const hostDeck = await assertPlayableDeck(ctx, {
+      deckId: readyLobby.hostDeckId,
+      userId: readyLobby.hostUserId,
+    });
+    const resolvedGuestActorType = getGuestActorType(readyLobby);
+    const guestDeck =
+      resolvedGuestActorType === "bot"
+        ? hostDeck
+        : await assertPlayableDeck(ctx, {
+            deckId: readyLobby.guestDeckId,
+            userId: readyLobby.guestUserId,
+          });
     const runtime = await assertFormatPublishedForOperation(
       ctx.db,
       readyLobby.formatId,
       "starting a private lobby match",
     );
-    await Promise.all([
-      assertLegalDeckForUser(ctx, {
-        deck: hostDeck,
-        userId: readyLobby.hostUserId,
-        username: readyLobby.hostUsername,
-      }),
-      assertLegalDeckForUser(ctx, {
+    await assertLegalDeckForUser(ctx, {
+      deck: hostDeck,
+      userId: readyLobby.hostUserId,
+      username: readyLobby.hostUsername,
+    });
+    if (resolvedGuestActorType === "human") {
+      await assertLegalDeckForUser(ctx, {
         deck: guestDeck,
         userId: readyLobby.guestUserId,
         username: readyLobby.guestUsername ?? "Guest",
-      }),
-    ]);
+      });
+    }
 
     const startedAt = Date.now();
     const bundle = await createPersistedMatch(ctx, {
@@ -430,7 +514,7 @@ export const setReady = mutation({
           walletAddress: readyLobby.hostWalletAddress ?? null,
         },
         {
-          actorType: "human",
+          actorType: resolvedGuestActorType,
           deck: {
             mainboard: guestDeck.mainboard,
             sideboard: guestDeck.sideboard,
@@ -445,16 +529,35 @@ export const setReady = mutation({
       status: "active",
       turnNumber: 1,
     });
+    const matchId = ctx.db.normalizeId("matches", bundle.shell.id);
+    if (!matchId) {
+      throw new Error("Failed to resolve created match");
+    }
 
     await ctx.db.patch(readyLobby._id, {
-      matchId: ctx.db.normalizeId("matches", bundle.shell.id) ?? undefined,
+      matchId,
       status: "matched",
       updatedAt: startedAt,
     });
 
+    if (resolvedGuestActorType === "bot") {
+      if (!readyLobby.guestBotIdentityId) {
+        throw new Error("Bot lobby seat is missing its identity");
+      }
+      await ctx.db.insert("botAssignments", {
+        botIdentityId: readyLobby.guestBotIdentityId,
+        botUserId: readyLobby.guestUserId,
+        createdAt: startedAt,
+        lastObservedVersion: bundle.shell.version,
+        matchId,
+        seat: "seat-1",
+        status: deriveBotAssignmentStatus(bundle.shell.status),
+        updatedAt: startedAt,
+      });
+    }
+
     const nextLobby = await getLobbyOrThrow(ctx, readyLobby._id);
-    const matchId = ctx.db.normalizeId("matches", bundle.shell.id);
-    const match = matchId ? await ctx.db.get(matchId) : null;
+    const match = await ctx.db.get(matchId);
     return toLobbyResult(nextLobby, match);
   },
 });

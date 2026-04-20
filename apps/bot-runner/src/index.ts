@@ -1,12 +1,17 @@
+import { createHash } from "node:crypto";
+
 import {
   createDecisionFrame,
   createDecisionKey,
   getCatalogForFormat,
+  listLegalBotActions,
 } from "@lunchtable/bot-sdk";
 import { APP_NAME } from "@lunchtable/shared-types";
 import type {
   BotAssignmentId,
+  BotDecisionTraceV1,
   BotAssignmentSnapshot,
+  MatchTelemetryEvent,
   MatchSeatView,
 } from "@lunchtable/shared-types";
 import { ConvexClient, ConvexHttpClient } from "convex/browser";
@@ -137,6 +142,79 @@ class BotRunner {
     await this.client.close();
   }
 
+  private buildContextHash(view: MatchSeatView) {
+    return createHash("sha256")
+      .update(
+        JSON.stringify({
+          availableIntents: view.availableIntents,
+          matchId: view.match.id,
+          promptId: view.prompt?.promptId ?? null,
+          recentEvents: view.recentEvents.map((event) => event.sequence),
+          stateVersion: view.match.version,
+          viewerSeat: view.viewerSeat,
+        }),
+      )
+      .digest("hex")
+      .slice(0, 16);
+  }
+
+  private async emitTelemetry(event: MatchTelemetryEvent) {
+    try {
+      await this.client.mutation(api.agents.recordBotTelemetry, {
+        event: {
+          at: event.at,
+          matchId: event.matchId,
+          metrics: event.metrics,
+          name: event.name,
+          seat: event.seat,
+          tags: event.tags,
+        },
+      });
+    } catch (error) {
+      console.warn(`[${APP_NAME}] failed to record bot telemetry`, error);
+    }
+  }
+
+  private buildDecisionTrace(input: {
+    actionId: string | null;
+    confidence: number | null;
+    contextHash: string;
+    frame: ReturnType<typeof createDecisionFrame>;
+    invalidChoiceReason: string | null;
+    respondedAt: number;
+    submittedAt: number | null;
+  }): BotDecisionTraceV1 {
+    const selectedAction =
+      input.actionId === null
+        ? null
+        : input.frame.context.legalActions.find(
+            (action) => action.actionId === input.actionId,
+          ) ?? null;
+
+    return {
+      actionCatalogSize: input.frame.context.legalActions.length,
+      chosenActionId: input.actionId,
+      chosenKind: selectedAction?.kind ?? null,
+      confidence: input.confidence,
+      contextHash: input.contextHash,
+      invalidChoiceReason: input.invalidChoiceReason,
+      matchId: input.frame.matchId,
+      policyKey: this.planner.key,
+      promptTemplateVersion: null,
+      rejectedActionIds: [],
+      requestedAt: input.frame.receivedAt,
+      respondedAt: input.respondedAt,
+      seat: input.frame.seat,
+      stateVersion: input.frame.view.match.version,
+      submittedAt: input.submittedAt,
+      tokenUsage: {
+        input: null,
+        output: null,
+        total: null,
+      },
+    };
+  }
+
   private async syncAssignments(assignments: BotAssignmentSnapshot[]) {
     const activeAssignmentIds = new Set(
       assignments.map((assignment) => assignment.assignment.id),
@@ -201,11 +279,47 @@ class BotRunner {
       view: seatView,
     });
     const decisionKey = createDecisionKey(frame);
+    const legalActions = listLegalBotActions(frame);
 
     if (watcher.inFlight || watcher.lastDecisionKey === decisionKey) {
       return;
     }
 
+    const contextHash = this.buildContextHash(seatView);
+    const contextSizeBytes = JSON.stringify(frame.context).length;
+    await this.emitTelemetry({
+      at: frame.receivedAt,
+      matchId: frame.matchId,
+      metrics: {
+        actionCatalogSize: legalActions.length,
+        contextBuildMs: frame.context.buildDurationMs,
+        contextSizeBytes,
+        recentEventCount: frame.context.recentEvents.length,
+        visibleCardCount: frame.context.visibleCards.length,
+      },
+      name: "bot.seat.contextBuilt",
+      seat: frame.seat,
+      tags: {
+        policyKey: this.planner.key,
+        promptKind: frame.context.promptDecision?.kind ?? "none",
+      },
+      userId: null,
+    });
+    await this.emitTelemetry({
+      at: frame.receivedAt,
+      matchId: frame.matchId,
+      metrics: {
+        actionCatalogSize: legalActions.length,
+        contextSizeBytes,
+      },
+      name: "bot.seat.decisionStarted",
+      seat: frame.seat,
+      tags: {
+        policyKey: this.planner.key,
+        promptKind: frame.context.promptDecision?.kind ?? "none",
+      },
+      userId: null,
+    });
     watcher.inFlight = true;
     watcher.lastDecisionKey = decisionKey;
 
@@ -222,41 +336,143 @@ class BotRunner {
         return null;
       }
     })();
+    const respondedAt = Date.now();
 
     if (!plan) {
       if (plannerFailed) {
         watcher.lastDecisionKey = null;
       }
+      await this.emitTelemetry({
+        at: respondedAt,
+        matchId: frame.matchId,
+        metrics: {
+          actionCatalogSize: legalActions.length,
+          decisionLatencyMs: respondedAt - frame.receivedAt,
+        },
+        name: "bot.seat.decisionCompleted",
+        seat: frame.seat,
+        tags: {
+          policyKey: this.planner.key,
+          result: plannerFailed ? "planner-error" : "no-action",
+        },
+        userId: null,
+      });
       watcher.inFlight = false;
       return;
     }
 
+    const selectedAction =
+      legalActions.find((action) => action.actionId === plan.actionId) ?? null;
+    if (!selectedAction) {
+      watcher.lastDecisionKey = null;
+      watcher.inFlight = false;
+      const invalidTrace = this.buildDecisionTrace({
+        actionId: plan.actionId,
+        confidence: plan.confidence,
+        contextHash,
+        frame,
+        invalidChoiceReason: "unknownActionId",
+        respondedAt,
+        submittedAt: null,
+      });
+      console.warn(
+        `[${APP_NAME}] policy ${this.planner.key} selected an unknown action for ${assignment.assignment.matchId}`,
+        invalidTrace,
+      );
+      await this.emitTelemetry({
+        at: respondedAt,
+        matchId: frame.matchId,
+        metrics: {
+          actionCatalogSize: legalActions.length,
+          decisionLatencyMs: respondedAt - frame.receivedAt,
+        },
+        name: "bot.seat.decisionInvalid",
+        seat: frame.seat,
+        tags: {
+          actionId: plan.actionId,
+          policyKey: this.planner.key,
+          reason: "unknownActionId",
+        },
+        userId: null,
+      });
+      return;
+    }
+
+    const selectedTrace = this.buildDecisionTrace({
+      actionId: selectedAction.actionId,
+      confidence: plan.confidence,
+      contextHash,
+      frame,
+      invalidChoiceReason: null,
+      respondedAt,
+      submittedAt: null,
+    });
+    console.log(`[${APP_NAME}] decision trace`, JSON.stringify(selectedTrace));
+    await this.emitTelemetry({
+      at: respondedAt,
+      matchId: frame.matchId,
+      metrics: {
+        actionCatalogSize: legalActions.length,
+        decisionLatencyMs: respondedAt - frame.receivedAt,
+      },
+      name: "bot.seat.decisionCompleted",
+      seat: frame.seat,
+      tags: {
+        actionId: selectedAction.actionId,
+        actionKind: selectedAction.kind,
+        policyKey: this.planner.key,
+        result: "selected",
+      },
+      userId: null,
+    });
+
     let shouldRefreshSeatView = false;
     let shouldExitAfterSubmit = false;
+    let submittedAt: number | null = null;
     try {
       const result = await this.client.mutation(api.matches.submitIntent, {
-        intent: plan.intent,
+        intent: selectedAction.intent,
       });
+      submittedAt = Date.now();
       shouldRefreshSeatView = shouldRefreshSeatViewAfterSubmit({
         accepted: result.accepted,
         reason: result.reason ?? null,
       });
+      await this.emitTelemetry({
+        at: submittedAt,
+        matchId: frame.matchId,
+        metrics: {
+          actionCatalogSize: legalActions.length,
+          submitLatencyMs: submittedAt - frame.receivedAt,
+        },
+        name: "bot.seat.intentSubmitted",
+        seat: frame.seat,
+        tags: {
+          accepted: result.accepted ? "true" : "false",
+          actionId: selectedAction.actionId,
+          actionKind: selectedAction.kind,
+          outcome: result.outcome,
+          policyKey: this.planner.key,
+          reason: result.reason ?? "none",
+        },
+        userId: null,
+      });
       if (!result.accepted) {
         watcher.lastDecisionKey = null;
         console.warn(
-          `[${APP_NAME}] ${plan.intent.kind} rejected for ${assignment.assignment.matchId} (${result.reason ?? result.outcome}).`,
+          `[${APP_NAME}] ${selectedAction.kind} rejected for ${assignment.assignment.matchId} (${result.reason ?? result.outcome}).`,
         );
 
         shouldExitAfterSubmit = true;
       } else {
         console.log(
-          `[${APP_NAME}] ${plan.intent.kind} -> ${assignment.assignment.matchId} (${result.outcome}${result.reason ? `:${result.reason}` : ""})`,
+          `[${APP_NAME}] ${selectedAction.kind} -> ${assignment.assignment.matchId} (${result.outcome}${result.reason ? `:${result.reason}` : ""})`,
         );
       }
     } catch (error) {
       watcher.lastDecisionKey = null;
       console.error(
-        `[${APP_NAME}] failed to submit ${plan.intent.kind} for ${assignment.assignment.matchId}`,
+        `[${APP_NAME}] failed to submit ${selectedAction.kind} for ${assignment.assignment.matchId}`,
         error,
       );
     } finally {

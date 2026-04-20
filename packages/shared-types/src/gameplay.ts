@@ -52,6 +52,7 @@ export interface ActivateAbilityIntent
     {
       abilityId: string;
       sourceInstanceId: CardInstanceId;
+      targetIds?: string[];
     }
   > {}
 
@@ -222,6 +223,7 @@ export interface AbilityActivatedEvent
       abilityId: string;
       seat: SeatId;
       sourceInstanceId: CardInstanceId;
+      targetIds?: string[];
     }
   > {}
 

@@ -1,0 +1,43 @@
+name: Setup Bun Workspace
+description: Resolve Bun from package.json, install dependencies, and optionally install Playwright Chromium.
+
+inputs:
+  install-playwright:
+    description: Install Playwright Chromium dependencies for browser tests.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve Bun version
+      id: bun-version
+      shell: bash
+      run: |
+        python3 - <<'PY' >> "$GITHUB_OUTPUT"
+        import json
+        from pathlib import Path
+
+        package_json = json.loads(Path("package.json").read_text())
+        package_manager = package_json.get("packageManager", "")
+        if not package_manager.startswith("bun@"):
+            raise SystemExit("Expected packageManager to pin Bun with bun@<version>")
+        print(f"version={package_manager.split('@', 1)[1]}")
+        PY
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ steps.bun-version.outputs.version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Install Playwright Chromium
+      if: ${{ inputs.install-playwright == 'true' }}
+      shell: bash
+      run: |
+        if [[ -f "playwright.config.ts" ]]; then
+          bunx playwright install --with-deps chromium
+        fi

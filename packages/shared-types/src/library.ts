@@ -18,6 +18,18 @@ export const CARD_LIBRARY_RARITIES = [
 ] as const;
 export type CardLibraryRarity = (typeof CARD_LIBRARY_RARITIES)[number];
 
+export interface CardReasoningMetadataV1 {
+  effectKinds: string[];
+  promptSurfaces: string[];
+  rulesSummary: string[];
+  stats: {
+    power: number;
+    toughness: number;
+  } | null;
+  targetClasses: string[];
+  timingAffordances: string[];
+}
+
 export interface CardCatalogEntry {
   abilities: Array<{
     id: string;
@@ -26,6 +38,17 @@ export interface CardCatalogEntry {
     resourceCost: number | null;
     speed: "fast" | "slow" | null;
     text: string;
+    targets?: Array<{
+      maxSelections: number;
+      minSelections: number;
+      selector:
+        | "anyCard"
+        | "friendlyUnit"
+        | "opposingUnit"
+        | "player"
+        | "self"
+        | "stackObject";
+    }>;
   }>;
   cardId: string;
   cost: number;
@@ -35,6 +58,7 @@ export interface CardCatalogEntry {
   kind: CardLibraryKind;
   name: string;
   rarity: CardLibraryRarity;
+  reasoning: CardReasoningMetadataV1;
   rulesText: string[];
   setId: string;
   stats?: {

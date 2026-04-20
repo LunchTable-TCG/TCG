@@ -324,8 +324,116 @@
 
 **Exit Criteria**: The project is ready for limited external testing.
 
+## Phase 19: Program Control Plane and Source of Truth
+**Type**: Planning
+**Estimated**: 4 hours
+**Files**: `docs/program/*`, `README.md`, `IMPLEMENTATION_PHASES.md`, `SESSION.md`, `scripts/*.sh`, `tests/program-docs-contract.test.ts`
+
+**Tasks**:
+- [ ] Create the program source-of-truth docs under `docs/program/`
+- [ ] Extend the phase loop to recognize Phases 19-24 as the active roadmap
+- [ ] Add workflow contract coverage that locks doc and gate references together
+- [ ] Require a fresh health audit before handoff or merge of this program
+
+**Verification Criteria**:
+- [ ] `resume.sh` points directly at the active program docs
+- [ ] Workflow contract tests cover the program-doc references
+- [ ] `SESSION.md` and `docs/program/CHURN_TRACKER.md` agree on the active phase
+
+**Exit Criteria**: The repo can resume, track, and hand off the Phase 19-24 program without manual explanation.
+
+## Phase 20: Structured Gameplay-Agent Context and Observability
+**Type**: Integration
+**Estimated**: 8 hours
+**Files**: `packages/shared-types/src/*`, `packages/bot-sdk/src/*`, `convex/agents.ts`, `apps/bot-runner/src/*`, `convex/lib/agentLab.ts`
+
+**Tasks**:
+- [ ] Add `AgentMatchContextV1`, `LegalActionDescriptorV1`, `PromptDecisionSchemaV1`, and `BotDecisionTraceV1`
+- [ ] Build seat-legal structured context from live seat views
+- [ ] Replace prose-only advisory context with structured machine-readable overlays
+- [ ] Record telemetry for context building, invalid outputs, and decision lifecycle timings
+
+**Verification Criteria**:
+- [ ] Bot policies select legal actions from structured context
+- [ ] Coach and commentator consumers render the same context contract
+- [ ] Telemetry captures context-build and decision events without leaking private state
+
+**Exit Criteria**: Gameplay and advisory agents share a stable, structured, seat-legal match context.
+
+## Phase 21: Full Intent Parity and Live LLM Player Lifecycle
+**Type**: Integration
+**Estimated**: 10 hours
+**Files**: `packages/bot-sdk/src/*`, `apps/bot-runner/src/*`, `convex/matches.ts`, `convex/agents.ts`, `tests/*bot*.test.ts`
+
+**Tasks**:
+- [ ] Support every human-authoritative intent kind in the gameplay-agent stack
+- [ ] Keep policy, adapter, and transport boundaries explicit
+- [ ] Validate selected action ids against the live legal-action catalog before submission
+- [ ] Add retry, timeout/default-choice, reconnect, and post-match archival coverage
+
+**Verification Criteria**:
+- [ ] Gameplay bots can join practice, lobby, and queue matches through the public contract
+- [ ] Invalid or stale action selections are rejected and traced deterministically
+- [ ] Timeout/default handling matches human-seat rules
+
+**Exit Criteria**: Live gameplay agents can drive current-format seats without bypassing the authoritative public intent contract.
+
+## Phase 22: Card Addition Contract and Golden Results
+**Type**: Testing
+**Estimated**: 8 hours
+**Files**: `packages/card-content/src/*`, `tests/fixtures/*`, `tests/agent-playability.test.ts`, `tests/replay-golden.test.ts`
+
+**Tasks**:
+- [ ] Require `CardReasoningMetadataV1` for visible current-format cards
+- [ ] Add new-card admission validation and deterministic scenario coverage
+- [ ] Maintain canonical current-format golden fixtures for agent actions and match outcomes
+- [ ] Keep replay and action-selection goldens synchronized with card-set changes
+
+**Verification Criteria**:
+- [ ] Current-format catalog validation fails when reasoning metadata is missing
+- [ ] Curated Standard Alpha scenarios assert exact chosen action ids and outcomes
+- [ ] Replay goldens remain deterministic after card additions
+
+**Exit Criteria**: New cards can only ship after passing the same reasoning, golden-result, and replay contracts as the rest of the current format.
+
+## Phase 23: Complete E2E Lifecycle Coverage
+**Type**: Testing
+**Estimated**: 10 hours
+**Files**: `e2e/*`, `tests/*`, `playwright.config.ts`
+
+**Tasks**:
+- [ ] Add browser golden paths for full practice, lobby, queue, replay, and operator/admin flows
+- [ ] Add resilience coverage for reconnect, stale state recovery, bot-runner restart, and match resume
+- [ ] Add agent-specific lifecycle coverage for mulligan, combat, prompt handling, timeout/default handling, and concede
+- [ ] Add golden-result assertions for authoritative post-match outcomes
+
+**Verification Criteria**:
+- [ ] Browser suites cover signup through match or replay completion for supported surfaces
+- [ ] Resilience suites prove recovery behavior instead of timing out silently
+- [ ] Agent lifecycle coverage proves seat join through match completion
+
+**Exit Criteria**: The current-format site has full lifecycle proof for human and gameplay-agent flows, not just match entry.
+
+## Phase 24: Benchmarks, Regression Gates, and Release Readiness
+**Type**: Performance
+**Estimated**: 6 hours
+**Files**: `scripts/run-deterministic-benchmarks.ts`, `scripts/phase-check.sh`, `docs/program/*`, `tests/phase-gates-workflow.test.ts`
+
+**Tasks**:
+- [ ] Maintain deterministic benchmark budgets for context building, legal actions, and scripted full-match lifecycles
+- [ ] Keep browser and regression budgets explicit
+- [ ] Treat `phase-check fast/full/regression` as the authoritative local merge gates
+- [ ] Record a fresh `project-health` rerun before merge or handoff
+
+**Verification Criteria**:
+- [ ] `benchmark:deterministic` runs inside the regression gate
+- [ ] Regression gate coverage remains aligned with docs and contract tests
+- [ ] Health-audit status is captured before completion or handoff
+
+**Exit Criteria**: The agent-playable current-format program has deterministic merge gates, benchmark budgets, and a documented release-readiness bar.
+
 ## Notes
 
 **Testing Strategy**: Pure `game-core` unit tests, `convex-test` backend tests, Playwright end-to-end, replay goldens.
 **Deployment Strategy**: Convex dev deployment for local work, preview deployments for review, production locked behind phase 18 gates.
-**Context Management**: Each phase is intentionally sized so implementation and verification fit in one focused session.
+**Context Management**: Each phase is intentionally sized so implementation and verification fit in one focused session. Phases 19-24 use [docs/program/EXECUTION_PLAN.md](docs/program/EXECUTION_PLAN.md) as the source of truth for the current agent-playable program.

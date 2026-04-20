@@ -276,10 +276,15 @@ export interface MatchStackItemView {
 }
 
 export interface MatchEventSummary {
+  abilityId?: string;
+  cardId?: string;
+  cardName?: string;
+  focusInstanceId?: CardInstanceId;
   kind: MatchEventKind;
   label: string;
   seat: SeatId | null;
   sequence: number;
+  toZone?: ZoneKind;
 }
 
 export interface MatchSeatView {

@@ -596,11 +596,14 @@ export function deserializeMatchShell(shellJson: string): MatchShell {
 }
 
 export function serializeMatchState(state: MatchState): string {
-  return JSON.stringify(state);
+  return JSON.stringify(normalizeMatchStateSnapshot(state));
 }
 
 export function deserializeMatchState(snapshotJson: string): MatchState {
-  return parseMatchStateJson(snapshotJson);
+  const normalized = normalizeMatchStateSnapshot(
+    JSON.parse(snapshotJson) as MatchState,
+  );
+  return parseMatchStateJson(JSON.stringify(normalized));
 }
 
 export function serializeMatchEvent(event: MatchEvent): string {
@@ -636,4 +639,31 @@ export function seatFromEvent(event: MatchEvent): string | undefined {
     return event.payload.seat;
   }
   return undefined;
+}
+
+function normalizeMatchStateSnapshot(snapshot: MatchState): MatchState {
+  return {
+    ...snapshot,
+    continuousEffects: Array.isArray(snapshot.continuousEffects)
+      ? snapshot.continuousEffects.map((effect) => ({
+          ...effect,
+          targetIds: Array.isArray(effect.targetIds) ? [...effect.targetIds] : [],
+        }))
+      : [],
+    prompts: Array.isArray(snapshot.prompts)
+      ? snapshot.prompts.map((prompt) => ({
+          ...prompt,
+          choiceIds: Array.isArray(prompt.choiceIds) ? [...prompt.choiceIds] : [],
+          resolvedChoiceIds: Array.isArray(prompt.resolvedChoiceIds)
+            ? [...prompt.resolvedChoiceIds]
+            : [],
+        }))
+      : [],
+    stack: Array.isArray(snapshot.stack)
+      ? snapshot.stack.map((item) => ({
+          ...item,
+          targetIds: Array.isArray(item.targetIds) ? [...item.targetIds] : [],
+        }))
+      : [],
+  };
 }

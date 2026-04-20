@@ -12,7 +12,6 @@ import type {
   DeckStatus,
   DeckValidationResult,
   FormatRuntimeSettings,
-  GameplayIntent,
   LobbyMutationResult,
   LobbyRecord,
   MatchEventKind,
@@ -68,36 +67,92 @@ export interface SubmitIntentResult {
   shell: MatchShell | null;
 }
 
-type SubmitIntentKind =
-  | "activateAbility"
-  | "concede"
-  | "keepOpeningHand"
-  | "passPriority"
-  | "playCard"
-  | "takeMulligan"
-  | "toggleAutoPass";
-
-type SubmitIntentBase = Extract<GameplayIntent, { kind: SubmitIntentKind }>;
-
-type SubmitPlayCardIntent = Extract<SubmitIntentBase, { kind: "playCard" }>;
-type SubmitNonPlayCardIntent = Exclude<SubmitIntentBase, SubmitPlayCardIntent>;
-
-type WithSubmitSeat<T extends { seat: unknown }> = T extends unknown
-  ? Omit<T, "seat"> & { seat: MatchSeatId }
-  : never;
-
-type SubmitPlayableCardIntent = Omit<
-  WithSubmitSeat<SubmitPlayCardIntent>,
-  "payload"
-> & {
-  payload: Omit<SubmitPlayCardIntent["payload"], "sourceZone"> & {
-    sourceZone: Exclude<SubmitPlayCardIntent["payload"]["sourceZone"], "stack">;
-  };
+type SubmitIntentBase<TKind extends string, TPayload> = {
+  intentId: string;
+  kind: TKind;
+  matchId: string;
+  payload: TPayload;
+  seat: "seat-0" | "seat-1";
+  stateVersion: number;
 };
 
 export type SubmitIntent =
-  | WithSubmitSeat<SubmitNonPlayCardIntent>
-  | SubmitPlayableCardIntent;
+  | SubmitIntentBase<
+      "activateAbility",
+      {
+        abilityId: string;
+        sourceInstanceId: string;
+        targetIds?: string[];
+      }
+    >
+  | SubmitIntentBase<
+      "assignCombatDamage",
+      {
+        assignments: Array<{
+          amount: number;
+          sourceId: string;
+          targetId: string;
+        }>;
+      }
+    >
+  | SubmitIntentBase<"chooseCosts", { costIds: string[]; promptId: string }>
+  | SubmitIntentBase<"chooseModes", { modeIds: string[]; promptId: string }>
+  | SubmitIntentBase<
+      "choosePromptOptions",
+      {
+        choiceIds: string[];
+        promptId: string;
+      }
+    >
+  | SubmitIntentBase<"chooseTargets", { promptId: string; targetIds: string[] }>
+  | SubmitIntentBase<
+      "concede",
+      {
+        reason: "disconnect" | "manual" | "timeout";
+      }
+    >
+  | SubmitIntentBase<
+      "declareAttackers",
+      {
+        attackers: Array<{
+          attackerId: string;
+          defenderSeat: "seat-0" | "seat-1";
+          laneId: string | null;
+        }>;
+      }
+    >
+  | SubmitIntentBase<
+      "declareBlockers",
+      {
+        blocks: Array<{
+          attackerId: string;
+          blockerId: string;
+        }>;
+      }
+    >
+  | SubmitIntentBase<"keepOpeningHand", Record<string, never>>
+  | SubmitIntentBase<"passPriority", Record<string, never>>
+  | SubmitIntentBase<
+      "playCard",
+      {
+        alternativeCostId: string | null;
+        cardInstanceId: string;
+        sourceZone:
+          | "battlefield"
+          | "command"
+          | "deck"
+          | "graveyard"
+          | "hand"
+          | "laneReserve"
+          | "objective"
+          | "sideboard"
+          | "stack"
+          | "exile";
+        targetSlotId: string | null;
+      }
+    >
+  | SubmitIntentBase<"takeMulligan", { targetHandSize: number | null }>
+  | SubmitIntentBase<"toggleAutoPass", { enabled: boolean }>;
 
 export interface WalletLibraryTransport extends WalletAuthTransport {
   archiveDeck(args: {
@@ -106,6 +161,9 @@ export interface WalletLibraryTransport extends WalletAuthTransport {
   archiveLabSession(args: {
     sessionId: AgentLabSessionId;
   }): Promise<AgentLabSessionRecord>;
+  addBotGuest(args: {
+    lobbyId: LobbyRecord["id"];
+  }): Promise<LobbyMutationResult>;
   createPrivateLobby(args: {
     deckId: DeckId;
   }): Promise<LobbyMutationResult>;
@@ -234,6 +292,12 @@ export function createConvexWalletAuthTransport(
         api.agents.archiveLabSession,
         args,
       ) as Promise<AgentLabSessionRecord>;
+    },
+    addBotGuest(args) {
+      return client.mutation(
+        api.lobbies.addBotGuest,
+        args,
+      ) as Promise<LobbyMutationResult>;
     },
     createPrivateLobby(args) {
       return client.mutation(

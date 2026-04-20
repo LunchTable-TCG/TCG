@@ -8,6 +8,7 @@ import {
   createDecisionFrame,
   createExternalDecisionEnvelope,
   createExternalDecisionPrompt,
+  createAgentMatchContext,
   getCatalogForFormat,
   listLegalBotActions,
   planBaselineIntent,
@@ -217,6 +218,71 @@ function createPrioritySeatView(): MatchSeatView {
   };
 }
 
+function createTargetingSeatView(): MatchSeatView {
+  const view = createPrioritySeatView();
+
+  return {
+    ...view,
+    zones: view.zones.map((zone) => {
+      if (zone.ownerSeat === "seat-1" && zone.zone === "battlefield") {
+        return {
+          ...zone,
+          cardCount: 3,
+          cards: [
+            {
+              annotations: [],
+              cardId: "field-marshal-cadet",
+              controllerSeat: "seat-1",
+              counters: {},
+              instanceId: "seat-1:field-marshal-cadet:battlefield:1",
+              isTapped: false,
+              keywords: [],
+              name: "Field Marshal Cadet",
+              ownerSeat: "seat-1",
+              slotId: null,
+              statLine: { power: 2, toughness: 2 },
+              visibility: "public",
+              zone: "battlefield",
+            },
+            {
+              annotations: [],
+              cardId: "tidecall-apprentice",
+              controllerSeat: "seat-1",
+              counters: {},
+              instanceId: "seat-1:tidecall-apprentice:battlefield:1",
+              isTapped: false,
+              keywords: [],
+              name: "Tidecall Apprentice",
+              ownerSeat: "seat-1",
+              slotId: null,
+              statLine: { power: 1, toughness: 2 },
+              visibility: "public",
+              zone: "battlefield",
+            },
+            {
+              annotations: [],
+              cardId: "archive-apprentice",
+              controllerSeat: "seat-1",
+              counters: {},
+              instanceId: "seat-1:archive-apprentice:battlefield:1",
+              isTapped: false,
+              keywords: [],
+              name: "Archive Apprentice",
+              ownerSeat: "seat-1",
+              slotId: null,
+              statLine: { power: 1, toughness: 3 },
+              visibility: "public",
+              zone: "battlefield",
+            },
+          ],
+        };
+      }
+
+      return zone;
+    }),
+  };
+}
+
 describe("bot foundation helpers", () => {
   it("normalizes bot identity fields and assignment status safely", () => {
     expect(normalizeBotSlug(" Table Bot ")).toBe("table-bot");
@@ -237,8 +303,8 @@ describe("bot foundation helpers", () => {
 
     const plan = planBaselineIntent(frame);
 
-    expect(plan?.intent.kind).toBe("keepOpeningHand");
-    expect(plan?.intent.seat).toBe("seat-1");
+    expect(plan?.actionId).toBe("bot:seat-1:0:keep:prompt:seat-1:mulligan");
+    expect(frame.context.legalActions[0]?.kind).toBe("keepOpeningHand");
   });
 
   it("prefers direct-damage plays before lower-impact cards", () => {
@@ -297,6 +363,7 @@ describe("bot foundation helpers", () => {
     });
 
     expect(plan).toEqual({
+      actionId: topAction.actionId,
       confidence: 0.91,
       intent: topAction.intent,
       requestedAt: frame.receivedAt,
@@ -318,6 +385,7 @@ describe("bot foundation helpers", () => {
         response: topAction.actionId,
       }),
     ).toEqual({
+      actionId: topAction.actionId,
       confidence: 0.5,
       intent: topAction.intent,
       requestedAt: frame.receivedAt,
@@ -332,5 +400,68 @@ describe("bot foundation helpers", () => {
         },
       }),
     ).toThrow("External agent returned an unknown actionId");
+  });
+
+  it("builds a structured agent match context with visible card metadata", () => {
+    const view = createPrioritySeatView();
+    const catalog = createCatalogEntriesForFormat(starterFormat);
+    const context = createAgentMatchContext({
+      catalog,
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 0),
+      view,
+    });
+
+    expect(context.version).toBe("v1");
+    expect(context.viewerSeat).toBe("seat-1");
+    expect(context.legalActions.length).toBeGreaterThan(0);
+    expect(
+      context.visibleCards.find((card) => card.card.cardId === "ember-summoner")
+        ?.card.reasoning.effectKinds,
+    ).toContain("dealDamage");
+  });
+
+  it("enumerates targeted activated abilities as concrete legal actions", () => {
+    const frame = createDecisionFrame({
+      catalog: getCatalogForFormat(starterFormat.formatId),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 0),
+      view: createTargetingSeatView(),
+    });
+
+    const actions = listLegalBotActions(frame).filter(
+      (action) =>
+        action.kind === "activateAbility" &&
+        action.intent.kind === "activateAbility" &&
+        action.intent.payload.abilityId === "battlefield-orders",
+    );
+
+    expect(actions).toHaveLength(3);
+    expect(
+      actions.map((action) =>
+        action.intent.kind === "activateAbility"
+          ? action.intent.payload.targetIds
+          : null,
+      ),
+    ).toEqual([
+      ["seat-1:archive-apprentice:battlefield:1"],
+      ["seat-1:field-marshal-cadet:battlefield:1"],
+      ["seat-1:tidecall-apprentice:battlefield:1"],
+    ]);
+  });
+
+  it("waits instead of conceding when only passive controls remain", () => {
+    const frame = createDecisionFrame({
+      catalog: createCatalogEntriesForFormat(starterFormat),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 30),
+      view: {
+        ...createPrioritySeatView(),
+        availableIntents: ["toggleAutoPass", "concede"],
+      },
+    });
+
+    expect(listLegalBotActions(frame).map((action) => action.kind)).toEqual([
+      "concede",
+      "toggleAutoPass",
+    ]);
+    expect(planBaselineIntent(frame)).toBeNull();
   });
 });

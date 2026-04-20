@@ -1,3 +1,7 @@
+export {
+  createAgentMatchContext,
+  listLegalActionDescriptors,
+} from "./agent-context";
 export { getCatalogForFormat } from "./catalog";
 export {
   createExternalDecisionEnvelope,

@@ -51,7 +51,7 @@ export function createExternalDecisionPrompt(frame: BotDecisionFrame): string {
     "Legal actions:",
     ...actions.map(
       (action) =>
-        `- ${action.intent.intentId}: ${action.label} [${action.kind}] priority=${action.priority}`,
+        `- ${action.actionId}: ${action.humanLabel} [${action.kind}] priority=${action.priority}`,
     ),
     'Response JSON: {"actionId":"...","confidence":0.0-1.0,"rationale":"optional"}',
   ];
@@ -63,10 +63,10 @@ export function createExternalDecisionEnvelope(
   frame: BotDecisionFrame,
 ): BotExternalDecisionEnvelope {
   const legalActions = listLegalBotActions(frame).map((action) => ({
-    actionId: action.intent.intentId,
+    actionId: action.actionId,
     intent: action.intent,
     kind: action.kind,
-    label: action.label,
+    label: action.humanLabel,
     priority: action.priority,
   }));
 
@@ -107,7 +107,7 @@ export function resolveExternalDecisionResponse(input: {
   }
 
   const action = listLegalBotActions(input.frame).find(
-    (candidate) => candidate.intent.intentId === parsed.actionId,
+    (candidate) => candidate.actionId === parsed.actionId,
   );
   if (!action) {
     throw new Error("External agent returned an unknown actionId");
@@ -123,6 +123,7 @@ export function resolveExternalDecisionResponse(input: {
       : 0.5;
 
   return {
+    actionId: action.actionId,
     confidence,
     intent: action.intent,
     requestedAt: input.frame.receivedAt,

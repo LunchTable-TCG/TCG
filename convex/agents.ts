@@ -37,6 +37,7 @@ import {
   toBotIdentityRecord,
 } from "./lib/agents";
 import { issueActorAuthToken } from "./lib/jwt";
+import { recordTelemetryEvent } from "./lib/telemetry";
 import { deserializeSeatView, deserializeSpectatorView } from "./lib/matches";
 import { requireViewerUser } from "./lib/viewer";
 
@@ -223,6 +224,39 @@ export const getMyBotIdentity = query({
       .unique();
 
     return botIdentity ? toBotIdentityRecord(botIdentity) : null;
+  },
+});
+
+export const recordBotTelemetry = mutation({
+  args: {
+    event: v.object({
+      at: v.number(),
+      matchId: v.optional(v.string()),
+      metrics: v.optional(v.record(v.string(), v.number())),
+      name: v.string(),
+      seat: v.optional(v.string()),
+      tags: v.optional(v.record(v.string(), v.string())),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireViewerUser(ctx);
+    if ((user.actorType ?? "human") !== "bot") {
+      throw new Error("Bot authentication required");
+    }
+
+    await recordTelemetryEvent(ctx.db, {
+      at: args.event.at,
+      matchId: args.event.matchId,
+      metrics: args.event.metrics,
+      name: args.event.name as never,
+      seat: args.event.seat as never,
+      tags: args.event.tags,
+      userId: user._id,
+    });
+
+    return {
+      accepted: true,
+    } as const;
   },
 });
 

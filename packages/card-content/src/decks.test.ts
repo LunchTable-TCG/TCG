@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createCatalogEntriesForFormat, validateDeckForFormat } from "./decks";
+import {
+  createCatalogEntriesForFormat,
+  validateCardReasoningMetadata,
+  validateDeckForFormat,
+} from "./decks";
 import { starterFormat } from "./formats";
 
 describe("starter deck validation", () => {
@@ -57,5 +61,12 @@ describe("starter deck validation", () => {
         "tooFewCards",
       ]),
     );
+  });
+
+  it("emits complete agent reasoning metadata for every visible card", () => {
+    const catalog = createCatalogEntriesForFormat(starterFormat);
+
+    expect(validateCardReasoningMetadata(catalog)).toEqual([]);
+    expect(catalog[0]?.reasoning.timingAffordances).toContain("mainPhaseCast");
   });
 });

@@ -4,6 +4,7 @@ import {
   applyGameplayIntent,
   createGameState,
   createMatchShellFromState,
+  createSeatView,
   replayGameplayIntents,
 } from "./index";
 
@@ -554,6 +555,144 @@ describe("applyGameplayIntent", () => {
     expect(secondPass.nextState.seats["seat-0"]?.hand).toContain(
       "seat-0:tidecall-apprentice:deck:draw1",
     );
+  });
+
+  it("resolves targeted activated abilities and clears end-of-turn keyword grants on the next turn", () => {
+    const state = keepBothOpeningHands();
+
+    state.cardCatalog["field-marshal-cadet"] = {
+      abilities: [
+        {
+          costs: [
+            {
+              amount: 1,
+              kind: "resource",
+              resourceId: "mana",
+            },
+          ],
+          effect: [
+            {
+              keywordId: "haste",
+              kind: "grantKeyword",
+              target: "target",
+              until: "endOfTurn",
+            },
+          ],
+          id: "battlefield-orders",
+          kind: "activated",
+          speed: "slow",
+          targets: [
+            {
+              count: {
+                max: 1,
+                min: 1,
+              },
+              selector: "friendlyUnit",
+            },
+          ],
+          text: "Target friendly unit gains haste until end of turn.",
+        },
+      ],
+      cardId: "field-marshal-cadet",
+      cost: 2,
+      kind: "unit",
+      keywords: [],
+      name: "Field Marshal Cadet",
+      stats: {
+        power: 2,
+        toughness: 2,
+      },
+    };
+    state.seats["seat-0"].battlefield.push(
+      "seat-0:field-marshal-cadet:battlefield:1",
+      "seat-0:tidecall-apprentice:battlefield:1",
+    );
+    state.seats["seat-0"].resources = [
+      {
+        current: 1,
+        label: "Mana",
+        maximum: 1,
+        resourceId: "mana",
+      },
+    ];
+
+    const activation = applyGameplayIntent(state, {
+      intentId: "intent_targeted_activate_001",
+      kind: "activateAbility",
+      matchId: state.shell.id,
+      payload: {
+        abilityId: "battlefield-orders",
+        sourceInstanceId: "seat-0:field-marshal-cadet:battlefield:1",
+        targetIds: ["seat-0:tidecall-apprentice:battlefield:1"],
+      },
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+
+    expect(activation.outcome).toBe("applied");
+    expect(activation.nextState.stack).toHaveLength(1);
+
+    const resolvePassA = applyGameplayIntent(activation.nextState, {
+      intentId: "intent_targeted_activate_pass_001",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-1",
+      stateVersion: activation.nextState.shell.version,
+    });
+    const resolvePassB = applyGameplayIntent(resolvePassA.nextState, {
+      intentId: "intent_targeted_activate_pass_002",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-0",
+      stateVersion: resolvePassA.nextState.shell.version,
+    });
+
+    const resolvedSeatView = createSeatView(
+      resolvePassB.nextState,
+      "seat-0",
+      resolvePassB.events,
+    );
+    const hastedUnit = resolvedSeatView.zones
+      .find((zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield")
+      ?.cards.find(
+        (card) => card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
+      );
+
+    expect(hastedUnit?.keywords).toContain("haste");
+
+    let advancedState = resolvePassB.nextState;
+    for (let pair = 0; pair < 7; pair += 1) {
+      const firstPass = applyGameplayIntent(advancedState, {
+        intentId: `intent_advance_phase_${pair}_a`,
+        kind: "passPriority",
+        matchId: state.shell.id,
+        payload: {},
+        seat: "seat-0",
+        stateVersion: advancedState.shell.version,
+      });
+      const secondPass = applyGameplayIntent(firstPass.nextState, {
+        intentId: `intent_advance_phase_${pair}_b`,
+        kind: "passPriority",
+        matchId: state.shell.id,
+        payload: {},
+        seat: "seat-1",
+        stateVersion: firstPass.nextState.shell.version,
+      });
+      advancedState = secondPass.nextState;
+    }
+
+    expect(advancedState.shell.turnNumber).toBe(2);
+
+    const nextTurnSeatView = createSeatView(advancedState, "seat-0", []);
+    const resetUnit = nextTurnSeatView.zones
+      .find((zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield")
+      ?.cards.find(
+        (card) => card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
+      );
+
+    expect(resetUnit?.keywords).not.toContain("haste");
   });
 
   it("applies state-based cleanup after a continuous stat buff source leaves play", () => {

@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-bun-workspace
+        with:
+          install-playwright: "true"
+
+      - name: Full validation gate
+        run: ./scripts/phase-check.sh full
+
+      - name: Regression gate
+        run: ./scripts/phase-check.sh regression
+
+      - name: Generate release notes
+        run: bash ./scripts/generate-release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.ref_name }}
+          path: release-notes.md
+
+      - name: Publish GitHub release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("node:fs");
+            const body = fs.readFileSync("release-notes.md", "utf8");
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace("refs/tags/", ""),
+              name: context.ref.replace("refs/tags/", ""),
+              body,
+              draft: false,
+              prerelease: false,
+              generate_release_notes: false,
+            });
+            core.info(`Release published: ${release.data.html_url}`);

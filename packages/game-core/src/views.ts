@@ -151,7 +151,30 @@ function createSeatStateView(
   };
 }
 
-function createRecentEventSummary(event: MatchEvent): MatchEventSummary {
+function getCardNameFromInstanceId(
+  state: MatchState,
+  instanceId: string | null,
+): string | null {
+  if (!instanceId) {
+    return null;
+  }
+
+  const cardId = cardIdFromInstanceId(instanceId);
+  return state.cardCatalog[cardId]?.name ?? cardId;
+}
+
+function getCardIdFromEventInstanceId(instanceId: string | null): string | null {
+  if (!instanceId) {
+    return null;
+  }
+
+  return cardIdFromInstanceId(instanceId);
+}
+
+function createRecentEventSummary(
+  state: MatchState,
+  event: MatchEvent,
+): MatchEventSummary {
   if (event.kind === "matchCreated") {
     return {
       kind: event.kind,
@@ -198,11 +221,20 @@ function createRecentEventSummary(event: MatchEvent): MatchEventSummary {
   }
 
   if (event.kind === "cardPlayed") {
+    const cardName = getCardNameFromInstanceId(
+      state,
+      event.payload.cardInstanceId,
+    );
+
     return {
+      cardId: getCardIdFromEventInstanceId(event.payload.cardInstanceId) ?? undefined,
+      cardName: cardName ?? undefined,
+      focusInstanceId: event.payload.cardInstanceId,
       kind: event.kind,
-      label: "Played a card",
+      label: cardName ? `Played ${cardName}` : "Played a card",
       seat: event.payload.seat,
       sequence: event.sequence,
+      toZone: event.payload.toZone,
     };
   }
 
@@ -237,9 +269,30 @@ function createRecentEventSummary(event: MatchEvent): MatchEventSummary {
   }
 
   if (event.kind === "abilityActivated") {
+    const cardName = getCardNameFromInstanceId(
+      state,
+      event.payload.sourceInstanceId,
+    );
+    const targetLabel =
+      event.payload.targetIds && event.payload.targetIds.length > 0
+        ? ` targeting ${event.payload.targetIds
+            .map(
+              (targetId) =>
+                getCardNameFromInstanceId(state, targetId) ?? targetId,
+            )
+            .join(", ")}`
+        : "";
+
     return {
+      abilityId: event.payload.abilityId,
+      cardId:
+        getCardIdFromEventInstanceId(event.payload.sourceInstanceId) ?? undefined,
+      cardName: cardName ?? undefined,
+      focusInstanceId: event.payload.sourceInstanceId,
       kind: event.kind,
-      label: `Activated ${event.payload.abilityId}`,
+      label: cardName
+        ? `${cardName} activated ${event.payload.abilityId}${targetLabel}`
+        : `Activated ${event.payload.abilityId}`,
       seat: event.payload.seat,
       sequence: event.sequence,
     };
@@ -425,10 +478,13 @@ function createAvailableIntents(
 }
 
 export function createRecentEventSummaries(
+  state: MatchState,
   events: MatchEvent[],
   limit = 10,
 ): MatchEventSummary[] {
-  return events.slice(-limit).map(createRecentEventSummary);
+  return events
+    .slice(-limit)
+    .map((event) => createRecentEventSummary(state, event));
 }
 
 export function createSeatView(
@@ -448,7 +504,7 @@ export function createSeatView(
     kind: "seat",
     match: state.shell,
     prompt: prompt ? createPromptView(prompt) : null,
-    recentEvents: createRecentEventSummaries(events),
+    recentEvents: createRecentEventSummaries(state, events),
     seats: Object.values(state.seats).map((seat) =>
       createSeatStateView(state, seat),
     ),
@@ -467,7 +523,7 @@ export function createSpectatorView(
     kind: "spectator",
     match: state.shell,
     prompt: null,
-    recentEvents: createRecentEventSummaries(events),
+    recentEvents: createRecentEventSummaries(state, events),
     seats: Object.values(state.seats).map((seat) =>
       createSeatStateView(state, seat),
     ),

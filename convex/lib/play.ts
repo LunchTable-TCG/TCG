@@ -45,6 +45,7 @@ export function deriveLobbyStatus(input: {
 export function toLobbyRecord(lobby: Doc<"lobbies">): LobbyRecord {
   const participants: LobbyRecord["participants"] = [
     {
+      actorType: "human",
       deckId: lobby.hostDeckId,
       joinedAt: lobby.createdAt,
       ready: lobby.hostReady,
@@ -57,6 +58,7 @@ export function toLobbyRecord(lobby: Doc<"lobbies">): LobbyRecord {
 
   if (lobby.guestUserId && lobby.guestDeckId) {
     participants.push({
+      actorType: lobby.guestActorType ?? "human",
       deckId: lobby.guestDeckId,
       joinedAt: lobby.guestJoinedAt ?? lobby.updatedAt,
       ready: lobby.guestReady ?? false,

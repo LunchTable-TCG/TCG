@@ -64,6 +64,8 @@ describe("agent lab helper replies", () => {
     expect(reply).toContain("Coach mode is advisory only");
     expect(reply).toContain("Legal actions now:");
     expect(reply).toContain("Keep opening hand");
+    expect(reply).toContain("Structured agent context:");
+    expect(reply).toContain('"legalActions"');
     expect(reply).toContain(
       "Requested focus: What is my safest parity-safe line?",
     );
@@ -83,6 +85,8 @@ describe("agent lab helper replies", () => {
     expect(reply).toContain("Commentator mode is public-state only");
     expect(reply).toContain("Replay coverage: 12 public frames");
     expect(reply).toContain("Requested focus: Give me a short update");
+    expect(reply).toContain("Structured agent context:");
+    expect(reply).toContain('"visibleCards"');
     expect(reply).not.toContain("private-self");
   });
 

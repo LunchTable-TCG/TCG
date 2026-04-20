@@ -19,6 +19,21 @@ function getOperatorEmailAllowlist(): Set<string> {
   );
 }
 
+function matchesOperatorAllowlistEntry(
+  emailNormalized: string,
+  entry: string,
+): boolean {
+  if (!entry) {
+    return false;
+  }
+
+  if (entry.startsWith("@")) {
+    return emailNormalized.endsWith(entry);
+  }
+
+  return emailNormalized === entry;
+}
+
 export async function getViewerUser(
   ctx: ViewerCtx,
 ): Promise<Doc<"users"> | null> {
@@ -53,7 +68,9 @@ export function isOperatorUser(
     return false;
   }
 
-  return getOperatorEmailAllowlist().has(user.emailNormalized);
+  return [...getOperatorEmailAllowlist()].some((entry) =>
+    matchesOperatorAllowlistEntry(user.emailNormalized, entry),
+  );
 }
 
 export async function requireOperatorUser(

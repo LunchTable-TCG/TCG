@@ -1,5 +1,6 @@
 export {
   createCatalogEntriesForFormat,
+  validateCardReasoningMetadata,
   validateDeckForFormat,
 } from "./decks";
 export { starterCards } from "./cards";

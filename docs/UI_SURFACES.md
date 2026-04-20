@@ -41,15 +41,16 @@
 
 ### 2. Auth
 
-- Purpose: authenticate humans through WorkOS.
+- Purpose: authenticate humans through self-custodied BSC wallet challenges backed by Convex.
 - Required blocks:
-  - sign in
-  - sign up
-  - passwordless/social handoff
-  - callback error handling
+  - signup with email + username
+  - one-time private key reveal with explicit save confirmation
+  - login by private key import or local restore
+  - challenge request and signature error handling
 - Key states:
   - loading
-  - failed callback
+  - failed challenge request
+  - failed signature verification
   - missing session
 
 ### 3. App Home

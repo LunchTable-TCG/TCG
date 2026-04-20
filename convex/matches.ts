@@ -83,6 +83,98 @@ const gameplayIntentValidator = v.union(
     payload: v.object({
       abilityId: v.string(),
       sourceInstanceId: v.string(),
+      targetIds: v.optional(v.array(v.string())),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("declareAttackers"),
+    matchId: v.string(),
+    payload: v.object({
+      attackers: v.array(
+        v.object({
+          attackerId: v.string(),
+          defenderSeat: gameplaySeatValidator,
+          laneId: v.union(v.string(), v.null()),
+        }),
+      ),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("declareBlockers"),
+    matchId: v.string(),
+    payload: v.object({
+      blocks: v.array(
+        v.object({
+          attackerId: v.string(),
+          blockerId: v.string(),
+        }),
+      ),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("assignCombatDamage"),
+    matchId: v.string(),
+    payload: v.object({
+      assignments: v.array(
+        v.object({
+          amount: v.number(),
+          sourceId: v.string(),
+          targetId: v.string(),
+        }),
+      ),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("choosePromptOptions"),
+    matchId: v.string(),
+    payload: v.object({
+      choiceIds: v.array(v.string()),
+      promptId: v.string(),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("chooseTargets"),
+    matchId: v.string(),
+    payload: v.object({
+      promptId: v.string(),
+      targetIds: v.array(v.string()),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("chooseModes"),
+    matchId: v.string(),
+    payload: v.object({
+      modeIds: v.array(v.string()),
+      promptId: v.string(),
+    }),
+    seat: gameplaySeatValidator,
+    stateVersion: v.number(),
+  }),
+  v.object({
+    intentId: v.string(),
+    kind: v.literal("chooseCosts"),
+    matchId: v.string(),
+    payload: v.object({
+      costIds: v.array(v.string()),
+      promptId: v.string(),
     }),
     seat: gameplaySeatValidator,
     stateVersion: v.number(),
@@ -103,6 +195,7 @@ const gameplayIntentValidator = v.union(
         v.literal("laneReserve"),
         v.literal("objective"),
         v.literal("sideboard"),
+        v.literal("stack"),
         v.literal("exile"),
       ),
       targetSlotId: v.union(v.string(), v.null()),

@@ -33,9 +33,22 @@ dirty, it warns instead of silently treating that state as release-ready.
 After `bun run release:proof` passes on the commit you intend to ship:
 
 ```bash
-git tag -a v0.1.0 -m "Lunch-Table release v0.1.0"
-git push origin v0.1.0
+bun run release:cut -- v0.1.0 --dry-run
+bun run release:cut -- v0.1.0 --push
 ```
+
+`release:cut` runs the release proof first, writes release notes to
+`.phase-loop/releases/<tag>.md`, creates an annotated tag, and optionally pushes
+that tag.
+
+## GitHub Tag Workflow
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
+
+1. uses the shared workspace bootstrap action
+2. runs the same full and regression gates as local release proof
+3. generates release notes from git history
+4. publishes a GitHub release for the tag
 
 ## Recommended Release Notes
 

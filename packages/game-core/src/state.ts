@@ -64,6 +64,14 @@ export interface MatchPromptState {
   status: "pending" | "resolved";
 }
 
+export interface MatchRuntimeContinuousEffectState {
+  controllerSeat: SeatId;
+  effect: Extract<EffectNode, { kind: "grantKeyword" | "modifyStats" }>;
+  expiresAtTurn: number | null;
+  sourceInstanceId: CardInstanceId | null;
+  targetIds: string[];
+}
+
 export interface MatchStackObjectState {
   abilityId: string | null;
   cardId: string | null;
@@ -116,6 +124,7 @@ export interface MatchSeatState {
 
 export interface MatchState {
   cardCatalog: Record<string, MatchCardCatalogEntry>;
+  continuousEffects: MatchRuntimeContinuousEffectState[];
   eventSequence: number;
   lastPriorityPassSeat: SeatId | null;
   prompts: MatchPromptState[];
@@ -286,6 +295,7 @@ export function createMatchState(
 
   const state: MatchState = {
     cardCatalog: {},
+    continuousEffects: [],
     eventSequence: 0,
     lastPriorityPassSeat: null,
     prompts: [],
@@ -375,7 +385,9 @@ function createBaseDerivedBattlefieldState(
 
 function applyContinuousEffect(
   derived: Record<CardInstanceId, DerivedBattlefieldCardState>,
-  effect: ContinuousEffectNode,
+  effect:
+    | ContinuousEffectNode
+    | Extract<EffectNode, { kind: "grantKeyword" | "modifyStats" }>,
   targets: CardInstanceId[],
 ) {
   for (const instanceId of targets) {
@@ -432,6 +444,17 @@ export function deriveBattlefieldCardStates(
         }
       }
     }
+  }
+
+  for (const effectState of state.continuousEffects) {
+    if (
+      effectState.expiresAtTurn !== null &&
+      effectState.expiresAtTurn < state.shell.turnNumber
+    ) {
+      continue;
+    }
+
+    applyContinuousEffect(derived, effectState.effect, effectState.targetIds);
   }
 
   return derived;

@@ -12,6 +12,19 @@ This repo uses a repeatable execution loop for each implementation phase:
 8. Advance `SESSION.md` to the next phase.
 9. Repeat.
 
+## Program Docs
+
+For the agent-playable current-format program in Phases 19-24, the control
+plane lives under `docs/program/`:
+
+- `docs/program/EXECUTION_PLAN.md`
+- `docs/program/CHURN_TRACKER.md`
+- `docs/program/VERIFICATION_MATRIX.md`
+- `docs/program/BENCHMARK_BUDGETS.md`
+
+Before handoff or merge of Phase 19-24 work, rerun the `project-health` skill
+against those docs and record the result in `SESSION.md`.
+
 ## Commands
 
 Resume the current state:

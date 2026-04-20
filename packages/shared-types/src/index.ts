@@ -1,5 +1,7 @@
 export const APP_NAME = "Lunch-Table";
 
+export { AGENT_MATCH_CONTEXT_VERSION } from "./agent-context";
+export { BENCHMARK_RESULT_VERSION } from "./benchmark";
 export { MATCH_RECOVERY_ACTIONS } from "./admin";
 export {
   AUTHORITATIVE_INTENT_KINDS,
@@ -50,6 +52,15 @@ export type {
   MatchEventKind,
 } from "./kinds";
 export type {
+  AgentMatchContextV1,
+  AgentVisibleCardV1,
+  BotDecisionTraceV1,
+  LegalActionArgumentValue,
+  LegalActionDescriptorV1,
+  PromptDecisionChoiceV1,
+  PromptDecisionSchemaV1,
+} from "./agent-context";
+export type {
   MatchRecoveryAction,
   RecoverableMatchRecord,
   RecoverMatchResult,
@@ -62,6 +73,10 @@ export type {
   AgentLabSessionStatus,
   AgentLabTurnResult,
 } from "./agent-lab";
+export type {
+  BenchmarkMeasurementV1,
+  BenchmarkResultV1,
+} from "./benchmark";
 export type {
   BotAssignmentId,
   BotAssignmentRecord,
@@ -85,6 +100,7 @@ export type {
   CardCatalogEntry,
   CardLibraryKind,
   CardLibraryRarity,
+  CardReasoningMetadataV1,
   CollectionCardEntry,
   CollectionSummary,
   DeckCardEntry,

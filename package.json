@@ -4,7 +4,8 @@
   "packageManager": "bun@1.3.10",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "bun run dev:web",
+    "dev": "bun run dev:stack",
+    "dev:stack": "bash ./scripts/run-local-stack.sh",
     "dev:web": "bun run --cwd apps/web dev",
     "dev:bot": "bun run --cwd apps/bot-runner dev",
     "dev:convex": "bunx convex dev",
@@ -14,6 +15,8 @@
     "build:bot": "bun run --cwd apps/bot-runner build",
     "lint": "biome check .",
     "format": "biome format --write .",
+    "release:cut": "bash ./scripts/cut-release.sh",
+    "release:notes": "bash ./scripts/generate-release-notes.sh",
     "release:proof": "bash ./scripts/release-proof.sh",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
@@ -21,8 +24,9 @@
     "test:convex": "vitest run convex/*.test.ts convex/**/*.test.ts tests/agent-lab-helpers.test.ts tests/bot-foundation.test.ts tests/bot-runner-refresh.test.ts tests/convex-auth-helpers.test.ts tests/convex-library-helpers.test.ts tests/lobby-matchmaking-helpers.test.ts tests/match-intent-helpers.test.ts tests/match-persistence-helpers.test.ts tests/replay-helpers.test.ts",
     "test:rules": "vitest run packages/game-core/src",
     "test:replay": "vitest run tests/replay-contract.test.ts tests/replay-golden.test.ts tests/replay-helpers.test.ts",
-    "test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/release-proof-contract.test.ts",
-    "test:e2e": "playwright test"
+    "test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts",
+    "test:e2e": "playwright test",
+    "benchmark:deterministic": "bun run scripts/run-deterministic-benchmarks.ts"
   },
   "dependencies": {
     "@convex-dev/agent": "0.6.1",

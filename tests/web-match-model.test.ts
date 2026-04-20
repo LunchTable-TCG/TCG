@@ -1,3 +1,7 @@
+import {
+  buildMatchCinematicAssetBundle,
+  buildMatchCinematicSceneModel,
+} from "../apps/web/src/components/match/cinematics";
 import type {
   CardCatalogEntry,
   MatchSeatView,
@@ -6,10 +10,23 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveMatchCinematicCue,
   getZoneView,
   listActivatedAbilityActions,
   resolveRenderableView,
 } from "../apps/web/src/components/match/model";
+
+function createReasoning(input?: Partial<CardCatalogEntry["reasoning"]>) {
+  return {
+    effectKinds: [],
+    promptSurfaces: [],
+    rulesSummary: [],
+    stats: null,
+    targetClasses: [],
+    timingAffordances: ["mainPhaseCast"],
+    ...input,
+  };
+}
 
 function createSeatView(): MatchSeatView {
   return {
@@ -160,6 +177,10 @@ describe("web match model helpers", () => {
         kind: "unit",
         name: "Archive Apprentice",
         rarity: "common",
+        reasoning: createReasoning({
+          effectKinds: ["drawCards"],
+          timingAffordances: ["mainPhaseCast", "slowActivation"],
+        }),
         rulesText: [],
         setId: "core-alpha",
         stats: {
@@ -178,5 +199,327 @@ describe("web match model helpers", () => {
       },
     ]);
     expect(getZoneView(view, "seat-0", "battlefield")?.cardCount).toBe(1);
+  });
+
+  it("lists targeted activated abilities as concrete battlefield actions", () => {
+    const view = createSeatView();
+    view.zones[0] = {
+      ...view.zones[0],
+      cardCount: 2,
+      cards: [
+        {
+          annotations: [],
+          cardId: "field-marshal-cadet",
+          controllerSeat: "seat-0",
+          counters: {},
+          instanceId: "seat-0:field-marshal-cadet:battlefield:1",
+          isTapped: false,
+          keywords: [],
+          name: "Field Marshal Cadet",
+          ownerSeat: "seat-0",
+          slotId: null,
+          statLine: {
+            power: 2,
+            toughness: 2,
+          },
+          visibility: "public",
+          zone: "battlefield",
+        },
+        {
+          annotations: [],
+          cardId: "tidecall-apprentice",
+          controllerSeat: "seat-0",
+          counters: {},
+          instanceId: "seat-0:tidecall-apprentice:battlefield:1",
+          isTapped: false,
+          keywords: [],
+          name: "Tidecall Apprentice",
+          ownerSeat: "seat-0",
+          slotId: null,
+          statLine: {
+            power: 1,
+            toughness: 2,
+          },
+          visibility: "public",
+          zone: "battlefield",
+        },
+      ],
+    };
+
+    const catalog: CardCatalogEntry[] = [
+      {
+        abilities: [
+          {
+            id: "battlefield-orders",
+            kind: "activated",
+            requiresTargets: true,
+            resourceCost: 1,
+            speed: "slow",
+            targets: [
+              {
+                maxSelections: 1,
+                minSelections: 1,
+                selector: "friendlyUnit",
+              },
+            ],
+            text: "Target friendly unit gains haste until end of turn.",
+          },
+        ],
+        cardId: "field-marshal-cadet",
+        cost: 2,
+        formatId: "core-demo",
+        isBanned: false,
+        keywords: [],
+        kind: "unit",
+        name: "Field Marshal Cadet",
+        rarity: "common",
+        reasoning: createReasoning({
+          effectKinds: ["grantKeyword"],
+          promptSurfaces: ["targets"],
+          targetClasses: ["friendlyUnit"],
+          timingAffordances: ["mainPhaseCast", "slowActivation"],
+        }),
+        rulesText: [],
+        setId: "core-alpha",
+        stats: {
+          power: 2,
+          toughness: 2,
+        },
+      },
+      {
+        abilities: [],
+        cardId: "tidecall-apprentice",
+        cost: 1,
+        formatId: "core-demo",
+        isBanned: false,
+        keywords: [],
+        kind: "unit",
+        name: "Tidecall Apprentice",
+        rarity: "common",
+        reasoning: createReasoning(),
+        rulesText: [],
+        setId: "core-alpha",
+        stats: {
+          power: 1,
+          toughness: 2,
+        },
+      },
+    ];
+
+    expect(listActivatedAbilityActions(catalog, view)).toEqual([
+      {
+        abilityId: "battlefield-orders",
+        cardName: "Field Marshal Cadet",
+        instanceId: "seat-0:field-marshal-cadet:battlefield:1",
+        targetIds: ["seat-0:field-marshal-cadet:battlefield:1"],
+        targetLabel: "Field Marshal Cadet",
+        text: "Target friendly unit gains haste until end of turn. -> Field Marshal Cadet",
+      },
+      {
+        abilityId: "battlefield-orders",
+        cardName: "Field Marshal Cadet",
+        instanceId: "seat-0:field-marshal-cadet:battlefield:1",
+        targetIds: ["seat-0:tidecall-apprentice:battlefield:1"],
+        targetLabel: "Tidecall Apprentice",
+        text: "Target friendly unit gains haste until end of turn. -> Tidecall Apprentice",
+      },
+    ]);
+  });
+
+  it("derives summon cinematics only for battlefield entries", () => {
+    const view = createSeatView();
+    view.recentEvents = [
+      {
+        cardId: "archive-apprentice",
+        cardName: "Archive Apprentice",
+        focusInstanceId: "seat-0:archive-apprentice:hand:1",
+        kind: "cardPlayed",
+        label: "Played Archive Apprentice",
+        seat: "seat-0",
+        sequence: 8,
+        toZone: "battlefield",
+      },
+    ];
+
+    expect(deriveMatchCinematicCue(view)).toEqual({
+      accentSeat: "seat-0",
+      cardId: "archive-apprentice",
+      cardName: "Archive Apprentice",
+      eventSequence: 8,
+      focusInstanceId: "seat-0:archive-apprentice:hand:1",
+      kind: "summon",
+      kicker: "Summon sequence",
+      label: "Played Archive Apprentice",
+    });
+  });
+
+  it("derives ability cinematics from the latest activation summary", () => {
+    const view = createSeatView();
+    view.recentEvents = [
+      {
+        abilityId: "study-bolt",
+        cardId: "archive-apprentice",
+        cardName: "Archive Apprentice",
+        focusInstanceId: "seat-0:archive-apprentice:battlefield:1",
+        kind: "abilityActivated",
+        label: "Archive Apprentice activated study-bolt",
+        seat: "seat-0",
+        sequence: 9,
+      },
+    ];
+
+    expect(deriveMatchCinematicCue(view)).toEqual({
+      accentSeat: "seat-0",
+      cardId: "archive-apprentice",
+      cardName: "Archive Apprentice",
+      eventSequence: 9,
+      focusInstanceId: "seat-0:archive-apprentice:battlefield:1",
+      kind: "ability",
+      kicker: "Ability ignition · study-bolt",
+      label: "Archive Apprentice activated study-bolt",
+    });
+  });
+
+  it("maps summon and ability cues to distinct 3D scene models", () => {
+    const archiveApprentice: CardCatalogEntry = {
+      abilities: [],
+      cardId: "archive-apprentice",
+      cost: 2,
+      formatId: "core-demo",
+      isBanned: false,
+      keywords: [],
+      kind: "unit",
+      name: "Archive Apprentice",
+      rarity: "common",
+      reasoning: createReasoning(),
+      rulesText: [],
+      setId: "core-alpha",
+      stats: {
+        power: 1,
+        toughness: 3,
+      },
+    };
+    const skyScout: CardCatalogEntry = {
+      abilities: [],
+      cardId: "sky-patrol-scout",
+      cost: 3,
+      formatId: "core-demo",
+      isBanned: false,
+      keywords: ["flying", "haste"],
+      kind: "unit",
+      name: "Sky Patrol Scout",
+      rarity: "rare",
+      reasoning: createReasoning({
+        timingAffordances: ["mainPhaseCast", "trigger:selfEntersBattlefield"],
+      }),
+      rulesText: ["Flying", "Haste"],
+      setId: "core-alpha",
+      stats: {
+        power: 2,
+        toughness: 1,
+      },
+    };
+
+    const summonModel = buildMatchCinematicSceneModel({
+      card: skyScout,
+      cue: {
+        accentSeat: "seat-0",
+        cardId: "sky-patrol-scout",
+        cardName: "Sky Patrol Scout",
+        eventSequence: 1,
+        focusInstanceId: "seat-0:sky-patrol-scout:hand:1",
+        kind: "summon",
+        kicker: "Summon sequence",
+        label: "Played Sky Patrol Scout",
+      },
+    });
+    const abilityModel = buildMatchCinematicSceneModel({
+      card: archiveApprentice,
+      cue: {
+        accentSeat: "seat-0",
+        cardId: "archive-apprentice",
+        cardName: "Archive Apprentice",
+        eventSequence: 2,
+        focusInstanceId: "seat-0:archive-apprentice:battlefield:1",
+        kind: "ability",
+        kicker: "Ability ignition · study-bolt",
+        label: "Archive Apprentice activated study-bolt",
+      },
+    });
+
+    expect(summonModel).toMatchObject({
+      accentColor: "#ff9863",
+      shardCount: 8,
+    });
+    expect(abilityModel).toMatchObject({
+      accentColor: "#f4d57d",
+      shardCount: 4,
+    });
+    expect(abilityModel.idleSpin).toBeGreaterThan(summonModel.idleSpin);
+    expect(summonModel.bobAmplitude).toBeGreaterThan(abilityModel.bobAmplitude);
+  });
+
+  it("resolves optional CDN-backed summon assets only when a base URL is configured", () => {
+    const skyScout: CardCatalogEntry = {
+      abilities: [],
+      cardId: "sky-patrol-scout",
+      cost: 3,
+      formatId: "core-demo",
+      isBanned: false,
+      keywords: ["flying", "haste"],
+      kind: "unit",
+      name: "Sky Patrol Scout",
+      rarity: "rare",
+      reasoning: createReasoning(),
+      rulesText: ["Flying", "Haste"],
+      setId: "core-alpha",
+      stats: {
+        power: 2,
+        toughness: 1,
+      },
+    };
+
+    expect(
+      buildMatchCinematicAssetBundle({
+        assetBaseUrl: null,
+        card: skyScout,
+        cue: {
+          accentSeat: "seat-0",
+          cardId: "sky-patrol-scout",
+          cardName: "Sky Patrol Scout",
+          eventSequence: 1,
+          focusInstanceId: "seat-0:sky-patrol-scout:hand:1",
+          kind: "summon",
+          kicker: "Summon sequence",
+          label: "Played Sky Patrol Scout",
+        },
+      }),
+    ).toBeNull();
+
+    expect(
+      buildMatchCinematicAssetBundle({
+        assetBaseUrl: "https://cdn.example.com/lunchtable",
+        card: skyScout,
+        cue: {
+          accentSeat: "seat-0",
+          cardId: "sky-patrol-scout",
+          cardName: "Sky Patrol Scout",
+          eventSequence: 1,
+          focusInstanceId: "seat-0:sky-patrol-scout:hand:1",
+          kind: "summon",
+          kicker: "Summon sequence",
+          label: "Played Sky Patrol Scout",
+        },
+      }),
+    ).toEqual({
+      mode: "cdn",
+      modelOffsetY: -1.08,
+      modelRotationY: Math.PI * 0.88,
+      modelScale: 1.22,
+      modelUrl:
+        "https://cdn.example.com/lunchtable/cards/sky-patrol-scout/summon.glb",
+      posterUrl:
+        "https://cdn.example.com/lunchtable/cards/sky-patrol-scout/poster.jpg",
+    });
   });
 });

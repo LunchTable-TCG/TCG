@@ -31,6 +31,7 @@ import {
   storeAuthToken,
 } from "./auth";
 import { AgentLabPanel } from "./components/agents/AgentLabPanel";
+import { LocalCinematicPreview } from "./components/match/LocalCinematicPreview";
 import { MatchShell as LiveMatchShell } from "./components/match/MatchShell";
 import { ReplayPlayer } from "./components/replay/ReplayPlayer";
 import {
@@ -58,6 +59,47 @@ const bootstrapChecklist = [
 const defaultFormatId = starterFormat.formatId;
 type Notice = StatusNotice;
 
+const siteFeatureCards = [
+  {
+    body: "Play a card and the board answers with a summoned character burst instead of a dead flat state change.",
+    eyebrow: "Active Board",
+    title: "Card-to-character entrances",
+  },
+  {
+    body: "Private keys stay in the browser, seats are restored locally, and account ownership is built for web-native players.",
+    eyebrow: "Player Identity",
+    title: "Wallet-native access",
+  },
+  {
+    body: "Practice matches, private duels, queue pairing, replay, and spectator-safe projections all resolve through one rules path.",
+    eyebrow: "Deterministic Engine",
+    title: "One match spine, many surfaces",
+  },
+  {
+    body: "Coach and commentator threads can observe the match without ever becoming the source of truth for game state.",
+    eyebrow: "Sidecar AI",
+    title: "Advisory agents, not game masters",
+  },
+] as const;
+
+const siteModeCards = [
+  {
+    body: "Generate a seat, clone the starter list, and open a match in one session.",
+    label: "Onboard",
+    title: "Create a wallet seat and start fast",
+  },
+  {
+    body: "Use invite codes for friend matches or let the queue deterministically pair legal decks.",
+    label: "Battle",
+    title: "Private lobbies and casual queue",
+  },
+  {
+    body: "Follow public replay frames, mount the live shell, and branch into coach or commentator views.",
+    label: "Observe",
+    title: "Replay, commentary, and lab tools",
+  },
+] as const;
+
 function buildStarterDeckEntries(catalog: CardCatalogEntry[]) {
   return catalog.map((card) => ({
     cardId: card.cardId,
@@ -66,8 +108,9 @@ function buildStarterDeckEntries(catalog: CardCatalogEntry[]) {
 }
 
 function getActiveLegalDeck(decks: DeckRecord[]) {
-  return decks.find(
-    (deck) => deck.status === "active" && deck.validation.isLegal,
+  return (
+    decks.find((deck) => deck.status === "active" && deck.validation.isLegal) ??
+    null
   );
 }
 
@@ -342,23 +385,19 @@ function CollectionPanel({
 }
 
 function DeckPanel({
-  canCreatePracticeMatch,
   canCreateStarterDeck,
   decks,
   loading,
   onArchiveDeck,
   onCloneDeck,
-  onCreatePracticeMatch,
   onCreateStarterDeck,
   pendingAction,
 }: {
-  canCreatePracticeMatch: boolean;
   canCreateStarterDeck: boolean;
   decks: DeckRecord[];
   loading: boolean;
   onArchiveDeck: (deckId: DeckId, deckName: string) => void;
   onCloneDeck: (deckId: DeckId, deckName: string) => void;
-  onCreatePracticeMatch: () => void;
   onCreateStarterDeck: () => void;
   pendingAction: string | null;
 }) {
@@ -381,20 +420,9 @@ function DeckPanel({
               : "Create starter deck"}
           </button>
         </div>
-        <button
-          className="action secondary-action"
-          disabled={!canCreatePracticeMatch || pendingAction !== null}
-          onClick={onCreatePracticeMatch}
-          type="button"
-        >
-          {pendingAction === "create-practice"
-            ? "Creating practice match..."
-            : "Create practice match"}
-        </button>
         <p className="support-copy">
-          Practice match seats your active legal deck against one agent player
-          on the same prompts, timers, and authoritative intent rail a human
-          opponent would use.
+          Starter lists live here. Practice matches, private challenges, and
+          casual queue entry now start from the Game Lobby in the Play section.
         </p>
         {loading ? (
           <p className="support-copy">Loading deck records from Convex.</p>
@@ -473,6 +501,59 @@ function DeckPanel({
   );
 }
 
+function PracticePanel({
+  activeDeck,
+  canCreate,
+  pendingAction,
+  onCreate,
+}: {
+  activeDeck: DeckRecord | null;
+  canCreate: boolean;
+  pendingAction: string | null;
+  onCreate: () => void;
+}) {
+  return (
+    <section className="workspace-card workspace-card-dark site-lobby-practice">
+      <div className="panel-stack">
+        <div className="panel-header-row">
+          <div>
+            <p className="eyebrow">Practice Arena</p>
+            <h3>Spawn a live match instantly</h3>
+          </div>
+          <button
+            className="action action-contrast"
+            disabled={!canCreate || pendingAction !== null}
+            onClick={onCreate}
+            type="button"
+          >
+            {pendingAction === "create-practice"
+              ? "Creating practice match..."
+              : "Create practice match"}
+          </button>
+        </div>
+        <p className="support-copy">
+          Practice creates a live human-vs-agent table immediately. Your active
+          legal deck becomes `seat-0`, and the gameplay bot takes `seat-1`.
+        </p>
+        <dl className="stats">
+          <div>
+            <dt>Entry</dt>
+            <dd>{activeDeck ? "Ready" : "Missing deck"}</dd>
+          </div>
+          <div>
+            <dt>Deck</dt>
+            <dd>{activeDeck?.name ?? "Create starter deck"}</dd>
+          </div>
+          <div>
+            <dt>Opponent</dt>
+            <dd>Table Bot</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  );
+}
+
 function MatchShellPanel({
   loading,
   matches,
@@ -544,11 +625,159 @@ function MatchShellPanel({
   );
 }
 
+function GameLobbyPanel({
+  activeDeck,
+  canCreateLobby,
+  canQueue,
+  joinCode,
+  lobbies,
+  onAddBotGuest,
+  matchLoading,
+  matches,
+  onCreatePracticeMatch,
+  onCreatePrivateLobby,
+  onDequeue,
+  onEnqueue,
+  onJoinLobby,
+  onJoinCodeChange,
+  onLeaveLobby,
+  onSelectMatch,
+  onToggleReady,
+  pendingAction,
+  playLoading,
+  queueEntries,
+  replaySummary,
+  selectedMatchId,
+  viewerId,
+}: {
+  activeDeck: DeckRecord | null;
+  canCreateLobby: boolean;
+  canQueue: boolean;
+  joinCode: string;
+  lobbies: LobbyRecord[];
+  onAddBotGuest: (lobbyId: LobbyRecord["id"]) => void;
+  matchLoading: boolean;
+  matches: MatchShell[];
+  onCreatePracticeMatch: () => void;
+  onCreatePrivateLobby: () => void;
+  onDequeue: (entryId: QueueEntryRecord["id"]) => void;
+  onEnqueue: () => void;
+  onJoinLobby: () => void;
+  onJoinCodeChange: (value: string) => void;
+  onLeaveLobby: (lobbyId: LobbyRecord["id"]) => void;
+  onSelectMatch: (matchId: string) => void;
+  onToggleReady: (lobbyId: LobbyRecord["id"], ready: boolean) => void;
+  pendingAction: string | null;
+  playLoading: boolean;
+  queueEntries: QueueEntryRecord[];
+  replaySummary: ReplaySummary | null;
+  selectedMatchId: string | null;
+  viewerId: ViewerIdentity["id"] | null;
+}) {
+  const currentLobby =
+    lobbies.find(
+      (lobby) => lobby.status === "open" || lobby.status === "readyCheck",
+    ) ??
+    lobbies[0] ??
+    null;
+  const currentQueueEntry =
+    queueEntries.find((entry) => entry.status === "queued") ??
+    queueEntries[0] ??
+    null;
+  const featuredMatch =
+    matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
+
+  return (
+    <section className="workspace-card site-lobby-panel">
+      <div className="panel-stack">
+        <div className="site-lobby-head">
+          <div>
+            <p className="eyebrow">Game Lobby</p>
+            <h3>Game Lobby</h3>
+          </div>
+          <p className="support-copy">
+            Find a table, lock seats, and open the live shell. Practice is
+            instant, private challenge uses invite codes or a table bot with the
+            same ready check, and casual queue pairs the oldest compatible
+            players.
+          </p>
+        </div>
+
+        <dl className="stats site-lobby-status">
+          <div>
+            <dt>Active deck</dt>
+            <dd>{activeDeck?.name ?? "No legal deck"}</dd>
+          </div>
+          <div>
+            <dt>Private lobby</dt>
+            <dd>
+              {currentLobby
+                ? `${currentLobby.code} · ${currentLobby.status}`
+                : "idle"}
+            </dd>
+          </div>
+          <div>
+            <dt>Casual queue</dt>
+            <dd>
+              {currentQueueEntry
+                ? (currentQueueEntry.matchId ?? currentQueueEntry.status)
+                : "idle"}
+            </dd>
+          </div>
+          <div>
+            <dt>Featured shell</dt>
+            <dd>{featuredMatch?.id ?? "none"}</dd>
+          </div>
+        </dl>
+
+        <div className="site-lobby-grid">
+          <PracticePanel
+            activeDeck={activeDeck}
+            canCreate={canCreateLobby}
+            onCreate={onCreatePracticeMatch}
+            pendingAction={pendingAction}
+          />
+          <LobbyPanel
+            canCreate={canCreateLobby}
+            joinCode={joinCode}
+            lobbies={lobbies}
+            loading={playLoading}
+            onAddBotGuest={onAddBotGuest}
+            onCreate={onCreatePrivateLobby}
+            onJoin={onJoinLobby}
+            onJoinCodeChange={onJoinCodeChange}
+            onLeave={onLeaveLobby}
+            onToggleReady={onToggleReady}
+            pendingAction={pendingAction}
+            viewerId={viewerId}
+          />
+          <QueuePanel
+            canQueue={canQueue}
+            entries={queueEntries}
+            loading={playLoading}
+            onDequeue={onDequeue}
+            onEnqueue={onEnqueue}
+            pendingAction={pendingAction}
+          />
+          <MatchShellPanel
+            loading={matchLoading}
+            matches={matches}
+            onSelectMatch={onSelectMatch}
+            replaySummary={replaySummary}
+            selectedMatchId={selectedMatchId}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function LobbyPanel({
   canCreate,
   joinCode,
   lobbies,
   loading,
+  onAddBotGuest,
   onCreate,
   onJoin,
   onJoinCodeChange,
@@ -561,6 +790,7 @@ function LobbyPanel({
   joinCode: string;
   lobbies: LobbyRecord[];
   loading: boolean;
+  onAddBotGuest: (lobbyId: LobbyRecord["id"]) => void;
   onCreate: () => void;
   onJoin: () => void;
   onJoinCodeChange: (value: string) => void;
@@ -578,6 +808,19 @@ function LobbyPanel({
   const localParticipant = currentLobby?.participants.find(
     (participant) => participant.userId === viewerId,
   );
+  const hostParticipant =
+    currentLobby?.participants.find(
+      (participant) => participant.slot === "host",
+    ) ?? null;
+  const guestParticipant =
+    currentLobby?.participants.find(
+      (participant) => participant.slot === "guest",
+    ) ?? null;
+  const canAddBotGuest =
+    Boolean(currentLobby) &&
+    hostParticipant?.userId === viewerId &&
+    !currentLobby?.matchId &&
+    !guestParticipant;
 
   return (
     <section className="workspace-card">
@@ -651,7 +894,8 @@ function LobbyPanel({
                   key={`${currentLobby.id}-${participant.slot}`}
                 >
                   <p className="library-card-title">
-                    {participant.username} · {participant.slot}
+                    {participant.username} · {participant.slot} ·{" "}
+                    {participant.actorType === "bot" ? "agent" : "player"}
                   </p>
                   <p className="library-card-meta">
                     Ready: {participant.ready ? "yes" : "no"}
@@ -664,34 +908,52 @@ function LobbyPanel({
               <p className="support-copy">
                 Match created: {currentLobby.matchId}
               </p>
-            ) : localParticipant ? (
-              <div className="inline-actions">
-                <button
-                  className="action secondary-action"
-                  disabled={pendingAction !== null}
-                  onClick={() =>
-                    onToggleReady(currentLobby.id, !localParticipant.ready)
-                  }
-                  type="button"
-                >
-                  {pendingAction === `ready:${currentLobby.id}`
-                    ? "Updating..."
-                    : localParticipant.ready
-                      ? "Set not ready"
-                      : "Set ready"}
-                </button>
-                <button
-                  className="action secondary-action"
-                  disabled={pendingAction !== null}
-                  onClick={() => onLeave(currentLobby.id)}
-                  type="button"
-                >
-                  {pendingAction === `leave:${currentLobby.id}`
-                    ? "Leaving..."
-                    : "Leave lobby"}
-                </button>
-              </div>
-            ) : null}
+            ) : (
+              <>
+                {canAddBotGuest ? (
+                  <div className="inline-actions">
+                    <button
+                      className="action secondary-action"
+                      disabled={pendingAction !== null}
+                      onClick={() => onAddBotGuest(currentLobby.id)}
+                      type="button"
+                    >
+                      {pendingAction === `add-bot:${currentLobby.id}`
+                        ? "Adding agent..."
+                        : "Add table bot"}
+                    </button>
+                  </div>
+                ) : null}
+                {localParticipant ? (
+                  <div className="inline-actions">
+                    <button
+                      className="action secondary-action"
+                      disabled={pendingAction !== null}
+                      onClick={() =>
+                        onToggleReady(currentLobby.id, !localParticipant.ready)
+                      }
+                      type="button"
+                    >
+                      {pendingAction === `ready:${currentLobby.id}`
+                        ? "Updating..."
+                        : localParticipant.ready
+                          ? "Set not ready"
+                          : "Set ready"}
+                    </button>
+                    <button
+                      className="action secondary-action"
+                      disabled={pendingAction !== null}
+                      onClick={() => onLeave(currentLobby.id)}
+                      type="button"
+                    >
+                      {pendingAction === `leave:${currentLobby.id}`
+                        ? "Leaving..."
+                        : "Leave lobby"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            )}
           </>
         )}
       </div>
@@ -1116,6 +1378,9 @@ function MatchOpsPanel({
 
 export function App() {
   const match = createMatchSkeleton();
+  const cinematicPreviewEnabled =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("previewCinematics");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [loginPrivateKey, setLoginPrivateKey] = useState("");
@@ -1151,6 +1416,7 @@ export function App() {
   const [matches, setMatches] = useState<MatchShell[]>([]);
   const [queueEntries, setQueueEntries] = useState<QueueEntryRecord[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [liveMatchShell, setLiveMatchShell] = useState<MatchShell | null>(null);
   const [replayFrames, setReplayFrames] = useState<ReplayFrame[]>([]);
   const [replaySummary, setReplaySummary] = useState<ReplaySummary | null>(
     null,
@@ -1463,6 +1729,7 @@ export function App() {
   useEffect(() => {
     if (matches.length === 0) {
       setSelectedMatchId(null);
+      setLiveMatchShell(null);
       return;
     }
 
@@ -1475,6 +1742,12 @@ export function App() {
 
     setSelectedMatchId(matches[0]?.id ?? null);
   }, [matches, selectedMatchId]);
+
+  useEffect(() => {
+    if (!selectedMatchId || liveMatchShell?.id !== selectedMatchId) {
+      setLiveMatchShell(null);
+    }
+  }, [liveMatchShell, selectedMatchId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1515,7 +1788,13 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedMatchId]);
+  }, [
+    liveMatchShell?.id,
+    liveMatchShell?.lastEventNumber,
+    liveMatchShell?.status,
+    liveMatchShell?.winnerSeat,
+    selectedMatchId,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1922,7 +2201,7 @@ export function App() {
       await refreshPlay();
       setJoinLobbyCode(result.lobby.code);
       setNotice({
-        body: `Share ${result.lobby.code} with another player to join the private lobby.`,
+        body: `Share ${result.lobby.code} with another player or add Table Bot from the lobby ready check.`,
         title: "Private lobby created",
         tone: "success",
       });
@@ -1969,6 +2248,34 @@ export function App() {
       setNotice({
         body: getErrorMessage(error),
         title: "Lobby join failed",
+        tone: "error",
+      });
+    } finally {
+      setPlayAction(null);
+    }
+  }
+
+  async function handleAddBotGuest(lobbyId: LobbyRecord["id"]) {
+    if (!convexWalletAuthTransport) {
+      return;
+    }
+
+    setPlayAction(`add-bot:${lobbyId}`);
+    try {
+      const result = await convexWalletAuthTransport.addBotGuest({
+        lobbyId,
+      });
+      await refreshPlay();
+      setJoinLobbyCode(result.lobby.code);
+      setNotice({
+        body: `${result.lobby.code} now has Table Bot seated and ready.`,
+        title: "Table bot added",
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        body: getErrorMessage(error),
+        title: "Table bot join failed",
         tone: "error",
       });
     } finally {
@@ -2220,6 +2527,24 @@ export function App() {
   const currentFormatSettings =
     formatSettings.find((format) => format.formatId === defaultFormatId) ??
     null;
+  const activeDeck = getActiveLegalDeck(decks);
+  const currentLobby =
+    lobbies.find(
+      (lobby) => lobby.status === "open" || lobby.status === "readyCheck",
+    ) ??
+    lobbies[0] ??
+    null;
+  const currentQueueEntry =
+    queueEntries.find((entry) => entry.status === "queued") ??
+    queueEntries[0] ??
+    null;
+  const featuredMatch =
+    matches.find((candidate) => candidate.id === selectedMatchId) ??
+    matches[0] ??
+    null;
+  const canMountLiveArena = Boolean(
+    convexWalletAuthTransport && selectedMatchId,
+  );
 
   async function handleToggleFormatPublished(isPublished: boolean) {
     if (!convexWalletAuthTransport || !currentFormatSettings) {
@@ -2357,79 +2682,151 @@ export function App() {
     }
   }
 
-  const selectedMatch =
-    matches.find((matchRecord) => matchRecord.id === selectedMatchId) ?? null;
-  const selectedSeatCounts = selectedMatch
-    ? selectedMatch.seats.reduce(
-        (counts, seat) => {
-          if (seat.actorType === "bot") {
-            counts.agent += 1;
-          } else {
-            counts.human += 1;
-          }
-          return counts;
-        },
-        { agent: 0, human: 0 },
-      )
-    : { agent: 0, human: 0 };
-  const selectedHumanSeatCount = selectedSeatCounts.human;
-  const selectedAgentSeatCount = selectedSeatCounts.agent;
-
   return (
-    <main className="app-shell">
-      <section className="hero">
+    <main className="app-shell site-shell">
+      <header className="site-nav">
+        <a className="site-brand" href="#top">
+          <span className="site-brand-mark">LT</span>
+          <span>{APP_NAME}</span>
+        </a>
+        <nav className="site-nav-links" aria-label="Primary">
+          <a href="#enter">Enter</a>
+          <a href="#arsenal">Arsenal</a>
+          <a href="#play">Play</a>
+          <a href="#systems">Systems</a>
+        </nav>
+        <div className="site-nav-actions">
+          <a className="action secondary-action action-link" href="#enter">
+            {viewer ? `Seat · ${viewer.username}` : "Create seat"}
+          </a>
+          <a className="action action-link" href="#play">
+            {featuredMatch ? "Open arena" : "See the match flow"}
+          </a>
+        </div>
+      </header>
+
+      <section className="hero game-hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Human + Agent Seat Parity</p>
-          <h1>{APP_NAME}</h1>
+          <p className="eyebrow">Web-First Trading Card Battles</p>
+          <h1>Summon the card. Break the board. Take the table.</h1>
           <p className="lede">
-            Lunch Table treats agents as normal players. A human wallet seat and
-            an agent seat both move through the same Convex reducer, prompt
-            windows, timers, and replay-safe projections.
+            {APP_NAME} is a browser TCG where cards erupt into summoned
+            characters, queues resolve deterministically, and every duel can be
+            played live, replayed publicly, and observed without leaking hidden
+            information.
           </p>
           <p className="support-copy">
-            That keeps the table playable for people and understandable for
-            external agent runtimes without inventing bot-only powers or helper
-            shortcuts. Practice matches are the clearest path: one human seat,
-            one agent seat, one rules rail.
+            Build a seat, forge a deck, trigger a summon cut-in, and keep the
+            coach or commentator on the side instead of turning the whole site
+            into an admin dashboard.
           </p>
+          <div className="hero-actions">
+            <a className="action action-link" href="#enter">
+              {viewer
+                ? `Continue as ${viewer.username}`
+                : "Create a wallet seat"}
+            </a>
+            <a className="action secondary-action action-link" href="#play">
+              {featuredMatch
+                ? "Jump into the live arena"
+                : "Watch the board come alive"}
+            </a>
+          </div>
+          <div className="hero-metrics">
+            <div className="metric-card">
+              <span className="metric-label">Seat</span>
+              <strong>{viewer ? viewer.username : "Guest challenger"}</strong>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Deck</span>
+              <strong>
+                {activeDeck
+                  ? `${activeDeck.validation.mainboardCount} cards ready`
+                  : "Starter list waiting"}
+              </strong>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Arena</span>
+              <strong>
+                {featuredMatch
+                  ? `${featuredMatch.phase} · turn ${featuredMatch.turnNumber}`
+                  : "No live match mounted"}
+              </strong>
+            </div>
+            <div className="metric-card">
+              <span className="metric-label">Queue</span>
+              <strong>
+                {currentQueueEntry
+                  ? currentQueueEntry.matchId
+                    ? "Matched and sealed"
+                    : "Searching for an opponent"
+                  : currentLobby
+                    ? `Lobby ${currentLobby.code}`
+                    : "Open challenge room"}
+              </strong>
+            </div>
+          </div>
         </div>
-        <div className="hero-metrics">
-          <div className="metric-card">
-            <span className="metric-label">Convex</span>
-            <strong>
-              {convexWalletAuthTransport ? "Connected" : "Awaiting URL"}
-            </strong>
+
+        <div className="hero-stage">
+          <div className="hero-stage-copy">
+            <p className="eyebrow">Live Summon Showcase</p>
+            <h2>Cards should feel like they land with weight.</h2>
+            <p className="support-copy">
+              This surface uses the real board renderer and bundled summon
+              models so the homepage already behaves like a game, not a console.
+            </p>
           </div>
-          <div className="metric-card">
-            <span className="metric-label">Format</span>
-            <strong>
-              {currentFormatSettings
-                ? `${starterFormat.name} · ${
-                    currentFormatSettings.isPublished ? "Published" : "Hidden"
-                  }`
-                : starterFormat.name}
-            </strong>
-          </div>
-          <div className="metric-card">
-            <span className="metric-label">Seat Parity</span>
-            <strong>
-              {selectedMatch
-                ? `${selectedHumanSeatCount} human · ${selectedAgentSeatCount} agent`
-                : "Select a live table"}
-            </strong>
+          <div className="hero-stage-surface">
+            <LocalCinematicPreview />
           </div>
         </div>
       </section>
 
-      <section className="workspace">
-        <div className="workspace-header">
+      <section className="panel panel-secondary site-section site-section-light">
+        <div className="site-section-header">
           <div>
-            <p className="eyebrow">Player Access</p>
-            <h2>Create or restore a seat</h2>
+            <p className="eyebrow">Why It Feels Like A Game</p>
+            <h2>Every system points back to the match.</h2>
           </div>
           <p className="support-copy">
-            Signup only asks for email and username. Login only asks for the
-            saved private key and recreates the wallet locally before signing.
+            The site now leads with board energy, then folds the account,
+            deckbuilding, queue, replay, and AI surfaces under that core loop.
+          </p>
+        </div>
+        <div className="site-card-grid">
+          {siteFeatureCards.map((card) => (
+            <article className="site-feature-card" key={card.title}>
+              <p className="eyebrow">{card.eyebrow}</p>
+              <h3>{card.title}</h3>
+              <p className="support-copy">{card.body}</p>
+            </article>
+          ))}
+        </div>
+        <div className="site-card-grid site-mode-grid">
+          {siteModeCards.map((card) => (
+            <article
+              className="site-feature-card site-feature-card-contrast"
+              key={card.title}
+            >
+              <span className="site-feature-index">{card.label}</span>
+              <h3>{card.title}</h3>
+              <p className="support-copy">{card.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="workspace site-section" id="enter">
+        <div className="workspace-header">
+          <div>
+            <p className="eyebrow">Enter The Table</p>
+            <h2>Create or restore a player seat</h2>
+          </div>
+          <p className="support-copy">
+            Email and username create the player record. A fresh BSC wallet is
+            generated in-browser, challenged by Convex, and signed locally so
+            the private key never leaves the player machine.
           </p>
         </div>
 
@@ -2539,59 +2936,40 @@ export function App() {
         </div>
       </section>
 
-      <section className="panel panel-secondary">
+      <section className="panel panel-secondary site-section" id="arsenal">
         <div className="workspace-header">
           <div>
-            <p className="eyebrow">Deck Workspace</p>
-            <h2>Collection, deck legality, and seat-ready lists</h2>
+            <p className="eyebrow">Arsenal</p>
+            <h2>Build, clone, and stage legal decks</h2>
           </div>
           <p className="support-copy">
             The starter catalog is static, but collection ownership and deck
-            legality are resolved through canonical Convex tables for the
-            signed-in user before a deck can enter a human or agent table.
+            legality resolve through the canonical Convex tables for the signed
+            in player.
           </p>
         </div>
         <div className="library-grid">
           <CollectionPanel collection={collection} loading={libraryLoading} />
           <DeckPanel
-            canCreatePracticeMatch={Boolean(getActiveLegalDeck(decks))}
             canCreateStarterDeck={Boolean(viewer && catalog.length > 0)}
             decks={decks}
             loading={libraryLoading}
             onArchiveDeck={handleArchiveDeck}
             onCloneDeck={handleCloneDeck}
-            onCreatePracticeMatch={handleCreatePracticeMatch}
             onCreateStarterDeck={handleCreateStarterDeck}
             pendingAction={deckAction}
           />
         </div>
       </section>
 
-      {viewer?.isOperator ? (
-        <>
-          <FormatAdminPanel
-            catalog={catalog}
-            formatSettings={currentFormatSettings}
-            loading={operatorLoading}
-            onToggleBan={handleToggleCardBan}
-            onTogglePublished={handleToggleFormatPublished}
-            pendingAction={operatorAction}
-          />
-          <MatchOpsPanel
-            loading={operatorLoading}
-            onRecoverMatch={handleRecoverStaleMatch}
-            pendingAction={operatorAction}
-            recoverableMatches={recoverableMatches}
-            telemetryEvents={telemetryEvents}
-          />
-        </>
-      ) : null}
-
-      <section className="panel panel-secondary">
+      <section
+        className="panel panel-secondary site-section site-section-dark"
+        id="play"
+      >
         <div className="workspace-header">
           <div>
-            <p className="eyebrow">Play Surface</p>
-            <h2>Private lobbies and casual queue</h2>
+            <p className="eyebrow">Play Now</p>
+            <h2>Queue, duel, and mount the live arena</h2>
           </div>
           <p className="support-copy">
             Private lobbies use invite codes and ready checks. The casual queue
@@ -2599,85 +2977,85 @@ export function App() {
             oldest compatible players.
           </p>
         </div>
-        <div className="library-grid">
-          <LobbyPanel
-            canCreate={Boolean(viewer && getActiveLegalDeck(decks))}
-            joinCode={joinLobbyCode}
-            lobbies={lobbies}
-            loading={playLoading}
-            onCreate={handleCreatePrivateLobby}
-            onJoin={handleJoinPrivateLobby}
-            onJoinCodeChange={setJoinLobbyCode}
-            onLeave={handleLeaveLobby}
-            onToggleReady={handleToggleLobbyReady}
-            pendingAction={playAction}
-            viewerId={viewer?.id ?? null}
-          />
-          <QueuePanel
-            canQueue={Boolean(viewer && getActiveLegalDeck(decks))}
-            entries={queueEntries}
-            loading={playLoading}
-            onDequeue={handleDequeueCasual}
-            onEnqueue={handleEnqueueCasual}
-            pendingAction={playAction}
-          />
-        </div>
-      </section>
-
-      <section className="panel panel-secondary">
-        <div className="workspace-header">
-          <div>
-            <p className="eyebrow">Match Persistence</p>
-            <h2>Seat shells and public fallback views</h2>
-          </div>
-          <p className="support-copy">
-            Choose a persisted match and mount the live seat shell. The same
-            section can fall back to the spectator projection without exposing
-            private hand data, even when one of the seats is agent-controlled.
-          </p>
-        </div>
-        <div className="library-grid">
-          <MatchShellPanel
-            loading={matchLoading}
-            matches={matches}
-            onSelectMatch={setSelectedMatchId}
-            replaySummary={replaySummary}
-            selectedMatchId={selectedMatchId}
-          />
-          {convexWalletAuthTransport ? (
-            <LiveMatchShell
-              catalog={catalog}
-              matchId={selectedMatchId}
-              transport={convexWalletAuthTransport}
-              viewerEnabled={Boolean(viewer)}
+        <div className="site-arena-grid">
+          <div className="site-arena-column">
+            <GameLobbyPanel
+              activeDeck={activeDeck}
+              canCreateLobby={Boolean(viewer && activeDeck)}
+              canQueue={Boolean(viewer && activeDeck)}
+              joinCode={joinLobbyCode}
+              lobbies={lobbies}
+              onAddBotGuest={handleAddBotGuest}
+              matchLoading={matchLoading}
+              matches={matches}
+              onCreatePracticeMatch={handleCreatePracticeMatch}
+              onCreatePrivateLobby={handleCreatePrivateLobby}
+              onDequeue={handleDequeueCasual}
+              onEnqueue={handleEnqueueCasual}
+              onJoinCodeChange={setJoinLobbyCode}
+              onJoinLobby={handleJoinPrivateLobby}
+              onLeaveLobby={handleLeaveLobby}
+              onSelectMatch={setSelectedMatchId}
+              onToggleReady={handleToggleLobbyReady}
+              pendingAction={playAction}
+              playLoading={playLoading}
+              queueEntries={queueEntries}
+              replaySummary={replaySummary}
+              selectedMatchId={selectedMatchId}
+              viewerId={viewer?.id ?? null}
             />
-          ) : (
-            <section className="workspace-card workspace-card-dark match-shell">
-              <div className="panel-stack">
-                <div>
-                  <p className="eyebrow">Live Match Shell</p>
-                  <h3>Convex connection required</h3>
+          </div>
+          <div className="site-arena-stage">
+            {canMountLiveArena ? (
+              <LiveMatchShell
+                catalog={catalog}
+                matchId={selectedMatchId}
+                onShellChange={setLiveMatchShell}
+                transport={convexWalletAuthTransport}
+                viewerEnabled={Boolean(viewer)}
+              />
+            ) : (
+              <section className="workspace-card workspace-card-dark match-shell arena-placeholder">
+                <div className="panel-stack">
+                  <div>
+                    <p className="eyebrow">Arena Standby</p>
+                    <h3>
+                      {convexWalletAuthTransport
+                        ? "Mount a match shell to enter the live board"
+                        : "Convex connection required"}
+                    </h3>
+                  </div>
+                  <p className="support-copy">
+                    {convexWalletAuthTransport ? (
+                      <>
+                        Create a practice match, finish a private lobby ready
+                        check, or let the casual queue pair you. Until then, the
+                        summon forge keeps the arena active.
+                      </>
+                    ) : (
+                      <>
+                        Set <code>VITE_CONVEX_URL</code> before mounting the
+                        live match shell.
+                      </>
+                    )}
+                  </p>
+                  <LocalCinematicPreview />
                 </div>
-                <p className="support-copy">
-                  Set <code>VITE_CONVEX_URL</code> before mounting the live
-                  match shell.
-                </p>
-              </div>
-            </section>
-          )}
+              </section>
+            )}
+          </div>
         </div>
       </section>
 
-      <section className="panel panel-secondary">
+      <section className="panel panel-secondary site-section" id="systems">
         <div className="workspace-header">
           <div>
-            <p className="eyebrow">Replay Frames</p>
-            <h2>Spectator-safe deterministic playback</h2>
+            <p className="eyebrow">Systems</p>
+            <h2>Replay, coach, and commentator surfaces</h2>
           </div>
           <p className="support-copy">
-            Replay capture stores public frame checkpoints only. The player
-            below reuses the Pixi board renderer and never receives seat-private
-            hand contents.
+            Replay capture stores public frame checkpoints only. Advisory agent
+            threads sit outside live match state and can never advance a turn.
           </p>
         </div>
         <ReplayPlayer
@@ -2702,7 +3080,35 @@ export function App() {
         sessions={agentSessions}
       />
 
-      <section className="panel panel-secondary">
+      {viewer?.isOperator ? (
+        <>
+          <FormatAdminPanel
+            catalog={catalog}
+            formatSettings={currentFormatSettings}
+            loading={operatorLoading}
+            onToggleBan={handleToggleCardBan}
+            onTogglePublished={handleToggleFormatPublished}
+            pendingAction={operatorAction}
+          />
+          <MatchOpsPanel
+            loading={operatorLoading}
+            onRecoverMatch={handleRecoverStaleMatch}
+            pendingAction={operatorAction}
+            recoverableMatches={recoverableMatches}
+            telemetryEvents={telemetryEvents}
+          />
+        </>
+      ) : null}
+
+      {cinematicPreviewEnabled ? (
+        <section className="panel panel-secondary site-section">
+          <section className="workspace-card workspace-card-dark match-shell">
+            <LocalCinematicPreview />
+          </section>
+        </section>
+      ) : null}
+
+      <section className="panel panel-secondary site-footer-panel">
         <div>
           <p className="eyebrow">Engine baseline</p>
           <h2>Current match kernel</h2>
@@ -2722,8 +3128,8 @@ export function App() {
           </dl>
         </div>
         <div>
-          <p className="eyebrow">Delivery gates</p>
-          <h2>Bootstrap checklist</h2>
+          <p className="eyebrow">Launch checklist</p>
+          <h2>Operational readiness</h2>
           <ul className="checklist">
             {bootstrapChecklist.map((item) => (
               <li key={item}>{item}</li>

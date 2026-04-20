@@ -14,6 +14,56 @@ export interface ActivatedAbilityAction {
   cardName: string;
   instanceId: string;
   text: string;
+  targetIds?: string[];
+  targetLabel?: string;
+}
+
+function getBattlefieldCards(view: MatchSeatView) {
+  return view.zones.flatMap((zone) =>
+    zone.zone === "battlefield" ? zone.cards : [],
+  );
+}
+
+function listTargetCandidates(input: {
+  sourceInstanceId: string;
+  targetSelector:
+    | "anyCard"
+    | "friendlyUnit"
+    | "opposingUnit"
+    | "player"
+    | "self"
+    | "stackObject";
+  view: MatchSeatView;
+}) {
+  const battlefield = getBattlefieldCards(input.view);
+
+  switch (input.targetSelector) {
+    case "self":
+      return battlefield.filter(
+        (card) => card.instanceId === input.sourceInstanceId,
+      );
+    case "friendlyUnit":
+      return battlefield.filter(
+        (card) => card.controllerSeat === input.view.viewerSeat,
+      );
+    case "opposingUnit":
+      return battlefield.filter(
+        (card) => card.controllerSeat !== input.view.viewerSeat,
+      );
+    default:
+      return [];
+  }
+}
+
+export interface MatchCinematicCue {
+  accentSeat: string | null;
+  cardId?: string;
+  cardName: string;
+  eventSequence: number;
+  focusInstanceId: string | null;
+  kind: "ability" | "summon";
+  kicker: string;
+  label: string;
 }
 
 export function resolveRenderableView(input: {
@@ -78,11 +128,86 @@ export function listActivatedAbilityActions(
 
     return entry.abilities
       .filter((ability) => ability.kind === "activated")
-      .map((ability) => ({
-        abilityId: ability.id,
-        cardName: entry.name,
-        instanceId: card.instanceId,
-        text: ability.text,
-      }));
+      .flatMap((ability) => {
+        if (!ability.requiresTargets) {
+          return [
+            {
+              abilityId: ability.id,
+              cardName: entry.name,
+              instanceId: card.instanceId,
+              text: ability.text,
+            },
+          ];
+        }
+
+        if ((ability.targets?.length ?? 0) !== 1) {
+          return [];
+        }
+
+        const [targetSpec] = ability.targets ?? [];
+        if (
+          !targetSpec ||
+          targetSpec.minSelections !== 1 ||
+          targetSpec.maxSelections !== 1
+        ) {
+          return [];
+        }
+
+        return listTargetCandidates({
+          sourceInstanceId: card.instanceId,
+          targetSelector: targetSpec.selector,
+          view,
+        }).map((targetCard) => ({
+          abilityId: ability.id,
+          cardName: entry.name,
+          instanceId: card.instanceId,
+          targetIds: [targetCard.instanceId],
+          targetLabel: targetCard.name,
+          text: `${ability.text} -> ${targetCard.name}`,
+        }));
+      });
   });
+}
+
+export function deriveMatchCinematicCue(
+  view: MatchView | null,
+): MatchCinematicCue | null {
+  const latest = view?.recentEvents.at(-1);
+  if (!latest) {
+    return null;
+  }
+
+  if (
+    latest.kind === "cardPlayed" &&
+    latest.cardName &&
+    latest.toZone === "battlefield"
+  ) {
+    return {
+      accentSeat: latest.seat,
+      cardId: latest.cardId,
+      cardName: latest.cardName,
+      eventSequence: latest.sequence,
+      focusInstanceId: latest.focusInstanceId ?? null,
+      kind: "summon",
+      kicker: "Summon sequence",
+      label: latest.label,
+    };
+  }
+
+  if (latest.kind === "abilityActivated" && latest.cardName) {
+    return {
+      accentSeat: latest.seat,
+      cardId: latest.cardId,
+      cardName: latest.cardName,
+      eventSequence: latest.sequence,
+      focusInstanceId: latest.focusInstanceId ?? null,
+      kind: "ability",
+      kicker: latest.abilityId
+        ? `Ability ignition · ${latest.abilityId}`
+        : "Ability ignition",
+      label: latest.label,
+    };
+  }
+
+  return null;
 }

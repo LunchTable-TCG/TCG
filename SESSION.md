@@ -1,9 +1,9 @@
 # Session State
 
-**Current Phase**: Phase 2
+**Current Phase**: Phase 19
 **Current Stage**: Implementation
-**Last Checkpoint**: 3db28e4 (2026-04-03)
-**Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`, `docs/WALLET_AUTH_SPEC.md`
+**Last Checkpoint**: 6690c6e (2026-04-03)
+**Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`, `docs/WALLET_AUTH_SPEC.md`, `docs/program/EXECUTION_PLAN.md`, `docs/program/CHURN_TRACKER.md`, `docs/program/VERIFICATION_MATRIX.md`, `docs/program/BENCHMARK_BUDGETS.md`
 
 ---
 
@@ -19,73 +19,103 @@
 **Next Action**: Phase 1 complete.
 **Known Issues**: None
 
-## Phase 2: Convex Bootstrap and Auth 🔄
+## Phase 2: Convex Bootstrap and Auth ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-2-convex-bootstrap-and-auth`
-**Next Action**: Hook the signup/login UI to requestSignupChallenge, completeWalletSignup, requestLoginChallenge, and completeWalletLogin, then run Convex dev/codegen to replace generic wrappers with generated server types.
+**Next Action**: Phase 2 complete.
 
-## Phase 3: Shared Domain Types ⏸️
+## Phase 3: Shared Domain Types ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-3-shared-domain-types`
-**Next Action**: Define shared DTOs after Convex auth is wired.
+**Next Action**: Phase 3 complete.
 
-## Phase 4: Rules Kernel Skeleton ⏸️
+## Phase 4: Rules Kernel Skeleton ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-4-rules-kernel-skeleton`
-**Next Action**: Start the rules kernel skeleton after shared domain types are complete.
+**Next Action**: Phase 4 complete.
 
-## Phase 5: Card DSL and Format Registry ⏸️
+## Phase 5: Card DSL and Format Registry ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-5-card-dsl-and-format-registry`
-**Next Action**: Define the card DSL once the rules kernel can accept typed inputs.
+**Next Action**: Phase 5 complete.
 
-## Phase 6: Deck and Collection CRUD ⏸️
+## Phase 6: Deck and Collection CRUD ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-6-deck-and-collection-crud`
-**Next Action**: Build deck and collection CRUD after the starter format exists.
+**Next Action**: Phase 6 complete.
 
-## Phase 7: Match Shell Persistence ⏸️
+## Phase 7: Match Shell Persistence ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-7-match-shell-persistence`
-**Next Action**: Add match persistence after decks and collections are available.
+**Next Action**: Phase 7 complete.
 
-## Phase 8: Lobby and Matchmaking ⏸️
+## Phase 8: Lobby and Matchmaking ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-8-lobby-and-matchmaking`
-**Next Action**: Build lobby and queue flows after match shell persistence is in place.
+**Next Action**: Phase 8 complete.
 
-## Phase 9: Core Gameplay Intent Path ⏸️
+## Phase 9: Core Gameplay Intent Path ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-9-core-gameplay-intent-path`
-**Next Action**: Implement the authoritative gameplay mutation after matchmaking can create matches.
+**Next Action**: Phase 9 complete.
 
-## Phase 10: Timing Windows and Stack ⏸️
+## Phase 10: Timing Windows and Stack ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-10-timing-windows-and-stack`
-**Next Action**: Add timing windows and stack logic after the base intent path works.
+**Next Action**: Phase 10 complete.
 
-## Phase 11: Static, Continuous, and Replacement Effects ⏸️
+## Phase 11: Static, Continuous, and Replacement Effects ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-11-static-continuous-and-replacement-effects`
-**Next Action**: Implement layered and replacement effects after stack handling is stable.
+**Next Action**: Phase 11 complete.
 
-## Phase 12: Match UI Shell ⏸️
+## Phase 12: Match UI Shell ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-12-match-ui-shell`
-**Next Action**: Build the match UI shell after live seat views and prompts are available.
+**Next Action**: Phase 12 complete.
 
-## Phase 13: Pixi Battlefield Renderer ⏸️
+## Phase 13: Pixi Battlefield Renderer ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-13-pixi-battlefield-renderer`
-**Next Action**: Replace the text-first board shell with the Pixi renderer after the match UI shell is working.
+**Next Action**: Phase 13 complete.
 
-## Phase 14: Replay and Spectator Mode ⏸️
+## Phase 14: Replay and Spectator Mode ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-14-replay-and-spectator-mode`
-**Next Action**: Build replay and spectate flows after the live match renderer is stable.
+**Next Action**: Phase 14 complete.
 
-## Phase 15: Bot Runner Foundation ⏸️
+## Phase 15: Bot Runner Foundation ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-15-bot-runner-foundation`
-**Next Action**: Add bot workers after human live play is stable and replayable.
+**Next Action**: Phase 15 complete.
 
-## Phase 16: Agent Lab and Non-Critical AI Helpers ⏸️
+## Phase 16: Agent Lab and Non-Critical AI Helpers ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-16-agent-lab-and-non-critical-ai-helpers`
-**Next Action**: Add the agent lab after bot-seat parity is proven.
+**Next Action**: Phase 16 complete.
 
-## Phase 17: Test Harness and Regression Gates ⏸️
+## Phase 17: Test Harness and Regression Gates ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-17-test-harness-and-regression-gates`
-**Next Action**: Expand deterministic tests and regression gates after the major runtime surfaces exist.
+**Next Action**: Phase 17 complete.
 
-## Phase 18: Ranked Hardening and Ops ⏸️
+## Phase 18: Ranked Hardening and Ops ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-18-ranked-hardening-and-ops`
-**Next Action**: Hardening and ops follow once the full feature loop is under regression protection.
+**Next Action**: All planned phases are complete. Next optional work is release/tag/deploy choreography or new feature planning.
+
+## Phase 19: Program Control Plane and Source of Truth 🔄
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-19-program-control-plane-and-source-of-truth`
+**Progress**:
+- [x] Create `docs/program/` source-of-truth docs
+- [x] Extend the repo phase model to cover Phases 19-24
+- [x] Point repo docs and scripts at the program docs
+- [ ] Rerun workflow and benchmark gates after the new contract tests land
+**Next Action**: Finish the docs contract test, rerun the workflow gates, and record the resulting health-audit path for handoff.
+**Known Issues**: Program-phase docs were previously missing; Phase 19 is restoring a machine-readable control plane.
+
+## Phase 20: Structured Gameplay-Agent Context and Observability ⏸️
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-20-structured-gameplay-agent-context-and-observability`
+**Next Action**: Extend coverage around the new structured agent context and telemetry paths.
+
+## Phase 21: Full Intent Parity and Live LLM Player Lifecycle ⏸️
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-21-full-intent-parity-and-live-llm-player-lifecycle`
+**Next Action**: Complete end-to-end intent parity and bot lifecycle coverage.
+
+## Phase 22: Card Addition Contract and Golden Results ⏸️
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-22-card-addition-contract-and-golden-results`
+**Next Action**: Expand new-card admission coverage and keep current-format goldens authoritative.
+
+## Phase 23: Complete E2E Lifecycle Coverage ⏸️
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-23-complete-e2e-lifecycle-coverage`
+**Next Action**: Extend browser lifecycle coverage through match completion, replay, and recovery flows.
+
+## Phase 24: Benchmarks, Regression Gates, and Release Readiness ⏸️
+**Spec**: `IMPLEMENTATION_PHASES.md#phase-24-benchmarks-regression-gates-and-release-readiness`
+**Next Action**: Lock final benchmark budgets, browser performance budgets, and health-audit completion.
 
 ---
 

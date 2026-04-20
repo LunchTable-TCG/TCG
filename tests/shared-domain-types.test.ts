@@ -1,5 +1,6 @@
 import { createMatchSkeleton } from "@lunchtable/game-core";
 import type {
+  AgentMatchContextV1,
   GameplayIntent,
   MatchEvent,
   MatchSeatView,
@@ -137,5 +138,38 @@ describe("shared domain types", () => {
     expect(() => assertMatchSeatId("seat-2")).toThrow(
       "Unsupported match seat: seat-2",
     );
+  });
+
+  it("supports the structured agent match context envelope", () => {
+    const context: AgentMatchContextV1 = {
+      availableIntentKinds: ["passPriority", "toggleAutoPass"],
+      builtAt: 100,
+      buildDurationMs: 1.25,
+      legalActions: [],
+      match: {
+        ...createMatchSkeleton(),
+        activeSeat: "seat-0",
+        id: "match_context",
+        phase: "main1",
+        prioritySeat: "seat-0",
+        status: "active",
+        turnNumber: 2,
+        version: 3,
+      },
+      prompt: null,
+      promptDecision: null,
+      recentEvents: [],
+      seats: [],
+      stack: [],
+      version: "v1",
+      viewKind: "seat",
+      viewerSeat: "seat-0",
+      visibleCards: [],
+      zones: [],
+    };
+
+    expect(context.version).toBe("v1");
+    expect(context.availableIntentKinds).toContain("passPriority");
+    expect(context.buildDurationMs).toBeGreaterThan(0);
   });
 });

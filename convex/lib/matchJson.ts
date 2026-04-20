@@ -252,6 +252,13 @@ function validateMatchState(value: unknown, label: string): MatchState {
       `${label}.cardCatalog`,
       validateMatchCardCatalogEntry,
     ),
+    continuousEffects:
+      readOptional(
+        object.continuousEffects,
+        `${label}.continuousEffects`,
+        (entry, entryLabel) =>
+          readArray(entry, entryLabel, validateRuntimeContinuousEffectState),
+      ) ?? [],
     eventSequence: readNumber(object.eventSequence, `${label}.eventSequence`),
     lastPriorityPassSeat: readNullableString(
       object.lastPriorityPassSeat,
@@ -976,16 +983,23 @@ function validateMatchPromptState(
   const object = readObject(value, label);
 
   return {
-    choiceIds: readStringArray(object.choiceIds, `${label}.choiceIds`),
+    choiceIds:
+      readOptional(
+        object.choiceIds,
+        `${label}.choiceIds`,
+        (entry, entryLabel) => readStringArray(entry, entryLabel),
+      ) ?? [],
     expiresAt: readNullableNumber(object.expiresAt, `${label}.expiresAt`),
     kind: readEnum(object.kind, MATCH_PROMPT_KINDS, `${label}.kind`),
     message: readString(object.message, `${label}.message`),
     ownerSeat: readString(object.ownerSeat, `${label}.ownerSeat`),
     promptId: readString(object.promptId, `${label}.promptId`),
-    resolvedChoiceIds: readStringArray(
-      object.resolvedChoiceIds,
-      `${label}.resolvedChoiceIds`,
-    ),
+    resolvedChoiceIds:
+      readOptional(
+        object.resolvedChoiceIds,
+        `${label}.resolvedChoiceIds`,
+        (entry, entryLabel) => readStringArray(entry, entryLabel),
+      ) ?? [],
     status: readEnum(object.status, PROMPT_STATUSES, `${label}.status`),
   };
 }
@@ -1092,7 +1106,45 @@ function validateMatchStackObjectState(
     ),
     stackId: readString(object.stackId, `${label}.stackId`),
     status: readEnum(object.status, STACK_OBJECT_STATUSES, `${label}.status`),
-    targetIds: readStringArray(object.targetIds, `${label}.targetIds`),
+    targetIds:
+      readOptional(
+        object.targetIds,
+        `${label}.targetIds`,
+        (entry, entryLabel) => readStringArray(entry, entryLabel),
+      ) ?? [],
+  };
+}
+
+function validateRuntimeContinuousEffectState(
+  value: unknown,
+  label: string,
+): MatchState["continuousEffects"][number] {
+  const object = readObject(value, label);
+  const effect = validateEffectNode(object.effect, `${label}.effect`);
+
+  if (effect.kind !== "grantKeyword" && effect.kind !== "modifyStats") {
+    throw new Error(
+      `${label}.effect must be a grantKeyword or modifyStats effect`,
+    );
+  }
+
+  return {
+    controllerSeat: readString(object.controllerSeat, `${label}.controllerSeat`),
+    effect,
+    expiresAtTurn: readNullableNumber(
+      object.expiresAtTurn,
+      `${label}.expiresAtTurn`,
+    ),
+    sourceInstanceId: readNullableString(
+      object.sourceInstanceId,
+      `${label}.sourceInstanceId`,
+    ),
+    targetIds:
+      readOptional(
+        object.targetIds,
+        `${label}.targetIds`,
+        (entry, entryLabel) => readStringArray(entry, entryLabel),
+      ) ?? [],
   };
 }
 

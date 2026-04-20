@@ -18,6 +18,13 @@ awk '
 ' "$SESSION_FILE"
 
 echo
+echo "Program docs:"
+echo "  docs/program/EXECUTION_PLAN.md"
+echo "  docs/program/CHURN_TRACKER.md"
+echo "  docs/program/VERIFICATION_MATRIX.md"
+echo "  docs/program/BENCHMARK_BUDGETS.md"
+
+echo
 echo "Active phase block:"
 awk '
   /^## Phase / && /🔄$/ { printing=1; print; next }

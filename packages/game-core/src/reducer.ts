@@ -199,6 +199,10 @@ function advanceTurn(state: MatchState) {
   state.shell.prioritySeat = nextActiveSeat;
   state.lastPriorityPassSeat = null;
   resetTurnResources(state);
+  state.continuousEffects = state.continuousEffects.filter(
+    (effect) =>
+      effect.expiresAtTurn === null || effect.expiresAtTurn >= state.shell.turnNumber,
+  );
 }
 
 function advancePhase(state: MatchState) {
@@ -304,6 +308,8 @@ function hasUnsupportedEffects(
   return effects.some((effect) => {
     switch (effect.kind) {
       case "destroy":
+      case "grantKeyword":
+      case "modifyStats":
         return false;
       case "drawCards":
       case "adjustResource":
@@ -315,6 +321,108 @@ function hasUnsupportedEffects(
         return true;
     }
   });
+}
+
+function getAllZoneInstances(state: MatchState) {
+  return Object.values(state.seats).flatMap((seat) => [
+    ...seat.battlefield,
+    ...seat.command,
+    ...seat.deck,
+    ...seat.exile,
+    ...seat.graveyard,
+    ...seat.hand,
+    ...seat.objective,
+    ...seat.sideboard,
+  ]);
+}
+
+function matchesTargetSelector(input: {
+  controllerSeat: SeatId;
+  selector:
+    | "anyCard"
+    | "friendlyUnit"
+    | "opposingUnit"
+    | "player"
+    | "self"
+    | "stackObject";
+  sourceInstanceId: string;
+  state: MatchState;
+  targetId: string;
+}) {
+  switch (input.selector) {
+    case "self":
+      return input.targetId === input.sourceInstanceId;
+    case "friendlyUnit":
+      return input.state.seats[input.controllerSeat].battlefield.includes(
+        input.targetId,
+      );
+    case "opposingUnit": {
+      const otherSeat = getOtherSeatId(input.state, input.controllerSeat);
+      return otherSeat
+        ? input.state.seats[otherSeat].battlefield.includes(input.targetId)
+        : false;
+    }
+    case "player": {
+      const otherSeat = getOtherSeatId(input.state, input.controllerSeat);
+      return (
+        input.targetId === input.controllerSeat ||
+        (otherSeat !== null && input.targetId === otherSeat)
+      );
+    }
+    case "stackObject":
+      return input.state.stack.some(
+        (stackObject) => stackObject.stackId === input.targetId,
+      );
+    case "anyCard":
+      return getAllZoneInstances(input.state).includes(input.targetId);
+    default:
+      return false;
+  }
+}
+
+function hasValidAbilityTargets(input: {
+  ability: Extract<MatchState["cardCatalog"][string]["abilities"][number], {
+    kind: "activated";
+  }>;
+  controllerSeat: SeatId;
+  sourceInstanceId: string;
+  state: MatchState;
+  targetIds: string[];
+}) {
+  const targetSpecs = input.ability.targets ?? [];
+  if (targetSpecs.length === 0) {
+    return input.targetIds.length === 0;
+  }
+
+  if (targetSpecs.length !== 1) {
+    return false;
+  }
+
+  const [targetSpec] = targetSpecs;
+  if (!targetSpec) {
+    return false;
+  }
+
+  if (
+    input.targetIds.length < targetSpec.count.min ||
+    input.targetIds.length > targetSpec.count.max
+  ) {
+    return false;
+  }
+
+  if (new Set(input.targetIds).size !== input.targetIds.length) {
+    return false;
+  }
+
+  return input.targetIds.every((targetId) =>
+    matchesTargetSelector({
+      controllerSeat: input.controllerSeat,
+      selector: targetSpec.selector,
+      sourceInstanceId: input.sourceInstanceId,
+      state: input.state,
+      targetId,
+    }),
+  );
 }
 
 function createStackObjectId(state: MatchState, offset = 0) {
@@ -574,6 +682,29 @@ function applyEffectSequence(
       continue;
     }
 
+    if (effect.kind === "grantKeyword" || effect.kind === "modifyStats") {
+      const targetIds =
+        effect.target === "self"
+          ? input.sourceInstanceId
+            ? [input.sourceInstanceId]
+            : []
+          : input.targetIds;
+
+      if (targetIds.length === 0) {
+        continue;
+      }
+
+      state.continuousEffects.push({
+        controllerSeat: input.controllerSeat,
+        effect,
+        expiresAtTurn:
+          effect.until === "endOfTurn" ? state.shell.turnNumber : null,
+        sourceInstanceId: input.sourceInstanceId,
+        targetIds: [...targetIds],
+      });
+      continue;
+    }
+
     if (effect.kind === "setAutoPass") {
       state.seats[input.controllerSeat].autoPassEnabled = effect.value;
     }
@@ -723,12 +854,16 @@ function finalizeState(
 function cloneState(state: MatchState): MatchState {
   return {
     cardCatalog: cloneCardCatalog(state.cardCatalog),
+    continuousEffects: (state.continuousEffects ?? []).map((effect) => ({
+      ...effect,
+      targetIds: [...(effect.targetIds ?? [])],
+    })),
     eventSequence: state.eventSequence,
     lastPriorityPassSeat: state.lastPriorityPassSeat,
-    prompts: state.prompts.map((prompt) => ({
+    prompts: (state.prompts ?? []).map((prompt) => ({
       ...prompt,
-      choiceIds: [...prompt.choiceIds],
-      resolvedChoiceIds: [...prompt.resolvedChoiceIds],
+      choiceIds: [...(prompt.choiceIds ?? [])],
+      resolvedChoiceIds: [...(prompt.resolvedChoiceIds ?? [])],
     })),
     random: { ...state.random },
     seats: Object.fromEntries(
@@ -760,9 +895,9 @@ function cloneState(state: MatchState): MatchState {
         seatTimeRemainingMs: { ...state.shell.timers.seatTimeRemainingMs },
       },
     },
-    stack: state.stack.map((item) => ({
+    stack: (state.stack ?? []).map((item) => ({
       ...item,
-      targetIds: [...item.targetIds],
+      targetIds: [...(item.targetIds ?? [])],
     })),
   };
 }
@@ -1065,10 +1200,8 @@ export function reduceGameplayIntent(
       };
     }
     const ability = cardAbility;
-    if (
-      (ability.targets?.length ?? 0) > 0 ||
-      hasUnsupportedEffects(ability.effect)
-    ) {
+    const targetIds = [...(intent.payload.targetIds ?? [])];
+    if (hasUnsupportedEffects(ability.effect)) {
       return {
         events: [],
         nextState: state,
@@ -1104,6 +1237,23 @@ export function reduceGameplayIntent(
       };
     }
 
+    if (
+      !hasValidAbilityTargets({
+        ability,
+        controllerSeat: intent.seat,
+        sourceInstanceId: intent.payload.sourceInstanceId,
+        state: nextState,
+        targetIds,
+      })
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "unsupportedTargeting",
+      };
+    }
+
     for (const cost of resourceCosts) {
       const resource = ensureResource(nextSeat, cost.resourceId);
       if (resource.current < cost.amount) {
@@ -1131,6 +1281,7 @@ export function reduceGameplayIntent(
       label: `${sourceCard.name}: ${ability.text}`,
       originZone: "battlefield",
       sourceInstanceId: intent.payload.sourceInstanceId,
+      targetIds,
     });
 
     nextState.lastPriorityPassSeat = null;
@@ -1142,6 +1293,7 @@ export function reduceGameplayIntent(
         abilityId: ability.id,
         seat: intent.seat,
         sourceInstanceId: intent.payload.sourceInstanceId,
+        targetIds: targetIds.length > 0 ? targetIds : undefined,
       }),
       createEvent("stackObjectCreated", {
         controllerSeat: intent.seat,

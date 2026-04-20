@@ -1,7 +1,9 @@
 import type {
+  AgentMatchContextV1,
   CardCatalogEntry,
-  GameplayIntent,
+  GameplayIntentBase,
   GameplayIntentKind,
+  LegalActionDescriptorV1,
   MatchId,
   MatchSeatId,
   MatchSeatView,
@@ -11,36 +13,111 @@ export type BotSeatId = MatchSeatId;
 
 type BotSupportedIntentKind =
   | "activateAbility"
+  | "assignCombatDamage"
+  | "chooseCosts"
+  | "chooseModes"
+  | "choosePromptOptions"
+  | "chooseTargets"
+  | "concede"
+  | "declareAttackers"
+  | "declareBlockers"
   | "keepOpeningHand"
   | "passPriority"
   | "playCard"
-  | "takeMulligan";
-
-type BotSupportedIntentBase = Extract<
-  GameplayIntent,
-  { kind: BotSupportedIntentKind }
->;
-
-type BotPlayCardIntent = Extract<BotSupportedIntentBase, { kind: "playCard" }>;
-type BotNonPlayCardIntent = Exclude<BotSupportedIntentBase, BotPlayCardIntent>;
+  | "takeMulligan"
+  | "toggleAutoPass";
 
 type WithBotSeat<T extends { seat: unknown }> = T extends unknown
   ? Omit<T, "seat"> & { seat: BotSeatId }
   : never;
 
-type BotPlayableCardIntent = Omit<WithBotSeat<BotPlayCardIntent>, "payload"> & {
-  payload: Omit<BotPlayCardIntent["payload"], "sourceZone"> & {
-    sourceZone: Exclude<BotPlayCardIntent["payload"]["sourceZone"], "stack">;
+type BotIntentBase<TKind extends GameplayIntentKind, TPayload> =
+  GameplayIntentBase<TKind, TPayload> & {
+    seat: BotSeatId;
   };
-};
 
 export type BotSupportedIntent =
-  | WithBotSeat<BotNonPlayCardIntent>
-  | BotPlayableCardIntent;
+  | BotIntentBase<
+      "activateAbility",
+      {
+        abilityId: string;
+        sourceInstanceId: string;
+        targetIds?: string[];
+      }
+    >
+  | BotIntentBase<
+      "assignCombatDamage",
+      {
+        assignments: Array<{
+          amount: number;
+          sourceId: string;
+          targetId: string;
+        }>;
+      }
+    >
+  | BotIntentBase<"chooseCosts", { costIds: string[]; promptId: string }>
+  | BotIntentBase<"chooseModes", { modeIds: string[]; promptId: string }>
+  | BotIntentBase<
+      "choosePromptOptions",
+      {
+        choiceIds: string[];
+        promptId: string;
+      }
+    >
+  | BotIntentBase<"chooseTargets", { promptId: string; targetIds: string[] }>
+  | BotIntentBase<
+      "concede",
+      {
+        reason: "disconnect" | "manual" | "timeout";
+      }
+    >
+  | BotIntentBase<
+      "declareAttackers",
+      {
+        attackers: Array<{
+          attackerId: string;
+          defenderSeat: BotSeatId;
+          laneId: string | null;
+        }>;
+      }
+    >
+  | BotIntentBase<
+      "declareBlockers",
+      {
+        blocks: Array<{
+          attackerId: string;
+          blockerId: string;
+        }>;
+      }
+    >
+  | BotIntentBase<"keepOpeningHand", Record<string, never>>
+  | BotIntentBase<"passPriority", Record<string, never>>
+  | BotIntentBase<
+      "playCard",
+      {
+        alternativeCostId: string | null;
+        cardInstanceId: string;
+        sourceZone:
+          | "battlefield"
+          | "command"
+          | "deck"
+          | "graveyard"
+          | "hand"
+          | "laneReserve"
+          | "objective"
+          | "sideboard"
+          | "stack"
+          | "exile";
+        targetSlotId: string | null;
+      }
+    >
+  | BotIntentBase<"takeMulligan", { targetHandSize: number | null }>
+  | BotIntentBase<"toggleAutoPass", { enabled: boolean }>;
 
 export interface BotDecisionFrame {
   availableIntentKinds: GameplayIntentKind[];
   catalog: CardCatalogEntry[];
+  context: AgentMatchContextV1;
   deadlineAt: number | null;
   matchId: MatchId;
   receivedAt: number;
@@ -48,12 +125,9 @@ export interface BotDecisionFrame {
   view: MatchSeatView;
 }
 
-export interface BotLegalAction {
+export type BotLegalAction = Omit<LegalActionDescriptorV1, "intent"> & {
   intent: BotSupportedIntent;
-  kind: BotSupportedIntent["kind"];
-  label: string;
-  priority: number;
-}
+};
 
 export interface BotExternalDecisionAction {
   actionId: string;
@@ -94,6 +168,7 @@ export type BotExternalDecisionResponse =
     };
 
 export interface BotPlannedIntent {
+  actionId: string;
   confidence: number;
   intent: BotSupportedIntent;
   requestedAt: number;

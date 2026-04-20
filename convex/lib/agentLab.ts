@@ -1,5 +1,6 @@
 import { getCatalogForFormat } from "@lunchtable/bot-sdk";
 import {
+  createAgentMatchContext,
   createDecisionFrame,
   listLegalBotActions,
   planBaselineIntent,
@@ -83,6 +84,49 @@ function describeLifeTotals(
   return `${leader} leads on life by ${margin}. ${selfSeat.seat}: ${selfSeat.lifeTotal}, ${opposingSeat.seat}: ${opposingSeat.lifeTotal}.`;
 }
 
+function buildStructuredContextPreview(input: {
+  context: ReturnType<typeof createAgentMatchContext>;
+  legalActionLimit: number;
+  visibleCardLimit: number;
+}) {
+  return JSON.stringify(
+    {
+      legalActions: input.context.legalActions
+        .slice(0, input.legalActionLimit)
+        .map((action) => ({
+          actionId: action.actionId,
+          args: action.args,
+          humanLabel: action.humanLabel,
+          kind: action.kind,
+          machineLabel: action.machineLabel,
+        })),
+      match: {
+        activeSeat: input.context.match.activeSeat,
+        id: input.context.match.id,
+        phase: input.context.match.phase,
+        prioritySeat: input.context.match.prioritySeat,
+        status: input.context.match.status,
+        turnNumber: input.context.match.turnNumber,
+        version: input.context.match.version,
+      },
+      promptDecision: input.context.promptDecision,
+      recentEvents: input.context.recentEvents.slice(-4),
+      viewKind: input.context.viewKind,
+      viewerSeat: input.context.viewerSeat,
+      visibleCards: input.context.visibleCards
+        .slice(0, input.visibleCardLimit)
+        .map((entry) => ({
+          cardId: entry.card.cardId,
+          name: entry.card.name,
+          reasoning: entry.card.reasoning,
+          seenIn: entry.seenIn,
+        })),
+    },
+    null,
+    2,
+  );
+}
+
 export function getAgentSessionTitle(input: {
   matchId: string;
   purpose: AgentLabPurpose;
@@ -134,12 +178,15 @@ export function buildCoachReply(input: {
   const recommendedAction = recommendation
     ? (legalActions.find(
         (candidate) =>
-          candidate.kind === recommendation.intent.kind &&
-          candidate.intent.intentId === recommendation.intent.intentId,
+          candidate.actionId === recommendation.actionId,
       ) ??
       legalActions[0] ??
       null)
     : (legalActions[0] ?? null);
+  const context = createAgentMatchContext({
+    catalog: getCatalogForFormat(input.view.match.format.id),
+    view: input.view,
+  });
 
   const battlefieldCount = getZoneCardCount(
     input.view,
@@ -154,7 +201,7 @@ export function buildCoachReply(input: {
   const cleanPrompt = normalizePrompt(input.prompt);
   const legalActionLabels = legalActions
     .slice(0, 4)
-    .map((action) => action.label)
+    .map((action) => action.humanLabel)
     .join(", ");
 
   return [
@@ -169,12 +216,18 @@ export function buildCoachReply(input: {
       ? `Legal actions now: ${legalActionLabels}.`
       : "No immediate legal actions are available from this seat view.",
     recommendedAction
-      ? `Baseline parity recommendation: ${recommendedAction.label}.`
+      ? `Baseline parity recommendation: ${recommendedAction.humanLabel}.`
       : "Baseline parity recommendation: wait for the next legal window.",
     cleanPrompt.length > 0
       ? `Requested focus: ${cleanPrompt}`
       : "Suggested focus: preserve tempo and avoid spending resources off-priority without pressure.",
     `Recent context: ${summarizeRecentEvents(input.view.recentEvents, 3)}`,
+    "Structured agent context:",
+    `\`\`\`json\n${buildStructuredContextPreview({
+      context,
+      legalActionLimit: 6,
+      visibleCardLimit: 8,
+    })}\n\`\`\``,
   ].join("\n\n");
 }
 
@@ -198,6 +251,10 @@ export function buildCommentatorReply(input: {
     return `${seat.seat}: ${seat.lifeTotal} life, ${battlefieldCount} on board, ${seat.handCount} in hand, ${graveyardCount} in graveyard.`;
   });
   const cleanPrompt = normalizePrompt(input.prompt);
+  const context = createAgentMatchContext({
+    catalog: getCatalogForFormat(input.view.match.format.id),
+    view: input.view,
+  });
 
   return [
     "Commentator mode is public-state only. It never reads private opponent hands or unrevealed deck order.",
@@ -210,6 +267,12 @@ export function buildCommentatorReply(input: {
     cleanPrompt.length > 0
       ? `Requested focus: ${cleanPrompt}`
       : "Requested focus: highlight visible swing points and tempo changes only.",
+    "Structured agent context:",
+    `\`\`\`json\n${buildStructuredContextPreview({
+      context,
+      legalActionLimit: 0,
+      visibleCardLimit: 8,
+    })}\n\`\`\``,
   ].join("\n\n");
 }
 

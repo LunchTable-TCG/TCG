@@ -92,6 +92,88 @@ describe("match view projections", () => {
     ]);
   });
 
+  it("enriches recent event summaries with card context for UI hero moments", () => {
+    const state = createGameState({
+      matchId: "match_event_context",
+    });
+
+    state.cardCatalog = {
+      "archive-apprentice": {
+        abilities: [
+          {
+            costs: [],
+            effect: [],
+            id: "study-bolt",
+            kind: "activated",
+            speed: "fast",
+            text: "Deal 1 damage.",
+          },
+        ],
+        cardId: "archive-apprentice",
+        cost: 2,
+        kind: "unit",
+        keywords: [],
+        name: "Archive Apprentice",
+        stats: {
+          power: 1,
+          toughness: 3,
+        },
+      },
+    };
+
+    const seatView = createSeatView(state, "seat-0", [
+      {
+        at: 1,
+        eventId: "event_play",
+        kind: "cardPlayed",
+        matchId: state.shell.id,
+        payload: {
+          cardInstanceId: "seat-0:archive-apprentice:hand:1",
+          seat: "seat-0",
+          toZone: "battlefield",
+        },
+        sequence: 2,
+        stateVersion: 2,
+      },
+      {
+        at: 2,
+        eventId: "event_ability",
+        kind: "abilityActivated",
+        matchId: state.shell.id,
+        payload: {
+          abilityId: "study-bolt",
+          seat: "seat-0",
+          sourceInstanceId: "seat-0:archive-apprentice:battlefield:1",
+        },
+        sequence: 3,
+        stateVersion: 3,
+      },
+    ]);
+
+    expect(seatView.recentEvents).toEqual([
+      {
+        cardId: "archive-apprentice",
+        cardName: "Archive Apprentice",
+        focusInstanceId: "seat-0:archive-apprentice:hand:1",
+        kind: "cardPlayed",
+        label: "Played Archive Apprentice",
+        seat: "seat-0",
+        sequence: 2,
+        toZone: "battlefield",
+      },
+      {
+        abilityId: "study-bolt",
+        cardId: "archive-apprentice",
+        cardName: "Archive Apprentice",
+        focusInstanceId: "seat-0:archive-apprentice:battlefield:1",
+        kind: "abilityActivated",
+        label: "Archive Apprentice activated study-bolt",
+        seat: "seat-0",
+        sequence: 3,
+      },
+    ]);
+  });
+
   it("projects continuous stat modifiers onto battlefield card views", () => {
     const state = createGameState({
       matchId: "match_buffs",

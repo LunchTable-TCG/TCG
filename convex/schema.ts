@@ -133,6 +133,8 @@ export default defineSchema({
     code: v.string(),
     codeNormalized: v.string(),
     createdAt: v.number(),
+    guestActorType: v.optional(v.union(v.literal("human"), v.literal("bot"))),
+    guestBotIdentityId: v.optional(v.id("botIdentities")),
     formatId: v.string(),
     guestDeckId: v.optional(v.id("decks")),
     guestJoinedAt: v.optional(v.number()),

@@ -1,5 +1,6 @@
 import type {
   CardCatalogEntry,
+  CardReasoningMetadataV1,
   DeckCardEntry,
   DeckValidationResult,
 } from "@lunchtable/shared-types";
@@ -25,7 +26,167 @@ function summarizeAbility(ability: CardDefinition["abilities"][number]) {
         : null,
     speed: ability.kind === "activated" ? ability.speed : null,
     text: ability.text,
+    targets:
+      ability.kind === "activated"
+        ? (ability.targets ?? []).map((target) => ({
+            maxSelections: target.count.max,
+            minSelections: target.count.min,
+            selector: target.selector,
+          }))
+        : undefined,
   };
+}
+
+function appendUnique(values: string[], value: string) {
+  if (!values.includes(value)) {
+    values.push(value);
+  }
+}
+
+function collectEffectKinds(ability: CardDefinition["abilities"][number]) {
+  if (ability.kind === "static") {
+    return [ability.effect.kind];
+  }
+
+  if (ability.kind === "replacement") {
+    return [ability.replace.kind];
+  }
+
+  return ability.effect.map((effect) => effect.kind);
+}
+
+function collectTargetClasses(ability: CardDefinition["abilities"][number]) {
+  const targetClasses: string[] = [];
+
+  if (ability.kind === "activated") {
+    for (const target of ability.targets ?? []) {
+      appendUnique(targetClasses, target.selector);
+    }
+  }
+
+  if (ability.kind === "activated" || ability.kind === "triggered") {
+    for (const effect of ability.effect) {
+      if ("target" in effect && effect.target === "target") {
+        appendUnique(targetClasses, "target");
+      }
+      if ("target" in effect && effect.target === "opponent") {
+        appendUnique(targetClasses, "opponent");
+      }
+    }
+  }
+
+  return targetClasses;
+}
+
+function collectPromptSurfaces(ability: CardDefinition["abilities"][number]) {
+  const promptSurfaces: string[] = [];
+
+  if (ability.kind === "activated") {
+    if ((ability.targets?.length ?? 0) > 0) {
+      appendUnique(promptSurfaces, "targets");
+    }
+    if (ability.costs.some((cost) => cost.kind !== "resource")) {
+      appendUnique(promptSurfaces, "costs");
+    }
+  }
+
+  if (ability.kind === "activated" || ability.kind === "triggered") {
+    for (const effect of ability.effect) {
+      if (effect.kind === "randomSelection") {
+        appendUnique(promptSurfaces, "choice");
+      }
+    }
+  }
+
+  return promptSurfaces;
+}
+
+function collectTimingAffordances(ability: CardDefinition["abilities"][number]) {
+  const timingAffordances: string[] = [];
+
+  if (ability.kind === "activated") {
+    appendUnique(
+      timingAffordances,
+      ability.speed === "fast" ? "fastActivation" : "slowActivation",
+    );
+  }
+
+  if (ability.kind === "triggered") {
+    appendUnique(
+      timingAffordances,
+      ability.trigger.kind === "event"
+        ? `trigger:${ability.trigger.event}`
+        : "triggered",
+    );
+  }
+
+  if (ability.kind === "static") {
+    appendUnique(timingAffordances, `static:${ability.layer}`);
+  }
+
+  if (ability.kind === "replacement") {
+    appendUnique(
+      timingAffordances,
+      ability.watches.kind === "event"
+        ? `replacement:${ability.watches.event}`
+        : "replacement",
+    );
+  }
+
+  return timingAffordances;
+}
+
+function buildCardReasoningMetadata(
+  card: CardDefinition,
+): CardReasoningMetadataV1 {
+  const effectKinds: string[] = [];
+  const promptSurfaces: string[] = [];
+  const targetClasses: string[] = [];
+  const timingAffordances = ["mainPhaseCast"];
+
+  for (const ability of card.abilities) {
+    for (const effectKind of collectEffectKinds(ability)) {
+      appendUnique(effectKinds, effectKind);
+    }
+    for (const promptSurface of collectPromptSurfaces(ability)) {
+      appendUnique(promptSurfaces, promptSurface);
+    }
+    for (const targetClass of collectTargetClasses(ability)) {
+      appendUnique(targetClasses, targetClass);
+    }
+    for (const affordance of collectTimingAffordances(ability)) {
+      appendUnique(timingAffordances, affordance);
+    }
+  }
+
+  return {
+    effectKinds,
+    promptSurfaces,
+    rulesSummary: card.rulesText.slice(0, 3),
+    stats: card.stats ? { ...card.stats } : null,
+    targetClasses,
+    timingAffordances,
+  };
+}
+
+export function validateCardReasoningMetadata(
+  catalog: CardCatalogEntry[],
+): string[] {
+  return catalog.flatMap((card) => {
+    const issues: string[] = [];
+
+    if (card.reasoning.timingAffordances.length === 0) {
+      issues.push(`${card.cardId}: missing timing affordances`);
+    }
+    if (!Array.isArray(card.reasoning.rulesSummary)) {
+      issues.push(`${card.cardId}: rules summary must be an array`);
+    }
+    if (!Array.isArray(card.reasoning.effectKinds)) {
+      issues.push(`${card.cardId}: effect kinds must be an array`);
+    }
+
+    return issues;
+  });
 }
 
 export function createCatalogEntriesForFormat(
@@ -41,6 +202,7 @@ export function createCatalogEntriesForFormat(
     kind: card.kind,
     name: card.name,
     rarity: card.rarity,
+    reasoning: buildCardReasoningMetadata(card),
     rulesText: [...card.rulesText],
     setId: card.setId,
     stats: card.stats ? { ...card.stats } : undefined,

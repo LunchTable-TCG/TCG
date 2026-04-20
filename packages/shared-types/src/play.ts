@@ -2,7 +2,7 @@ import type { GenericId } from "convex/values";
 
 import type { UserId } from "./auth";
 import type { DeckId } from "./library";
-import type { MatchId, MatchShell } from "./match";
+import type { MatchActorType, MatchId, MatchShell } from "./match";
 
 export type LobbyId = GenericId<"lobbies">;
 export type QueueEntryId = GenericId<"queueEntries">;
@@ -25,6 +25,7 @@ export const QUEUE_ENTRY_STATUSES = ["queued", "matched", "cancelled"] as const;
 export type QueueEntryStatus = (typeof QUEUE_ENTRY_STATUSES)[number];
 
 export interface LobbyParticipant {
+  actorType: MatchActorType;
   deckId: DeckId;
   joinedAt: number;
   ready: boolean;
