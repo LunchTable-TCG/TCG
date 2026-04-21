@@ -18,7 +18,7 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 | 20 | In Progress | `AgentMatchContextV1` + legal action catalog + telemetry | Vitest + bot runner telemetry |
 | 21 | Pending | full gameplay-agent lifecycle parity | lifecycle integration coverage |
 | 22 | In Progress | card reasoning metadata + current-format goldens | metadata validator + golden fixtures |
-| 23 | Pending | full browser and resilience lifecycle coverage | Playwright and replay verification |
+| 23 | Complete | full browser and resilience lifecycle coverage | Playwright and replay verification |
 | 24 | In Progress | deterministic benchmark harness + regression gates | `phase-check.sh regression` |
 
 ## Phase 19 Checklist
@@ -57,6 +57,7 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 - [x] Cover signup, deck creation, practice, queue, lobby, operator, and agent
   helper happy paths
 - [x] Extend browser coverage to full match completion and replay verification
+- [x] Cover casual queue completion and replay restoration for both players
 - [x] Add browser proof for stale-state operator recovery
 - [x] Add reconnect resilience proof for active live matches
 - [x] Add bot-runner restart lifecycle proof

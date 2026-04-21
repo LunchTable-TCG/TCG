@@ -1,5 +1,6 @@
 .DS_Store
 .convex/
+convex/tsconfig.json
 .agents/
 node_modules/
 dist/

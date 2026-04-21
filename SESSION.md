@@ -109,16 +109,16 @@
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-22-card-addition-contract-and-golden-results`
 **Next Action**: Expand new-card admission coverage and keep current-format goldens authoritative.
 
-## Phase 23: Complete E2E Lifecycle Coverage ⏸️
+## Phase 23: Complete E2E Lifecycle Coverage ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-23-complete-e2e-lifecycle-coverage`
 **Progress**:
 - [x] Practice match completion and replay restoration are covered in browser e2e
 - [x] Active practice matches reconnect cleanly after reload in browser e2e
 - [x] Private lobby completion and replay restoration are covered for human-vs-human and human-vs-agent tables
+- [x] Casual queue completion and replay restoration are covered for both players in browser e2e
 - [x] Stale-match operator recovery is covered in browser e2e against the live practice flow
 - [x] Bot-runner restart is covered in runner lifecycle integration tests
-- [ ] Queue completion and replay restoration remain limited to match-entry proof
-**Next Action**: Extend queue coverage from match entry to full completion and replay restoration.
+**Next Action**: Phase 23 coverage is complete. Continue with Phase 24 regression and benchmark hardening.
 
 ## Phase 24: Benchmarks, Regression Gates, and Release Readiness ⏸️
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-24-benchmarks-regression-gates-and-release-readiness`

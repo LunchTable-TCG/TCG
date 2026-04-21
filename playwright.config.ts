@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const isCI = Boolean(process.env.CI);
+const useIsolatedLocalStack = Boolean(process.env.PLAYWRIGHT_E2E_ISOLATED);
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: "bash ./scripts/run-e2e-stack.sh",
     url: "http://127.0.0.1:4173",
-    reuseExistingServer: !isCI,
+    reuseExistingServer: !isCI && !useIsolatedLocalStack,
     timeout: 240_000,
   },
 });

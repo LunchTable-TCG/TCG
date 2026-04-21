@@ -14,6 +14,30 @@ is_convex_running() {
   lsof -nP -iTCP:3210 -sTCP:LISTEN >/dev/null 2>&1
 }
 
+has_local_convex_env() {
+  [[ -f "$ROOT/.env.local" ]] && rg -q '^VITE_CONVEX_URL=' "$ROOT/.env.local"
+}
+
+bootstrap_local_convex() {
+  local bootstrap_log
+  bootstrap_log="$(mktemp)"
+
+  if CONVEX_AGENT_MODE=anonymous \
+    bunx convex dev --once --typecheck disable --tail-logs disable 2>&1 | tee "$bootstrap_log"; then
+    rm -f "$bootstrap_log"
+    return 0
+  fi
+
+  if ! rg -q 'used in auth config file but its value was not set' "$bootstrap_log"; then
+    rm -f "$bootstrap_log"
+    return 1
+  fi
+
+  rm -f "$bootstrap_log"
+  bun run setup:convex-auth-local --sync
+  bunx convex dev --once --typecheck disable --tail-logs disable
+}
+
 cleanup() {
   if [[ -n "$CONVEX_PID" ]]; then
     kill "$CONVEX_PID" >/dev/null 2>&1 || true
@@ -31,6 +55,11 @@ warn_if_dirty() {
     echo "$dirty" >&2
   fi
 }
+
+if ! has_local_convex_env; then
+  echo "==> Bootstrapping local Convex deployment"
+  bootstrap_local_convex
+fi
 
 echo "==> Syncing local Convex auth variables"
 bun run setup:convex-auth-local --sync

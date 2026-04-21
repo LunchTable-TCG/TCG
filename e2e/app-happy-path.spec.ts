@@ -326,7 +326,7 @@ test("creates, completes, and restores a private lobby match against a table bot
   await expectCompletedReplay(page, "seat-1");
 });
 
-test("enters the casual queue and resolves into a live match when an opponent is available", async ({
+test("enters the casual queue, completes the match, and restores replay for both players", async ({
   browser,
 }) => {
   const host = await newPage(browser);
@@ -346,23 +346,8 @@ test("enters the casual queue and resolves into a live match when an opponent is
       .first();
 
     await host.page.getByRole("button", { name: "Enter casual queue" }).click();
-
-    let hostMatchedImmediately = false;
-    try {
-      await expect(host.page.getByText("Entered casual queue")).toBeVisible({
-        timeout: 3_000,
-      });
-    } catch {
-      await expect(hostQueuePanel.getByText("matched")).toBeVisible();
-      await expect(
-        host.page.getByText("Live Match Shell", { exact: true }),
-      ).toBeVisible();
-      hostMatchedImmediately = true;
-    }
-
-    if (hostMatchedImmediately) {
-      return;
-    }
+    await expect(host.page.getByText("Entered casual queue")).toBeVisible();
+    await expect(hostQueuePanel.getByText("Leave queue")).toBeVisible();
 
     await guest.page
       .getByRole("button", { name: "Enter casual queue" })
@@ -377,6 +362,24 @@ test("enters the casual queue and resolves into a live match when an opponent is
       host.page.getByText("Live Match Shell", { exact: true }),
     ).toBeVisible();
     await expect(host.page.getByText(/Replay frames: \d+/)).toBeVisible();
+
+    await keepOpeningHand(host.page);
+    await keepOpeningHand(guest.page);
+    await expect(
+      host.page
+        .locator(".site-arena-stage .match-shell")
+        .first()
+        .getByText("main1 · turn 1", { exact: true }),
+    ).toBeVisible();
+
+    await concedeSelectedMatch(host.page);
+    await expectCompletedReplay(host.page, "seat-1");
+
+    await guest.page.reload();
+    await expect(
+      guest.page.getByRole("button", { name: "Viewing live shell" }),
+    ).toBeVisible();
+    await expectCompletedReplay(guest.page, "seat-1");
   } finally {
     await host.context.close();
     await guest.context.close();

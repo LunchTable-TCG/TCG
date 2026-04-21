@@ -25,7 +25,7 @@
     "test:rules": "vitest run packages/game-core/src",
     "test:replay": "vitest run tests/replay-contract.test.ts tests/replay-golden.test.ts tests/replay-helpers.test.ts",
     "test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "PLAYWRIGHT_E2E_ISOLATED=1 PLAYWRIGHT_E2E_RESET_LOCAL=1 playwright test",
     "benchmark:deterministic": "bun run scripts/run-deterministic-benchmarks.ts"
   },
   "dependencies": {
@@ -36,6 +36,11 @@
     "viem": "2.47.6"
   },
   "devDependencies": {
+    "@lunchtable/bot-sdk": "workspace:*",
+    "@lunchtable/card-content": "workspace:*",
+    "@lunchtable/game-core": "workspace:*",
+    "@lunchtable/render-pixi": "workspace:*",
+    "@lunchtable/shared-types": "workspace:*",
     "@biomejs/biome": "^1.9.4",
     "@edge-runtime/vm": "5.0.0",
     "@playwright/test": "1.59.1",

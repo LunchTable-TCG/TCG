@@ -14,6 +14,11 @@
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
         "@edge-runtime/vm": "5.0.0",
+        "@lunchtable/bot-sdk": "workspace:*",
+        "@lunchtable/card-content": "workspace:*",
+        "@lunchtable/game-core": "workspace:*",
+        "@lunchtable/render-pixi": "workspace:*",
+        "@lunchtable/shared-types": "workspace:*",
         "@playwright/test": "1.59.1",
         "@types/node": "^24.6.1",
         "@types/react": "^19.2.2",
