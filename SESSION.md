@@ -114,9 +114,10 @@
 **Progress**:
 - [x] Practice match completion and replay restoration are covered in browser e2e
 - [x] Private lobby completion and replay restoration are covered for human-vs-human and human-vs-agent tables
+- [x] Stale-match operator recovery is covered in browser e2e against the live practice flow
 - [ ] Queue completion and replay restoration remain limited to match-entry proof
-- [ ] Resilience suites for reconnect, stale state, and bot-runner restart are still pending
-**Next Action**: Add resilience suites for reconnect, stale state, and bot-runner restart, then extend queue coverage from match entry to full completion.
+- [ ] Reconnect and bot-runner restart resilience suites are still pending
+**Next Action**: Add reconnect and bot-runner restart resilience suites, then extend queue coverage from match entry to full completion.
 
 ## Phase 24: Benchmarks, Regression Gates, and Release Readiness ⏸️
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-24-benchmarks-regression-gates-and-release-readiness`

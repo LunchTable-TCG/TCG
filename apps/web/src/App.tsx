@@ -57,6 +57,7 @@ const bootstrapChecklist = [
 ];
 
 const defaultFormatId = starterFormat.formatId;
+const operatorStaleRecoveryThresholdMs = 60_000;
 type Notice = StatusNotice;
 
 const siteFeatureCards = [
@@ -186,7 +187,8 @@ async function loadFormatSettingsSnapshot() {
 
 async function loadRecoverableMatchesSnapshot() {
   return requireConvexWalletAuthTransport().listRecoverableMatches({
-    limit: 8,
+    limit: 50,
+    staleAfterMs: operatorStaleRecoveryThresholdMs,
   });
 }
 
@@ -1193,6 +1195,7 @@ function MatchOpsPanel({
   onRecoverMatch,
   pendingAction,
   recoverableMatches,
+  selectedMatch,
   telemetryEvents,
 }: {
   loading: boolean;
@@ -1203,6 +1206,7 @@ function MatchOpsPanel({
   ) => void;
   pendingAction: string | null;
   recoverableMatches: RecoverableMatchRecord[];
+  selectedMatch: MatchShell | null;
   telemetryEvents: MatchTelemetryEvent[];
 }) {
   return (
@@ -1220,6 +1224,96 @@ function MatchOpsPanel({
       </div>
 
       <div className="admin-grid">
+        <section className="workspace-card">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Selected match</p>
+              <h3>Direct recovery rail</h3>
+            </div>
+            {!selectedMatch ? (
+              <p className="support-copy">
+                Select a live shell to target operator recovery directly.
+              </p>
+            ) : (
+              <article className="deck-card admin-card">
+                <div className="deck-card-header">
+                  <div>
+                    <p className="library-card-title">{selectedMatch.id}</p>
+                    <p className="library-card-meta">
+                      {selectedMatch.status} · {selectedMatch.phase} · turn{" "}
+                      {selectedMatch.turnNumber}
+                    </p>
+                  </div>
+                  <span
+                    className={`deck-status ${
+                      selectedMatch.status === "active"
+                        ? "deck-status-legal"
+                        : "deck-status-illegal"
+                    }`}
+                  >
+                    active shell
+                  </span>
+                </div>
+                <p className="support-copy">
+                  Direct recovery uses the same one-minute stale threshold as
+                  the recoverable list. If this shell is still active after that
+                  idle window, the buttons below can resolve it immediately.
+                </p>
+                <div className="inline-actions inline-actions-wrap">
+                  <button
+                    className="action secondary-action"
+                    disabled={
+                      loading ||
+                      pendingAction !== null ||
+                      selectedMatch.status !== "active"
+                    }
+                    onClick={() => onRecoverMatch(selectedMatch.id, "cancel")}
+                    type="button"
+                  >
+                    {pendingAction === `recover:cancel:${selectedMatch.id}`
+                      ? "Cancelling..."
+                      : "Cancel selected match"}
+                  </button>
+                  <button
+                    className="action action-contrast"
+                    disabled={
+                      loading ||
+                      pendingAction !== null ||
+                      selectedMatch.status !== "active"
+                    }
+                    onClick={() =>
+                      onRecoverMatch(selectedMatch.id, "forceConcede", "seat-0")
+                    }
+                    type="button"
+                  >
+                    {pendingAction ===
+                    `recover:forceConcede:${selectedMatch.id}:seat-0`
+                      ? "Recovering..."
+                      : "Force selected seat-0 concede"}
+                  </button>
+                  <button
+                    className="action action-contrast"
+                    disabled={
+                      loading ||
+                      pendingAction !== null ||
+                      selectedMatch.status !== "active"
+                    }
+                    onClick={() =>
+                      onRecoverMatch(selectedMatch.id, "forceConcede", "seat-1")
+                    }
+                    type="button"
+                  >
+                    {pendingAction ===
+                    `recover:forceConcede:${selectedMatch.id}:seat-1`
+                      ? "Recovering..."
+                      : "Force selected seat-1 concede"}
+                  </button>
+                </div>
+              </article>
+            )}
+          </div>
+        </section>
+
         <section className="workspace-card">
           <div className="panel-stack">
             <div>
@@ -2652,6 +2746,7 @@ export function App() {
         action,
         matchId,
         seat,
+        staleAfterMs: operatorStaleRecoveryThresholdMs,
       });
       await Promise.all([
         refreshOperatorSurface(),
@@ -3095,6 +3190,7 @@ export function App() {
             onRecoverMatch={handleRecoverStaleMatch}
             pendingAction={operatorAction}
             recoverableMatches={recoverableMatches}
+            selectedMatch={featuredMatch}
             telemetryEvents={telemetryEvents}
           />
         </>

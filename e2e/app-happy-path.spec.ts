@@ -6,6 +6,8 @@ import {
   test,
 } from "@playwright/test";
 
+const staleRecoveryWaitMs = 65_000;
+
 function uniqueTag(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
@@ -102,6 +104,16 @@ async function expectCompletedReplay(page: Page, winnerSeat: string) {
   await expect(page.getByText(/Replay frames: \d+ · complete/)).toBeVisible();
   await expect(replaySection(page).getByText("complete")).toBeVisible();
   await expect(replaySection(page).getByText(winnerSeat)).toBeVisible();
+}
+
+async function selectedLiveMatchId(page: Page) {
+  const matchId = (await page
+    .locator(".site-arena-stage .match-shell h3")
+    .first()
+    .textContent())?.trim();
+
+  expect(matchId).toBeTruthy();
+  return matchId as string;
 }
 
 async function clickControl(page: Page, name: string) {
@@ -376,4 +388,25 @@ test("shows operator controls for allowlisted accounts and can toggle format pub
   await expect(
     page.getByText("Stale matches and telemetry feed"),
   ).toBeVisible();
+});
+
+test("recovers a stale practice match through the operator panel", async ({
+  page,
+}) => {
+  const operatorEmail = `${uniqueTag("stale-operator")}@example.com`;
+
+  await signUp(page, "stale-operator", {
+    email: operatorEmail,
+  });
+  await createStarterDeck(page);
+  await createPracticeMatch(page);
+
+  await selectedLiveMatchId(page);
+
+  await page.waitForTimeout(staleRecoveryWaitMs);
+  await clickControl(page, "Force selected seat-0 concede");
+
+  await expect(page.getByText("Stale match recovered")).toBeVisible();
+  await expectCompletedReplay(page, "seat-1");
+  await expect(page.getByText("match.recovery.completed")).toBeVisible();
 });
