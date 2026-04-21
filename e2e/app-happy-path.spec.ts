@@ -209,6 +209,31 @@ test("restores a completed practice match after reload", async ({ page }) => {
   await expectCompletedReplay(page, "seat-1");
 });
 
+test("restores an active practice match after reload", async ({ page }) => {
+  await createSignedInDeckedUser(page, "practice-live-resume");
+  await createPracticeMatch(page);
+  await keepOpeningHand(page);
+
+  const liveArena = page.locator(".site-arena-stage .match-shell").first();
+  await expect(
+    liveArena.getByText("main1 · turn 1", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Replay frames: \d+ · active/)).toBeVisible();
+
+  await page.reload();
+
+  await expect(
+    page.getByRole("button", { name: "Viewing live shell" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".site-arena-stage .match-shell")
+      .first()
+      .getByText("main1 · turn 1", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Replay frames: \d+ · active/)).toBeVisible();
+});
+
 test("creates, completes, and restores a private lobby match across two isolated users", async ({
   browser,
 }) => {

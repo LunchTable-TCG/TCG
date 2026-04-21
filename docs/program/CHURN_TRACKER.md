@@ -58,7 +58,8 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
   helper happy paths
 - [x] Extend browser coverage to full match completion and replay verification
 - [x] Add browser proof for stale-state operator recovery
-- [ ] Add resilience suites for reconnect and bot-runner restart
+- [x] Add reconnect resilience proof for active live matches
+- [x] Add bot-runner restart lifecycle proof
 
 ## Phase 24 Checklist
 
