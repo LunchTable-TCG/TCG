@@ -56,7 +56,7 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 
 - [x] Cover signup, deck creation, practice, queue, lobby, operator, and agent
   helper happy paths
-- [ ] Extend browser coverage to full match completion and replay verification
+- [x] Extend browser coverage to full match completion and replay verification
 - [ ] Add resilience suites for reconnect, stale state, and bot-runner restart
 
 ## Phase 24 Checklist

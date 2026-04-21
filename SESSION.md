@@ -2,7 +2,7 @@
 
 **Current Phase**: Phase 19
 **Current Stage**: Implementation
-**Last Checkpoint**: 6690c6e (2026-04-03)
+**Last Checkpoint**: f3932f8 (2026-04-21)
 **Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`, `docs/WALLET_AUTH_SPEC.md`, `docs/program/EXECUTION_PLAN.md`, `docs/program/CHURN_TRACKER.md`, `docs/program/VERIFICATION_MATRIX.md`, `docs/program/BENCHMARK_BUDGETS.md`
 
 ---
@@ -111,7 +111,12 @@
 
 ## Phase 23: Complete E2E Lifecycle Coverage ⏸️
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-23-complete-e2e-lifecycle-coverage`
-**Next Action**: Extend browser lifecycle coverage through match completion, replay, and recovery flows.
+**Progress**:
+- [x] Practice match completion and replay restoration are covered in browser e2e
+- [x] Private lobby completion and replay restoration are covered for human-vs-human and human-vs-agent tables
+- [ ] Queue completion and replay restoration remain limited to match-entry proof
+- [ ] Resilience suites for reconnect, stale state, and bot-runner restart are still pending
+**Next Action**: Add resilience suites for reconnect, stale state, and bot-runner restart, then extend queue coverage from match entry to full completion.
 
 ## Phase 24: Benchmarks, Regression Gates, and Release Readiness ⏸️
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-24-benchmarks-regression-gates-and-release-readiness`

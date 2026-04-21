@@ -70,12 +70,38 @@ async function createPracticeMatch(page: Page) {
   await expect(page.getByText(/Replay frames: \d+/)).toBeVisible();
 }
 
+function replaySection(page: Page) {
+  return page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Deterministic spectator frames",
+      }),
+    })
+    .first();
+}
+
 async function keepOpeningHand(page: Page) {
   const keepButton = page.getByRole("button", { name: "keep" });
 
   await expect(keepButton).toBeVisible();
   await keepButton.click();
   await expect(page.getByText("Intent applied")).toBeVisible();
+}
+
+async function concedeSelectedMatch(page: Page) {
+  await page
+    .locator(".site-arena-stage .match-shell")
+    .first()
+    .getByRole("button", { name: "Concede match" })
+    .click({ force: true });
+  await expect(page.getByText("Intent applied")).toBeVisible();
+}
+
+async function expectCompletedReplay(page: Page, winnerSeat: string) {
+  await expect(page.getByText(/Replay frames: \d+ · complete/)).toBeVisible();
+  await expect(replaySection(page).getByText("complete")).toBeVisible();
+  await expect(replaySection(page).getByText(winnerSeat)).toBeVisible();
 }
 
 async function clickControl(page: Page, name: string) {
@@ -148,24 +174,8 @@ test("completes a practice match by concession and refreshes replay status", asy
   await createPracticeMatch(page);
   await keepOpeningHand(page);
 
-  const liveArena = page.locator(".site-arena-stage .match-shell").first();
-  const replaySection = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Deterministic spectator frames",
-      }),
-    })
-    .first();
-
-  await liveArena
-    .getByRole("button", { name: "Concede match" })
-    .click({ force: true });
-
-  await expect(page.getByText("Intent applied")).toBeVisible();
-  await expect(page.getByText(/Replay frames: \d+ · complete/)).toBeVisible();
-  await expect(replaySection.getByText("complete")).toBeVisible();
-  await expect(replaySection.getByText("seat-1")).toBeVisible();
+  await concedeSelectedMatch(page);
+  await expectCompletedReplay(page, "seat-1");
 });
 
 test("restores a completed practice match after reload", async ({ page }) => {
@@ -173,23 +183,8 @@ test("restores a completed practice match after reload", async ({ page }) => {
   await createPracticeMatch(page);
   await keepOpeningHand(page);
 
-  const replaySection = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Deterministic spectator frames",
-      }),
-    })
-    .first();
-
-  await page
-    .locator(".site-arena-stage .match-shell")
-    .first()
-    .getByRole("button", { name: "Concede match" })
-    .click({ force: true });
-
-  await expect(page.getByText(/Replay frames: \d+ · complete/)).toBeVisible();
-  await expect(replaySection.getByText("seat-1")).toBeVisible();
+  await concedeSelectedMatch(page);
+  await expectCompletedReplay(page, "seat-1");
 
   await page.reload();
 
@@ -199,12 +194,10 @@ test("restores a completed practice match after reload", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Viewing live shell" }),
   ).toBeVisible();
-  await expect(page.getByText(/Replay frames: \d+ · complete/)).toBeVisible();
-  await expect(replaySection.getByText("complete")).toBeVisible();
-  await expect(replaySection.getByText("seat-1")).toBeVisible();
+  await expectCompletedReplay(page, "seat-1");
 });
 
-test("creates and resolves a private lobby match across two isolated users", async ({
+test("creates, completes, and restores a private lobby match across two isolated users", async ({
   browser,
 }) => {
   const host = await newPage(browser);
@@ -236,14 +229,34 @@ test("creates and resolves a private lobby match across two isolated users", asy
     await expect(host.page.getByText(/Replay frames: \d+/)).toBeVisible();
 
     await guest.page.reload();
-    await expect(guest.page.getByText(/Match created:/)).toBeVisible();
+    await expect(
+      guest.page.getByText("Live Match Shell", { exact: true }),
+    ).toBeVisible();
+
+    await keepOpeningHand(host.page);
+    await keepOpeningHand(guest.page);
+    await expect(
+      host.page
+        .locator(".site-arena-stage .match-shell")
+        .first()
+        .getByText("main1 · turn 1", { exact: true }),
+    ).toBeVisible();
+
+    await concedeSelectedMatch(host.page);
+    await expectCompletedReplay(host.page, "seat-1");
+
+    await guest.page.reload();
+    await expect(
+      guest.page.getByRole("button", { name: "Viewing live shell" }),
+    ).toBeVisible();
+    await expectCompletedReplay(guest.page, "seat-1");
   } finally {
     await host.context.close();
     await guest.context.close();
   }
 });
 
-test("creates and resolves a private lobby match against a table bot from the shared lobby surface", async ({
+test("creates, completes, and restores a private lobby match against a table bot from the shared lobby surface", async ({
   page,
 }) => {
   await createSignedInDeckedUser(page, "lobby-bot");
@@ -265,6 +278,15 @@ test("creates and resolves a private lobby match against a table bot from the sh
     liveArena.getByText("main1 · turn 1", { exact: true }),
   ).toBeVisible();
   await expect(liveArena.getByText("Phase: mulligan -> main1")).toBeVisible();
+
+  await concedeSelectedMatch(page);
+  await expectCompletedReplay(page, "seat-1");
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Viewing live shell" }),
+  ).toBeVisible();
+  await expectCompletedReplay(page, "seat-1");
 });
 
 test("enters the casual queue and resolves into a live match when an opponent is available", async ({
