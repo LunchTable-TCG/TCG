@@ -644,16 +644,33 @@ export function seatFromEvent(event: MatchEvent): string | undefined {
 function normalizeMatchStateSnapshot(snapshot: MatchState): MatchState {
   return {
     ...snapshot,
+    battlefieldEntryTurns: { ...(snapshot.battlefieldEntryTurns ?? {}) },
     continuousEffects: Array.isArray(snapshot.continuousEffects)
       ? snapshot.continuousEffects.map((effect) => ({
           ...effect,
-          targetIds: Array.isArray(effect.targetIds) ? [...effect.targetIds] : [],
+          targetIds: Array.isArray(effect.targetIds)
+            ? [...effect.targetIds]
+            : [],
         }))
       : [],
+    combat: {
+      attackers: Array.isArray(snapshot.combat?.attackers)
+        ? snapshot.combat.attackers.map((attacker) => ({
+            ...attacker,
+          }))
+        : [],
+      blocks: Array.isArray(snapshot.combat?.blocks)
+        ? snapshot.combat.blocks.map((block) => ({
+            ...block,
+          }))
+        : [],
+    },
     prompts: Array.isArray(snapshot.prompts)
       ? snapshot.prompts.map((prompt) => ({
           ...prompt,
-          choiceIds: Array.isArray(prompt.choiceIds) ? [...prompt.choiceIds] : [],
+          choiceIds: Array.isArray(prompt.choiceIds)
+            ? [...prompt.choiceIds]
+            : [],
           resolvedChoiceIds: Array.isArray(prompt.resolvedChoiceIds)
             ? [...prompt.resolvedChoiceIds]
             : [],

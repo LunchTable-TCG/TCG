@@ -1,18 +1,19 @@
-import {
-  buildMatchCinematicAssetBundle,
-  buildMatchCinematicSceneModel,
-} from "../apps/web/src/components/match/cinematics";
 import type {
   CardCatalogEntry,
   MatchSeatView,
   MatchSpectatorView,
 } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
+import {
+  buildMatchCinematicAssetBundle,
+  buildMatchCinematicSceneModel,
+} from "../apps/web/src/components/match/cinematics";
 
 import {
   deriveMatchCinematicCue,
   getZoneView,
   listActivatedAbilityActions,
+  listCombatActions,
   resolveRenderableView,
 } from "../apps/web/src/components/match/model";
 
@@ -31,6 +32,10 @@ function createReasoning(input?: Partial<CardCatalogEntry["reasoning"]>) {
 function createSeatView(): MatchSeatView {
   return {
     availableIntents: ["activateAbility", "concede", "toggleAutoPass"],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "seat",
     match: {
       activeSeat: "seat-0",
@@ -123,6 +128,10 @@ function createSeatView(): MatchSeatView {
 function createSpectatorView(): MatchSpectatorView {
   return {
     availableIntents: [],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "spectator",
     match: createSeatView().match,
     prompt: null,
@@ -322,6 +331,94 @@ describe("web match model helpers", () => {
         targetIds: ["seat-0:tidecall-apprentice:battlefield:1"],
         targetLabel: "Tidecall Apprentice",
         text: "Target friendly unit gains haste until end of turn. -> Tidecall Apprentice",
+      },
+    ]);
+  });
+
+  it("lists combat actions from the seat combat state", () => {
+    const attackView = createSeatView();
+    attackView.availableIntents = ["declareAttackers", "passPriority"];
+    attackView.seats = [
+      ...attackView.seats,
+      {
+        actorType: "bot",
+        autoPassEnabled: false,
+        deckCount: 40,
+        graveyardCount: 0,
+        handCount: 5,
+        hasPriority: false,
+        isActiveTurn: false,
+        lifeTotal: 20,
+        resources: [],
+        seat: "seat-1",
+        status: "active",
+        username: "beta",
+      },
+    ];
+    attackView.zones = [
+      {
+        cards: [
+          {
+            annotations: [],
+            cardId: "ember-summoner",
+            controllerSeat: "seat-0",
+            counters: {},
+            instanceId: "seat-0:ember-summoner:battlefield:1",
+            isTapped: false,
+            keywords: [],
+            name: "Ember Summoner",
+            ownerSeat: "seat-0",
+            slotId: null,
+            statLine: { power: 2, toughness: 2 },
+            visibility: "public",
+            zone: "battlefield",
+          },
+        ],
+        cardCount: 1,
+        ownerSeat: "seat-0",
+        visibility: "public",
+        zone: "battlefield",
+      },
+    ];
+
+    expect(listCombatActions(attackView)[0]).toEqual({
+      attackers: [
+        {
+          attackerId: "seat-0:ember-summoner:battlefield:1",
+          defenderSeat: "seat-1",
+          laneId: null,
+        },
+      ],
+      kind: "declareAttackers",
+      label: "Attack with Ember Summoner",
+    });
+
+    const damageView: MatchSeatView = {
+      ...attackView,
+      availableIntents: ["assignCombatDamage", "passPriority"],
+      combat: {
+        attackers: [
+          {
+            attackerId: "seat-0:ember-summoner:battlefield:1",
+            defenderSeat: "seat-1",
+            laneId: null,
+          },
+        ],
+        blocks: [],
+      },
+    };
+
+    expect(listCombatActions(damageView)).toEqual([
+      {
+        assignments: [
+          {
+            amount: 2,
+            sourceId: "seat-0:ember-summoner:battlefield:1",
+            targetId: "seat-1",
+          },
+        ],
+        kind: "assignCombatDamage",
+        label: "Resolve combat damage",
       },
     ]);
   });

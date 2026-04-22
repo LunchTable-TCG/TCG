@@ -292,4 +292,155 @@ describe("match view projections", () => {
     expect(spectatorExile?.cardCount).toBe(1);
     expect(spectatorExile?.cards).toHaveLength(1);
   });
+
+  it.each([
+    {
+      expectedIntent: "choosePromptOptions",
+      kind: "choice" as const,
+    },
+    {
+      expectedIntent: "chooseTargets",
+      kind: "targets" as const,
+    },
+    {
+      expectedIntent: "chooseModes",
+      kind: "modes" as const,
+    },
+    {
+      expectedIntent: "chooseCosts",
+      kind: "costs" as const,
+    },
+  ])(
+    "surfaces %s prompts as seat-selectable intents",
+    ({ expectedIntent, kind }) => {
+      const state = createGameState({
+        matchId: `match_prompt_view_${kind}`,
+      });
+
+      state.prompts = [
+        {
+          choiceIds: [`${kind}:alpha`, `${kind}:beta`],
+          expiresAt: null,
+          kind,
+          message: `Resolve ${kind}`,
+          ownerSeat: "seat-0",
+          promptId: `prompt:${kind}`,
+          resolvedChoiceIds: [],
+          status: "pending",
+        },
+      ];
+
+      const seatView = createSeatView(state, "seat-0", []);
+
+      expect(seatView.availableIntents).toEqual([
+        expectedIntent,
+        "toggleAutoPass",
+        "concede",
+      ]);
+      expect(seatView.prompt?.promptId).toBe(`prompt:${kind}`);
+      expect(seatView.prompt?.choices.map((choice) => choice.choiceId)).toEqual(
+        [`${kind}:alpha`, `${kind}:beta`],
+      );
+    },
+  );
+
+  it("surfaces combat state and authoritative combat intents for the active seat and defender", () => {
+    const state = createGameState({
+      matchId: "match_combat_view",
+    });
+
+    state.cardCatalog = {
+      "ember-summoner": {
+        abilities: [],
+        cardId: "ember-summoner",
+        cost: 2,
+        kind: "unit",
+        keywords: [],
+        name: "Ember Summoner",
+        stats: {
+          power: 2,
+          toughness: 2,
+        },
+      },
+    };
+    state.seats["seat-0"].battlefield = ["seat-0:ember-summoner:battlefield:1"];
+    state.seats["seat-1"].battlefield = ["seat-1:ember-summoner:battlefield:1"];
+    state.shell.activeSeat = "seat-0";
+    state.shell.phase = "attack";
+    state.shell.prioritySeat = "seat-0";
+    state.shell.status = "active";
+    state.shell.turnNumber = 3;
+
+    const attackView = createSeatView(state, "seat-0", []);
+    expect(attackView.availableIntents).toContain("declareAttackers");
+    expect(attackView.combat.attackers).toEqual([]);
+
+    state.combat.attackers = [
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        defenderSeat: "seat-1",
+        laneId: null,
+      },
+    ];
+    state.shell.phase = "block";
+    state.shell.prioritySeat = "seat-1";
+
+    const blockView = createSeatView(state, "seat-1", []);
+    expect(blockView.availableIntents).toContain("declareBlockers");
+    expect(blockView.combat.attackers).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        defenderSeat: "seat-1",
+        laneId: null,
+      },
+    ]);
+
+    state.combat.blocks = [
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        blockerId: "seat-1:ember-summoner:battlefield:1",
+      },
+    ];
+    state.shell.phase = "damage";
+    state.shell.prioritySeat = "seat-0";
+
+    const damageView = createSeatView(state, "seat-0", [
+      {
+        at: 1,
+        eventId: "event_attack",
+        kind: "attackersDeclared",
+        matchId: state.shell.id,
+        payload: {
+          attackers: [...state.combat.attackers],
+          seat: "seat-0",
+        },
+        sequence: 1,
+        stateVersion: 1,
+      },
+      {
+        at: 2,
+        eventId: "event_block",
+        kind: "blockersDeclared",
+        matchId: state.shell.id,
+        payload: {
+          blocks: [...state.combat.blocks],
+          seat: "seat-1",
+        },
+        sequence: 2,
+        stateVersion: 2,
+      },
+    ]);
+
+    expect(damageView.availableIntents).toContain("assignCombatDamage");
+    expect(damageView.recentEvents.map((event) => event.label)).toEqual([
+      "Declared 1 attacker",
+      "Declared 1 block",
+    ]);
+    expect(damageView.combat.blocks).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        blockerId: "seat-1:ember-summoner:battlefield:1",
+      },
+    ]);
+  });
 });

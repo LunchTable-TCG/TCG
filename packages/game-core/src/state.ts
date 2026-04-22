@@ -72,6 +72,22 @@ export interface MatchRuntimeContinuousEffectState {
   targetIds: string[];
 }
 
+export interface MatchCombatAttackerState {
+  attackerId: CardInstanceId;
+  defenderSeat: SeatId;
+  laneId: string | null;
+}
+
+export interface MatchCombatBlockState {
+  attackerId: CardInstanceId;
+  blockerId: CardInstanceId;
+}
+
+export interface MatchCombatState {
+  attackers: MatchCombatAttackerState[];
+  blocks: MatchCombatBlockState[];
+}
+
 export interface MatchStackObjectState {
   abilityId: string | null;
   cardId: string | null;
@@ -123,7 +139,9 @@ export interface MatchSeatState {
 }
 
 export interface MatchState {
+  battlefieldEntryTurns: Record<CardInstanceId, number>;
   cardCatalog: Record<string, MatchCardCatalogEntry>;
+  combat: MatchCombatState;
   continuousEffects: MatchRuntimeContinuousEffectState[];
   eventSequence: number;
   lastPriorityPassSeat: SeatId | null;
@@ -294,7 +312,12 @@ export function createMatchState(
   };
 
   const state: MatchState = {
+    battlefieldEntryTurns: {},
     cardCatalog: {},
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     continuousEffects: [],
     eventSequence: 0,
     lastPriorityPassSeat: null,

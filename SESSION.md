@@ -1,7 +1,7 @@
 # Session State
 
-**Current Phase**: Phase 19
-**Current Stage**: Implementation
+**Current Phase**: Phase 24
+**Current Stage**: Complete
 **Last Checkpoint**: f3932f8 (2026-04-21)
 **Planning Docs**: `IMPLEMENTATION_PHASES.md`, `docs/ARCHITECTURE.md`, `docs/GAME_RULES_SPEC.md`, `docs/CONVEX_BACKEND_SPEC.md`, `docs/WALLET_AUTH_SPEC.md`, `docs/program/EXECUTION_PLAN.md`, `docs/program/CHURN_TRACKER.md`, `docs/program/VERIFICATION_MATRIX.md`, `docs/program/BENCHMARK_BUDGETS.md`
 
@@ -87,27 +87,27 @@
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-18-ranked-hardening-and-ops`
 **Next Action**: All planned phases are complete. Next optional work is release/tag/deploy choreography or new feature planning.
 
-## Phase 19: Program Control Plane and Source of Truth 🔄
+## Phase 19: Program Control Plane and Source of Truth ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-19-program-control-plane-and-source-of-truth`
 **Progress**:
 - [x] Create `docs/program/` source-of-truth docs
 - [x] Extend the repo phase model to cover Phases 19-24
 - [x] Point repo docs and scripts at the program docs
-- [ ] Rerun workflow and benchmark gates after the new contract tests land
-**Next Action**: Finish the docs contract test, rerun the workflow gates, and record the resulting health-audit path for handoff.
-**Known Issues**: Program-phase docs were previously missing; Phase 19 is restoring a machine-readable control plane.
+- [x] Rerun workflow and benchmark gates after the new contract tests land
+**Next Action**: Phase 19 complete.
+**Known Issues**: None.
 
-## Phase 20: Structured Gameplay-Agent Context and Observability ⏸️
+## Phase 20: Structured Gameplay-Agent Context and Observability ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-20-structured-gameplay-agent-context-and-observability`
-**Next Action**: Extend coverage around the new structured agent context and telemetry paths.
+**Next Action**: Phase 20 complete.
 
-## Phase 21: Full Intent Parity and Live LLM Player Lifecycle ⏸️
+## Phase 21: Full Intent Parity and Live LLM Player Lifecycle ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-21-full-intent-parity-and-live-llm-player-lifecycle`
-**Next Action**: Complete end-to-end intent parity and bot lifecycle coverage.
+**Next Action**: Phase 21 complete for the current authoritative intent surface.
 
-## Phase 22: Card Addition Contract and Golden Results ⏸️
+## Phase 22: Card Addition Contract and Golden Results ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-22-card-addition-contract-and-golden-results`
-**Next Action**: Expand new-card admission coverage and keep current-format goldens authoritative.
+**Next Action**: Phase 22 complete for Standard Alpha. Extend the admission harness as new mechanics land.
 
 ## Phase 23: Complete E2E Lifecycle Coverage ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-23-complete-e2e-lifecycle-coverage`
@@ -120,9 +120,27 @@
 - [x] Bot-runner restart is covered in runner lifecycle integration tests
 **Next Action**: Phase 23 coverage is complete. Continue with Phase 24 regression and benchmark hardening.
 
-## Phase 24: Benchmarks, Regression Gates, and Release Readiness ⏸️
+## Phase 24: Benchmarks, Regression Gates, and Release Readiness ✅
 **Spec**: `IMPLEMENTATION_PHASES.md#phase-24-benchmarks-regression-gates-and-release-readiness`
-**Next Action**: Lock final benchmark budgets, browser performance budgets, and health-audit completion.
+**Next Action**: Phase 24 complete. Next optional work is release/tag/deploy choreography or broader format expansion.
+
+## Final Health Audit
+
+- **Recorded At**: 2026-04-21
+- **Commands**:
+  - `bun run test:workflow`
+  - `./scripts/phase-check.sh fast`
+  - `./scripts/phase-check.sh regression`
+  - `bun run release:proof`
+- **Outcome**: All four commands passed on the current working tree after the
+  authoritative combat parity, new-card admission, browser-budget, and
+  release-hardening updates landed.
+- **Notes**:
+  - `bun run release:proof` completed with deterministic benchmarks inside
+    budget and 13 isolated Playwright tests green.
+  - Vite still reports large `pixi-runtime` and `three-runtime` chunks during
+    production build. Those warnings are non-gating and match the current
+    renderer/runtime split.
 
 ---
 

@@ -18,6 +18,7 @@ import { LazyBoardCanvas } from "./LazyBoardCanvas";
 import {
   type MatchRenderMode,
   getZoneView,
+  listCombatActions,
   resolveRenderableView,
 } from "./model";
 
@@ -216,6 +217,7 @@ export function MatchShell({
     view?.kind === "seat"
       ? (view.seats.find((seat) => seat.seat === view.viewerSeat) ?? null)
       : null;
+  const combatActions = view?.kind === "seat" ? listCombatActions(view) : [];
 
   useEffect(() => {
     if (!seatView && spectatorView && preferredMode === "seat") {
@@ -312,6 +314,54 @@ export function MatchShell({
         abilityId: input.abilityId,
         sourceInstanceId: input.cardInstanceId,
         targetIds: input.targetIds,
+      },
+      seat: gameplaySeat,
+      stateVersion: shell.version,
+    });
+  }
+
+  function submitCombatAction(action: (typeof combatActions)[number]) {
+    if (!shell || !gameplaySeat) {
+      return;
+    }
+
+    if (action.kind === "declareAttackers") {
+      void submitIntent({
+        intentId: createIntentId("declareAttackers"),
+        kind: "declareAttackers",
+        matchId: shell.id,
+        payload: {
+          attackers: (action.attackers ?? []).map((attacker) => ({
+            ...attacker,
+            defenderSeat: assertMatchSeatId(attacker.defenderSeat),
+          })),
+        },
+        seat: gameplaySeat,
+        stateVersion: shell.version,
+      });
+      return;
+    }
+
+    if (action.kind === "declareBlockers") {
+      void submitIntent({
+        intentId: createIntentId("declareBlockers"),
+        kind: "declareBlockers",
+        matchId: shell.id,
+        payload: {
+          blocks: action.blocks ?? [],
+        },
+        seat: gameplaySeat,
+        stateVersion: shell.version,
+      });
+      return;
+    }
+
+    void submitIntent({
+      intentId: createIntentId("assignCombatDamage"),
+      kind: "assignCombatDamage",
+      matchId: shell.id,
+      payload: {
+        assignments: action.assignments ?? [],
       },
       seat: gameplaySeat,
       stateVersion: shell.version,
@@ -580,6 +630,65 @@ export function MatchShell({
                       {mode === "spectator"
                         ? "Spectators never receive prompts."
                         : "No prompt is waiting on this seat."}
+                    </p>
+                  )}
+                </section>
+
+                <section className="match-sidebar-card">
+                  <div className="match-zone-label-row">
+                    <p className="match-zone-label">Combat rail</p>
+                    <span>{view.combat.attackers.length} attackers</span>
+                  </div>
+                  {view.kind === "seat" ? (
+                    <div className="panel-stack">
+                      <p className="support-copy">
+                        Combat choices stay on the same authoritative intent
+                        rail as cards, abilities, and passes.
+                      </p>
+                      <div className="match-mini-list">
+                        {view.combat.attackers.length === 0 ? (
+                          <p className="match-mini-list-item">
+                            No attackers are currently declared.
+                          </p>
+                        ) : (
+                          view.combat.attackers.map((attacker) => (
+                            <p
+                              className="match-mini-list-item"
+                              key={`attacker-${attacker.attackerId}`}
+                            >
+                              {attacker.attackerId}
+                            </p>
+                          ))
+                        )}
+                        {view.combat.blocks.map((block) => (
+                          <p
+                            className="match-mini-list-item"
+                            key={`block-${block.attackerId}-${block.blockerId}`}
+                          >
+                            {block.blockerId}
+                            {" -> "}
+                            {block.attackerId}
+                          </p>
+                        ))}
+                      </div>
+                      <div className="match-choice-list">
+                        {combatActions.map((action, index) => (
+                          <button
+                            className="action secondary-action"
+                            disabled={!gameplaySeat || pendingIntent !== null}
+                            key={`${action.kind}-${index}-${action.label}`}
+                            onClick={() => submitCombatAction(action)}
+                            type="button"
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="support-copy">
+                      Spectators can inspect combat declarations, but cannot
+                      mutate them.
                     </p>
                   )}
                 </section>

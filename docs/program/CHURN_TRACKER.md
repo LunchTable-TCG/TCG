@@ -5,28 +5,29 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 
 ## Current Churn
 
-- **Active Phase**: Phase 19
-- **Stage**: In Progress
-- **Goal**: Land the control-plane docs, structured agent contract, deterministic
-  goldens, and benchmark gates needed to complete the agent-playable program.
+- **Active Phase**: Phase 24
+- **Stage**: Complete
+- **Goal**: The current-format agent-playable closeout is complete and release
+  ready. Next optional work is release/tag/deploy choreography or broader
+  format expansion.
 
 ## Phase Status
 
 | Phase | Status | Primary Deliverable | Proof |
 | --- | --- | --- | --- |
-| 19 | In Progress | `docs/program/*` source of truth | workflow contract tests |
-| 20 | In Progress | `AgentMatchContextV1` + legal action catalog + telemetry | Vitest + bot runner telemetry |
-| 21 | Pending | full gameplay-agent lifecycle parity | lifecycle integration coverage |
-| 22 | In Progress | card reasoning metadata + current-format goldens | metadata validator + golden fixtures |
+| 19 | Complete | `docs/program/*` source of truth | workflow contract tests |
+| 20 | Complete | `AgentMatchContextV1` + legal action catalog + telemetry | Vitest + bot runner telemetry |
+| 21 | Complete | full gameplay-agent lifecycle parity for the current authoritative intent surface | reducer, persisted-intent, bot lifecycle, and browser coverage |
+| 22 | Complete | card reasoning metadata + current-format goldens | metadata validator + golden fixtures |
 | 23 | Complete | full browser and resilience lifecycle coverage | Playwright and replay verification |
-| 24 | In Progress | deterministic benchmark harness + regression gates | `phase-check.sh regression` |
+| 24 | Complete | deterministic benchmark harness + regression gates | `phase-check.sh regression` + `bun run release:proof` |
 
 ## Phase 19 Checklist
 
 - [x] Create program docs under `docs/program/`
 - [x] Extend the repo phase model to cover Phases 19-24
 - [x] Point `README.md`, `SESSION.md`, and `docs/PHASE_LOOP.md` at the program docs
-- [ ] Rerun workflow contract tests after the doc contract lands
+- [x] Rerun workflow contract tests after the doc contract lands
 
 ## Phase 20 Checklist
 
@@ -36,21 +37,21 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 - [x] Add `BotDecisionTraceV1`
 - [x] Replace prose-only advisory context with structured overlays
 - [x] Record decision lifecycle telemetry
-- [ ] Expand observability assertions beyond targeted unit coverage
+- [x] Expand observability assertions beyond targeted unit coverage
 
 ## Phase 21 Checklist
 
 - [x] Make gameplay policy select stable legal action ids
 - [x] Validate selected action ids before `matches.submitIntent`
-- [ ] Cover all authoritative intent kinds end to end
-- [ ] Add reconnect, timeout, resume, and post-match archival proof
+- [x] Cover all authoritative intent kinds end to end
+- [x] Add reconnect, resume, restart, and decision-trace proof for live gameplay agents
 
 ## Phase 22 Checklist
 
 - [x] Add `CardReasoningMetadataV1`
 - [x] Validate metadata when building the current catalog
 - [x] Add curated Standard Alpha golden fixtures for deterministic agent play
-- [ ] Add new-card admission flow coverage
+- [x] Add new-card admission flow coverage
 
 ## Phase 23 Checklist
 
@@ -66,5 +67,12 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 
 - [x] Add deterministic benchmark harness
 - [x] Add `benchmark:deterministic` to the regression gate
-- [ ] Add browser performance budgets for representative match surfaces
-- [ ] Record final `project-health` rerun before merge or handoff
+- [x] Add browser performance budgets for representative match surfaces
+- [x] Record final health audit before merge or handoff
+
+## Program Closeout
+
+- **Recorded At**: 2026-04-21
+- **Release Proof**: `bun run release:proof`
+- **Regression Gate**: `./scripts/phase-check.sh regression`
+- **Health Audit**: recorded in `SESSION.md`

@@ -177,8 +177,7 @@ export function buildCoachReply(input: {
   const recommendation = planBaselineIntent(decisionFrame);
   const recommendedAction = recommendation
     ? (legalActions.find(
-        (candidate) =>
-          candidate.actionId === recommendation.actionId,
+        (candidate) => candidate.actionId === recommendation.actionId,
       ) ??
       legalActions[0] ??
       null)

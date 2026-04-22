@@ -247,11 +247,25 @@ function validateMatchState(value: unknown, label: string): MatchState {
   const object = readObject(value, label);
 
   return {
+    battlefieldEntryTurns:
+      readOptional(
+        object.battlefieldEntryTurns,
+        `${label}.battlefieldEntryTurns`,
+        readNumberRecord,
+      ) ?? {},
     cardCatalog: readRecord(
       object.cardCatalog,
       `${label}.cardCatalog`,
       validateMatchCardCatalogEntry,
     ),
+    combat: readOptional(
+      object.combat,
+      `${label}.combat`,
+      validateMatchCombatState,
+    ) ?? {
+      attackers: [],
+      blocks: [],
+    },
     continuousEffects:
       readOptional(
         object.continuousEffects,
@@ -313,6 +327,7 @@ function validateMatchSeatView(value: unknown, label: string): MatchSeatView {
       (entry, entryLabel) =>
         readEnum(entry, AUTHORITATIVE_INTENT_KINDS, entryLabel),
     ),
+    combat: validateMatchCombatView(object.combat, `${label}.combat`),
     kind: "seat",
     match: validateMatchShell(object.match, `${label}.match`),
     prompt: readNullable(
@@ -363,6 +378,7 @@ function validateMatchSpectatorView(
 
   return {
     availableIntents: [],
+    combat: validateMatchCombatView(object.combat, `${label}.combat`),
     kind: "spectator",
     match: validateMatchShell(object.match, `${label}.match`),
     prompt: null,
@@ -742,6 +758,58 @@ function validateMatchPromptChoiceView(
   };
 }
 
+function validateMatchCombatAttackerView(
+  value: unknown,
+  label: string,
+): MatchSeatView["combat"]["attackers"][number] {
+  const object = readObject(value, label);
+
+  return {
+    attackerId: readString(object.attackerId, `${label}.attackerId`),
+    defenderSeat: readString(object.defenderSeat, `${label}.defenderSeat`),
+    laneId: readNullableString(object.laneId, `${label}.laneId`),
+  };
+}
+
+function validateMatchCombatBlockView(
+  value: unknown,
+  label: string,
+): MatchSeatView["combat"]["blocks"][number] {
+  const object = readObject(value, label);
+
+  return {
+    attackerId: readString(object.attackerId, `${label}.attackerId`),
+    blockerId: readString(object.blockerId, `${label}.blockerId`),
+  };
+}
+
+function validateMatchCombatView(
+  value: unknown,
+  label: string,
+): MatchSeatView["combat"] {
+  const object = readObject(value, label);
+
+  return {
+    attackers: readArray(
+      object.attackers,
+      `${label}.attackers`,
+      validateMatchCombatAttackerView,
+    ),
+    blocks: readArray(
+      object.blocks,
+      `${label}.blocks`,
+      validateMatchCombatBlockView,
+    ),
+  };
+}
+
+function validateMatchCombatState(
+  value: unknown,
+  label: string,
+): MatchState["combat"] {
+  return validateMatchCombatView(value, label);
+}
+
 function validateMatchEventSummary(
   value: unknown,
   label: string,
@@ -865,6 +933,12 @@ function validateMatchCardView(
     keywords: readStringArray(object.keywords, `${label}.keywords`),
     name: readString(object.name, `${label}.name`),
     ownerSeat: readString(object.ownerSeat, `${label}.ownerSeat`),
+    permissions:
+      readOptional(
+        object.permissions,
+        `${label}.permissions`,
+        readStringArray,
+      ) ?? [],
     slotId: readNullableString(object.slotId, `${label}.slotId`),
     statLine: readNullable(
       object.statLine,
@@ -1129,7 +1203,10 @@ function validateRuntimeContinuousEffectState(
   }
 
   return {
-    controllerSeat: readString(object.controllerSeat, `${label}.controllerSeat`),
+    controllerSeat: readString(
+      object.controllerSeat,
+      `${label}.controllerSeat`,
+    ),
     effect,
     expiresAtTurn: readNullableNumber(
       object.expiresAtTurn,

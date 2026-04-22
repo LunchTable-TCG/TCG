@@ -5,13 +5,13 @@ import type {
   MatchView,
 } from "@lunchtable/shared-types";
 import {
+  type CSSProperties,
   Suspense,
   lazy,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from "react";
 
 import {
@@ -20,9 +20,9 @@ import {
   buildMatchCinematicSceneModel,
 } from "./cinematics";
 import {
+  type MatchCinematicCue,
   deriveMatchCinematicCue,
   listActivatedAbilityActions,
-  type MatchCinematicCue,
 } from "./model";
 
 const MatchCinematicPortal = lazy(async () => {
@@ -61,10 +61,9 @@ function SummonOverlay({
   } as CSSProperties;
 
   return (
-    <div
+    <output
       aria-live="polite"
       className={`board-summon-overlay board-summon-overlay-${cue.kind}`}
-      role="status"
       style={style}
     >
       <div className="board-summon-rift" />
@@ -92,7 +91,7 @@ function SummonOverlay({
         <h4>{cue.cardName}</h4>
         <p className="microcopy">{cue.label}</p>
       </div>
-    </div>
+    </output>
   );
 }
 
@@ -256,7 +255,7 @@ export function BoardCanvas({
     : [];
   const visibleCinematicCard =
     visibleCinematicCue?.cardId !== undefined
-      ? catalogEntryById.get(visibleCinematicCue.cardId) ?? null
+      ? (catalogEntryById.get(visibleCinematicCue.cardId) ?? null)
       : null;
   const visibleCinematicSceneModel = useMemo(() => {
     if (!visibleCinematicCue) {

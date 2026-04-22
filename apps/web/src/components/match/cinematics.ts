@@ -62,7 +62,9 @@ function getBasePalette(kind: MatchCinematicCue["kind"]): CinematicPalette {
   };
 }
 
-function getFamilyPalette(card: CardCatalogEntry | null): Partial<CinematicPalette> {
+function getFamilyPalette(
+  card: CardCatalogEntry | null,
+): Partial<CinematicPalette> {
   const source = `${card?.cardId ?? ""} ${card?.name ?? ""}`.toLowerCase();
 
   if (
@@ -219,7 +221,10 @@ export function buildMatchCinematicSceneModel(input: {
     glyphScale = [0.88, 1.18, 0.88];
   } else if (card?.kind === "relic") {
     glyphScale = [1.08, 0.9, 1.08];
-  } else if ((card?.stats?.power ?? 0) >= 3 || (card?.stats?.toughness ?? 0) >= 4) {
+  } else if (
+    (card?.stats?.power ?? 0) >= 3 ||
+    (card?.stats?.toughness ?? 0) >= 4
+  ) {
     glyphScale = [1.06, 1.16, 1.06];
   }
 

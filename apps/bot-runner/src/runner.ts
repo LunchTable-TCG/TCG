@@ -19,8 +19,8 @@ import { ConvexClient, ConvexHttpClient } from "convex/browser";
 
 import { api } from "../../../convex/_generated/api";
 import {
-  type DecisionPolicyConfig,
   type DecisionPlanner,
+  type DecisionPolicyConfig,
   createDecisionPlanner,
   loadDecisionPolicyConfig,
 } from "./policy";
@@ -177,7 +177,9 @@ export class BotRunner {
       api.agents.listMyAssignments,
       { includeCompleted: false },
       (assignments) => {
-        void this.syncAssignments((assignments as BotAssignmentSnapshot[]) ?? []);
+        void this.syncAssignments(
+          (assignments as BotAssignmentSnapshot[]) ?? [],
+        );
       },
       (error) => {
         console.error(`[${APP_NAME}] failed to watch bot assignments`, error);
@@ -246,9 +248,9 @@ export class BotRunner {
     const selectedAction =
       input.actionId === null
         ? null
-        : input.frame.context.legalActions.find(
+        : (input.frame.context.legalActions.find(
             (action) => action.actionId === input.actionId,
-          ) ?? null;
+          ) ?? null);
 
     return {
       actionCatalogSize: input.frame.context.legalActions.length,

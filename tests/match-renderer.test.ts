@@ -9,6 +9,10 @@ import {
 function createSeatView(): MatchSeatView {
   return {
     availableIntents: ["activateAbility", "playCard", "passPriority"],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "seat",
     match: {
       activeSeat: "seat-0",

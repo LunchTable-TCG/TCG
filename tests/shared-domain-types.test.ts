@@ -27,6 +27,10 @@ describe("shared domain types", () => {
     const match = createMatchSkeleton();
     const seatView: MatchSeatView = {
       availableIntents: ["passPriority", "toggleAutoPass"],
+      combat: {
+        attackers: [],
+        blocks: [],
+      },
       kind: "seat",
       match: {
         ...match,
@@ -145,6 +149,10 @@ describe("shared domain types", () => {
       availableIntentKinds: ["passPriority", "toggleAutoPass"],
       builtAt: 100,
       buildDurationMs: 1.25,
+      combat: {
+        attackers: [],
+        blocks: [],
+      },
       legalActions: [],
       match: {
         ...createMatchSkeleton(),

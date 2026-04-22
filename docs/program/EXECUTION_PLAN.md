@@ -163,4 +163,5 @@ stays playable as cards and workflows evolve.
 - Treat [BENCHMARK_BUDGETS.md](./BENCHMARK_BUDGETS.md) as the source of truth
   for deterministic benchmark expectations.
 - Before handoff or merge, rerun the `project-health` skill against the active
-  program docs and record the result in `SESSION.md`.
+  program docs when that skill is available. Otherwise, record an equivalent
+  health audit in `SESSION.md`.

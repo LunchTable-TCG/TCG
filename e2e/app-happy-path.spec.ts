@@ -107,10 +107,12 @@ async function expectCompletedReplay(page: Page, winnerSeat: string) {
 }
 
 async function selectedLiveMatchId(page: Page) {
-  const matchId = (await page
-    .locator(".site-arena-stage .match-shell h3")
-    .first()
-    .textContent())?.trim();
+  const matchId = (
+    await page
+      .locator(".site-arena-stage .match-shell h3")
+      .first()
+      .textContent()
+  )?.trim();
 
   expect(matchId).toBeTruthy();
   return matchId as string;

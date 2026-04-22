@@ -31,10 +31,12 @@ type WithBotSeat<T extends { seat: unknown }> = T extends unknown
   ? Omit<T, "seat"> & { seat: BotSeatId }
   : never;
 
-type BotIntentBase<TKind extends GameplayIntentKind, TPayload> =
-  GameplayIntentBase<TKind, TPayload> & {
-    seat: BotSeatId;
-  };
+type BotIntentBase<
+  TKind extends GameplayIntentKind,
+  TPayload,
+> = GameplayIntentBase<TKind, TPayload> & {
+  seat: BotSeatId;
+};
 
 export type BotSupportedIntent =
   | BotIntentBase<

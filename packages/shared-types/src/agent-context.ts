@@ -2,6 +2,7 @@ import type { GameplayIntent } from "./gameplay";
 import type { GameplayIntentKind } from "./kinds";
 import type { CardCatalogEntry } from "./library";
 import type {
+  MatchCombatView,
   MatchEventSummary,
   MatchId,
   MatchPromptView,
@@ -17,8 +18,7 @@ import type {
 } from "./match";
 
 export const AGENT_MATCH_CONTEXT_VERSION = "v1" as const;
-export type AgentMatchContextVersion =
-  typeof AGENT_MATCH_CONTEXT_VERSION;
+export type AgentMatchContextVersion = typeof AGENT_MATCH_CONTEXT_VERSION;
 
 export interface PromptDecisionChoiceV1 {
   choiceId: string;
@@ -68,6 +68,7 @@ export interface AgentMatchContextV1 {
   availableIntentKinds: GameplayIntentKind[];
   builtAt: number;
   buildDurationMs: number;
+  combat: MatchCombatView;
   legalActions: LegalActionDescriptorV1[];
   match: MatchShell;
   prompt: MatchPromptView | null;

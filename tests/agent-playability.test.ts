@@ -6,14 +6,14 @@ import type { MatchSeatView, SeatId } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPersistedIntentResult,
+  buildPersistedMatchBundle,
+} from "../convex/lib/matches";
+import {
   createDecisionFrame,
   listLegalBotActions,
   planBaselineIntent,
 } from "../packages/bot-sdk/src";
-import {
-  buildPersistedIntentResult,
-  buildPersistedMatchBundle,
-} from "../convex/lib/matches";
 import golden from "./fixtures/agent-playability.standard-alpha.json";
 
 function createParticipantDeck() {

@@ -5,7 +5,11 @@ import type {
   DeckValidationResult,
 } from "@lunchtable/shared-types";
 
-import type { CardDefinition, FormatDefinition } from "@lunchtable/game-core";
+import {
+  type CardDefinition,
+  type FormatDefinition,
+  compileCardDefinition,
+} from "@lunchtable/game-core";
 
 function summarizeAbility(ability: CardDefinition["abilities"][number]) {
   return {
@@ -101,7 +105,9 @@ function collectPromptSurfaces(ability: CardDefinition["abilities"][number]) {
   return promptSurfaces;
 }
 
-function collectTimingAffordances(ability: CardDefinition["abilities"][number]) {
+function collectTimingAffordances(
+  ability: CardDefinition["abilities"][number],
+) {
   const timingAffordances: string[] = [];
 
   if (ability.kind === "activated") {
@@ -192,21 +198,31 @@ export function validateCardReasoningMetadata(
 export function createCatalogEntriesForFormat(
   format: FormatDefinition,
 ): CardCatalogEntry[] {
-  return format.cardPool.map((card) => ({
-    abilities: card.abilities.map(summarizeAbility),
-    cardId: card.id,
-    cost: card.cost,
-    formatId: format.formatId,
-    isBanned: format.banList.includes(card.id),
-    keywords: [...card.keywords],
-    kind: card.kind,
-    name: card.name,
-    rarity: card.rarity,
-    reasoning: buildCardReasoningMetadata(card),
-    rulesText: [...card.rulesText],
-    setId: card.setId,
-    stats: card.stats ? { ...card.stats } : undefined,
-  }));
+  return format.cardPool.map((card) => {
+    const compilation = compileCardDefinition(card, format.keywordRegistry);
+    if (!compilation.ok) {
+      throw new Error(
+        `Invalid card definition for ${card.id}: ${compilation.errors.join(", ")}`,
+      );
+    }
+    const compiled = compilation.value;
+
+    return {
+      abilities: compiled.abilities.map(summarizeAbility),
+      cardId: compiled.id,
+      cost: compiled.cost,
+      formatId: format.formatId,
+      isBanned: format.banList.includes(compiled.id),
+      keywords: [...compiled.keywords],
+      kind: compiled.kind,
+      name: compiled.name,
+      rarity: compiled.rarity,
+      reasoning: buildCardReasoningMetadata(compiled),
+      rulesText: [...compiled.rulesText],
+      setId: compiled.setId,
+      stats: compiled.stats ? { ...compiled.stats } : undefined,
+    };
+  });
 }
 
 function sumDeckCounts(entries: DeckCardEntry[]): number {

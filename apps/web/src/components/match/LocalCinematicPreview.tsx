@@ -1,4 +1,7 @@
-import { createCatalogEntriesForFormat, starterFormat } from "@lunchtable/card-content";
+import {
+  createCatalogEntriesForFormat,
+  starterFormat,
+} from "@lunchtable/card-content";
 import type { CardCatalogEntry, MatchSeatView } from "@lunchtable/shared-types";
 import { Suspense, lazy, useMemo, useState } from "react";
 
@@ -32,6 +35,10 @@ function buildPreviewView(input: {
 
   return {
     availableIntents: [],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "seat",
     match: {
       activeSeat: "seat-0",
@@ -187,7 +194,9 @@ function buildPreviewView(input: {
 }
 
 export function LocalCinematicPreview() {
-  const [selectedCardId, setSelectedCardId] = useState<string>(PREVIEW_CARD_IDS[0]);
+  const [selectedCardId, setSelectedCardId] = useState<string>(
+    PREVIEW_CARD_IDS[0],
+  );
   const [cueKind, setCueKind] = useState<PreviewCueKind>("summon");
   const [sequence, setSequence] = useState(1);
   const catalog = useMemo(
@@ -232,7 +241,9 @@ export function LocalCinematicPreview() {
       <div className="match-choice-list">
         <div className="cinematic-preview-controls">
           {PREVIEW_CARD_IDS.map((cardId) => {
-            const entry = catalog.find((candidate) => candidate.cardId === cardId);
+            const entry = catalog.find(
+              (candidate) => candidate.cardId === cardId,
+            );
 
             return (
               <button
@@ -270,7 +281,9 @@ export function LocalCinematicPreview() {
           </button>
         </div>
       </div>
-      <Suspense fallback={<p className="support-copy">Loading preview board.</p>}>
+      <Suspense
+        fallback={<p className="support-copy">Loading preview board.</p>}
+      >
         <BoardCanvas
           catalog={catalog}
           disabled

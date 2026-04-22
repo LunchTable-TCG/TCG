@@ -222,6 +222,7 @@ export interface MatchCardView {
   keywords: string[];
   name: string;
   ownerSeat: SeatId;
+  permissions?: string[];
   slotId: string | null;
   statLine: MatchCardStatLine | null;
   visibility: MatchVisibility;
@@ -275,6 +276,22 @@ export interface MatchStackItemView {
   targetLabels: string[];
 }
 
+export interface MatchCombatAttackerView {
+  attackerId: CardInstanceId;
+  defenderSeat: SeatId;
+  laneId: string | null;
+}
+
+export interface MatchCombatBlockView {
+  attackerId: CardInstanceId;
+  blockerId: CardInstanceId;
+}
+
+export interface MatchCombatView {
+  attackers: MatchCombatAttackerView[];
+  blocks: MatchCombatBlockView[];
+}
+
 export interface MatchEventSummary {
   abilityId?: string;
   cardId?: string;
@@ -289,6 +306,7 @@ export interface MatchEventSummary {
 
 export interface MatchSeatView {
   availableIntents: GameplayIntentKind[];
+  combat: MatchCombatView;
   kind: "seat";
   match: MatchShell;
   prompt: MatchPromptView | null;
@@ -301,6 +319,7 @@ export interface MatchSeatView {
 
 export interface MatchSpectatorView {
   availableIntents: [];
+  combat: MatchCombatView;
   kind: "spectator";
   match: MatchShell;
   prompt: null;

@@ -21,6 +21,42 @@ function createMulliganPrompt(seat: "seat-0" | "seat-1") {
   };
 }
 
+function createSelectionPromptState(
+  kind: "choice" | "costs" | "modes" | "targets",
+) {
+  const state = createGameState({
+    matchId: `match_prompt_${kind}`,
+    seed: `seed:prompt-${kind}`,
+    status: "active",
+  });
+
+  state.seats["seat-0"].status = "active";
+  state.seats["seat-0"].ready = true;
+  state.seats["seat-1"].status = "active";
+  state.seats["seat-1"].ready = true;
+  state.prompts = [
+    {
+      choiceIds: [`${kind}:alpha`, `${kind}:beta`],
+      expiresAt: null,
+      kind,
+      message: `Resolve ${kind} prompt`,
+      ownerSeat: "seat-0",
+      promptId: `prompt:${kind}`,
+      resolvedChoiceIds: [],
+      status: "pending" as const,
+    },
+  ];
+  state.shell.activeSeat = "seat-0";
+  state.shell.phase = "main1";
+  state.shell.prioritySeat = null;
+  state.shell.startedAt = 1000;
+  state.shell.turnNumber = 1;
+  state.shell.version = 0;
+  state.shell = createMatchShellFromState(state);
+
+  return state;
+}
+
 function createMulliganState() {
   const state = createGameState({
     matchId: "match_phase9",
@@ -242,6 +278,100 @@ describe("applyGameplayIntent", () => {
     expect(transition.nextState.seats["seat-0"]?.hand).toHaveLength(6);
     expect(transition.nextState.seats["seat-0"]?.deck).toHaveLength(4);
     expect(transition.nextState.seats["seat-0"]?.mulligansTaken).toBe(1);
+  });
+
+  it.each([
+    {
+      buildIntent: (state: ReturnType<typeof createSelectionPromptState>) => ({
+        intentId: "intent_choice_prompt_001",
+        kind: "choosePromptOptions" as const,
+        matchId: state.shell.id,
+        payload: {
+          choiceIds: ["choice:alpha"],
+          promptId: "prompt:choice",
+        },
+        seat: "seat-0" as const,
+        stateVersion: state.shell.version,
+      }),
+      kind: "choice" as const,
+    },
+    {
+      buildIntent: (state: ReturnType<typeof createSelectionPromptState>) => ({
+        intentId: "intent_targets_prompt_001",
+        kind: "chooseTargets" as const,
+        matchId: state.shell.id,
+        payload: {
+          promptId: "prompt:targets",
+          targetIds: ["targets:alpha"],
+        },
+        seat: "seat-0" as const,
+        stateVersion: state.shell.version,
+      }),
+      kind: "targets" as const,
+    },
+    {
+      buildIntent: (state: ReturnType<typeof createSelectionPromptState>) => ({
+        intentId: "intent_modes_prompt_001",
+        kind: "chooseModes" as const,
+        matchId: state.shell.id,
+        payload: {
+          modeIds: ["modes:alpha"],
+          promptId: "prompt:modes",
+        },
+        seat: "seat-0" as const,
+        stateVersion: state.shell.version,
+      }),
+      kind: "modes" as const,
+    },
+    {
+      buildIntent: (state: ReturnType<typeof createSelectionPromptState>) => ({
+        intentId: "intent_costs_prompt_001",
+        kind: "chooseCosts" as const,
+        matchId: state.shell.id,
+        payload: {
+          costIds: ["costs:alpha"],
+          promptId: "prompt:costs",
+        },
+        seat: "seat-0" as const,
+        stateVersion: state.shell.version,
+      }),
+      kind: "costs" as const,
+    },
+  ])(
+    "resolves pending %s prompts through authoritative selection intents",
+    ({ buildIntent, kind }) => {
+      const state = createSelectionPromptState(kind);
+
+      const transition = applyGameplayIntent(state, buildIntent(state));
+
+      expect(transition.outcome).toBe("applied");
+      expect(transition.events.map((event) => event.kind)).toEqual([
+        "promptResolved",
+      ]);
+      expect(transition.nextState.prompts[0]?.status).toBe("resolved");
+      expect(transition.nextState.prompts[0]?.resolvedChoiceIds).toEqual([
+        `${kind}:alpha`,
+      ]);
+    },
+  );
+
+  it("rejects invalid generic prompt selections", () => {
+    const state = createSelectionPromptState("targets");
+
+    const transition = applyGameplayIntent(state, {
+      intentId: "intent_invalid_targets_prompt_001",
+      kind: "chooseTargets",
+      matchId: state.shell.id,
+      payload: {
+        promptId: "prompt:targets",
+        targetIds: ["targets:missing"],
+      },
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+
+    expect(transition.outcome).toBe("rejected");
+    expect(transition.reason).toBe("invalidPrompt");
   });
 
   it("plays a card, spends mana, and advances priority on consecutive passes", () => {
@@ -655,9 +785,12 @@ describe("applyGameplayIntent", () => {
       resolvePassB.events,
     );
     const hastedUnit = resolvedSeatView.zones
-      .find((zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield")
+      .find(
+        (zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield",
+      )
       ?.cards.find(
-        (card) => card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
+        (card) =>
+          card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
       );
 
     expect(hastedUnit?.keywords).toContain("haste");
@@ -687,9 +820,12 @@ describe("applyGameplayIntent", () => {
 
     const nextTurnSeatView = createSeatView(advancedState, "seat-0", []);
     const resetUnit = nextTurnSeatView.zones
-      .find((zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield")
+      .find(
+        (zone) => zone.ownerSeat === "seat-0" && zone.zone === "battlefield",
+      )
       ?.cards.find(
-        (card) => card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
+        (card) =>
+          card.instanceId === "seat-0:tidecall-apprentice:battlefield:1",
       );
 
     expect(resetUnit?.keywords).not.toContain("haste");
@@ -881,6 +1017,152 @@ describe("applyGameplayIntent", () => {
     if (secondPass.events[2]?.kind === "cardMoved") {
       expect(secondPass.events[2].payload.toZone).toBe("exile");
     }
+  });
+
+  it("applies attacker, blocker, and combat damage intents through the same authoritative flow", () => {
+    const state = keepBothOpeningHands();
+    state.shell.activeSeat = "seat-0";
+    state.shell.phase = "attack";
+    state.shell.prioritySeat = "seat-0";
+    state.shell.turnNumber = 3;
+    state.seats["seat-0"].battlefield = ["seat-0:ember-summoner:battlefield:1"];
+    state.seats["seat-1"].battlefield = ["seat-1:ember-summoner:battlefield:1"];
+
+    const attackers = applyGameplayIntent(state, {
+      intentId: "intent_attackers_001",
+      kind: "declareAttackers",
+      matchId: state.shell.id,
+      payload: {
+        attackers: [
+          {
+            attackerId: "seat-0:ember-summoner:battlefield:1",
+            defenderSeat: "seat-1",
+            laneId: null,
+          },
+        ],
+      },
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+
+    expect(attackers.events.map((event) => event.kind)).toEqual([
+      "attackersDeclared",
+      "phaseAdvanced",
+    ]);
+    expect(attackers.nextState.shell.phase).toBe("block");
+    expect(attackers.nextState.combat.attackers).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        defenderSeat: "seat-1",
+        laneId: null,
+      },
+    ]);
+
+    const blockers = applyGameplayIntent(attackers.nextState, {
+      intentId: "intent_blockers_001",
+      kind: "declareBlockers",
+      matchId: state.shell.id,
+      payload: {
+        blocks: [
+          {
+            attackerId: "seat-0:ember-summoner:battlefield:1",
+            blockerId: "seat-1:ember-summoner:battlefield:1",
+          },
+        ],
+      },
+      seat: "seat-1",
+      stateVersion: attackers.nextState.shell.version,
+    });
+
+    expect(blockers.events.map((event) => event.kind)).toEqual([
+      "blockersDeclared",
+      "phaseAdvanced",
+    ]);
+    expect(blockers.nextState.shell.phase).toBe("damage");
+    expect(blockers.nextState.combat.blocks).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        blockerId: "seat-1:ember-summoner:battlefield:1",
+      },
+    ]);
+
+    const damage = applyGameplayIntent(blockers.nextState, {
+      intentId: "intent_damage_001",
+      kind: "assignCombatDamage",
+      matchId: state.shell.id,
+      payload: {
+        assignments: [
+          {
+            amount: 2,
+            sourceId: "seat-0:ember-summoner:battlefield:1",
+            targetId: "seat-1:ember-summoner:battlefield:1",
+          },
+          {
+            amount: 2,
+            sourceId: "seat-1:ember-summoner:battlefield:1",
+            targetId: "seat-0:ember-summoner:battlefield:1",
+          },
+        ],
+      },
+      seat: "seat-0",
+      stateVersion: blockers.nextState.shell.version,
+    });
+
+    expect(damage.events.map((event) => event.kind)).toEqual([
+      "combatDamageAssigned",
+      "cardMoved",
+      "cardMoved",
+      "phaseAdvanced",
+    ]);
+    expect(damage.nextState.shell.phase).toBe("main2");
+    expect(damage.nextState.combat.attackers).toEqual([]);
+    expect(damage.nextState.combat.blocks).toEqual([]);
+    expect(damage.nextState.seats["seat-0"]?.battlefield).toEqual([]);
+    expect(damage.nextState.seats["seat-1"]?.battlefield).toEqual([]);
+  });
+
+  it("auto-resolves deterministic combat damage after both seats pass in the damage step", () => {
+    const state = keepBothOpeningHands();
+    state.shell.activeSeat = "seat-0";
+    state.shell.phase = "damage";
+    state.shell.prioritySeat = "seat-0";
+    state.shell.turnNumber = 3;
+    state.seats["seat-0"].battlefield = ["seat-0:ember-summoner:battlefield:1"];
+    state.seats["seat-1"].battlefield = [];
+    state.combat.attackers = [
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        defenderSeat: "seat-1",
+        laneId: null,
+      },
+    ];
+
+    const firstPass = applyGameplayIntent(state, {
+      intentId: "intent_combat_pass_001",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-0",
+      stateVersion: state.shell.version,
+    });
+    const secondPass = applyGameplayIntent(firstPass.nextState, {
+      intentId: "intent_combat_pass_002",
+      kind: "passPriority",
+      matchId: state.shell.id,
+      payload: {},
+      seat: "seat-1",
+      stateVersion: firstPass.nextState.shell.version,
+    });
+
+    expect(secondPass.events.map((event) => event.kind)).toEqual([
+      "priorityPassed",
+      "combatDamageAssigned",
+      "lifeTotalChanged",
+      "phaseAdvanced",
+    ]);
+    expect(secondPass.nextState.seats["seat-1"]?.lifeTotal).toBe(18);
+    expect(secondPass.nextState.shell.phase).toBe("main2");
+    expect(secondPass.nextState.combat.attackers).toEqual([]);
   });
 
   it("rejects card play from a seat without priority", () => {

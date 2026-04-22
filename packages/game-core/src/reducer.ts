@@ -40,6 +40,11 @@ export type MatchTransitionReason =
   | "unsupportedTargeting"
   | "unsupportedIntent";
 
+type CombatAssignment = Extract<
+  GameplayIntent,
+  { kind: "assignCombatDamage" }
+>["payload"]["assignments"][number];
+
 const MAIN_PHASES = new Set<MatchPhase>(["main1", "main2"]);
 const PHASE_ADVANCE_MAP: Partial<Record<MatchPhase, MatchPhase>> = {
   attack: "block",
@@ -104,6 +109,30 @@ function getPendingPrompt(
   );
 }
 
+function resolvePrompt(
+  state: MatchState,
+  seat: SeatId,
+  kind: MatchState["prompts"][number]["kind"],
+  choiceIds: string[],
+) {
+  const prompt = getPendingPrompt(state, seat, kind);
+  if (!prompt) {
+    return null;
+  }
+
+  const normalizedChoiceIds = [...new Set(choiceIds)];
+  if (
+    normalizedChoiceIds.length !== 1 ||
+    normalizedChoiceIds.some((choiceId) => !prompt.choiceIds.includes(choiceId))
+  ) {
+    return null;
+  }
+
+  prompt.status = "resolved";
+  prompt.resolvedChoiceIds = normalizedChoiceIds;
+  return prompt;
+}
+
 function getSeatIds(state: MatchState): SeatId[] {
   return Object.keys(state.seats) as SeatId[];
 }
@@ -141,6 +170,144 @@ function getCardIdFromInstanceId(instanceId: string) {
 
 function getOtherSeatId(state: MatchState, currentSeat: SeatId): SeatId | null {
   return getSeatIds(state).find((seat) => seat !== currentSeat) ?? null;
+}
+
+function clearCombat(state: MatchState) {
+  state.combat.attackers = [];
+  state.combat.blocks = [];
+}
+
+function sortCombatAttackers(attackers: MatchState["combat"]["attackers"]) {
+  return [...attackers].sort((left, right) => {
+    if (left.attackerId === right.attackerId) {
+      if (left.defenderSeat === right.defenderSeat) {
+        return (left.laneId ?? "").localeCompare(right.laneId ?? "");
+      }
+      return left.defenderSeat.localeCompare(right.defenderSeat);
+    }
+    return left.attackerId.localeCompare(right.attackerId);
+  });
+}
+
+function sortCombatBlocks(blocks: MatchState["combat"]["blocks"]) {
+  return [...blocks].sort((left, right) => {
+    if (left.attackerId === right.attackerId) {
+      return left.blockerId.localeCompare(right.blockerId);
+    }
+    return left.attackerId.localeCompare(right.attackerId);
+  });
+}
+
+function sortCombatAssignments(assignments: CombatAssignment[]) {
+  return [...assignments].sort((left, right) => {
+    if (left.sourceId === right.sourceId) {
+      if (left.targetId === right.targetId) {
+        return left.amount - right.amount;
+      }
+      return left.targetId.localeCompare(right.targetId);
+    }
+    return left.sourceId.localeCompare(right.sourceId);
+  });
+}
+
+function canAttack(
+  state: MatchState,
+  controllerSeat: SeatId,
+  instanceId: string,
+  derived = deriveBattlefieldCardStates(state),
+) {
+  const cardState = derived[instanceId];
+  if (!cardState || cardState.controllerSeat !== controllerSeat) {
+    return false;
+  }
+
+  if ((cardState.power ?? 0) <= 0 || (cardState.toughness ?? 0) <= 0) {
+    return false;
+  }
+
+  const entryTurn = state.battlefieldEntryTurns[instanceId];
+  if (
+    entryTurn === state.shell.turnNumber &&
+    !cardState.permissions.includes("ignoreSummoningSickness")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function canBlock(
+  state: MatchState,
+  controllerSeat: SeatId,
+  blockerId: string,
+  attackerId: string,
+  derived = deriveBattlefieldCardStates(state),
+) {
+  const blocker = derived[blockerId];
+  const attacker = derived[attackerId];
+  if (!blocker || !attacker || blocker.controllerSeat !== controllerSeat) {
+    return false;
+  }
+
+  if ((blocker.power ?? 0) <= 0 || (blocker.toughness ?? 0) <= 0) {
+    return false;
+  }
+
+  if (
+    attacker.keywords.includes("flying") &&
+    !blocker.permissions.includes("canBlockFlying")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildDefaultCombatAssignments(state: MatchState): CombatAssignment[] {
+  const derived = deriveBattlefieldCardStates(state);
+  const blockerByAttacker = new Map(
+    state.combat.blocks.map((block) => [block.attackerId, block.blockerId]),
+  );
+
+  const assignments: CombatAssignment[] = [];
+  for (const attacker of state.combat.attackers) {
+    const attackerState = derived[attacker.attackerId];
+    const attackerPower = attackerState?.power ?? 0;
+    if (attackerPower <= 0) {
+      continue;
+    }
+
+    const blockerId = blockerByAttacker.get(attacker.attackerId);
+    if (blockerId) {
+      assignments.push({
+        amount: attackerPower,
+        sourceId: attacker.attackerId,
+        targetId: blockerId,
+      });
+      continue;
+    }
+
+    assignments.push({
+      amount: attackerPower,
+      sourceId: attacker.attackerId,
+      targetId: attacker.defenderSeat,
+    });
+  }
+
+  for (const block of state.combat.blocks) {
+    const blockerState = derived[block.blockerId];
+    const blockerPower = blockerState?.power ?? 0;
+    if (blockerPower <= 0) {
+      continue;
+    }
+    assignments.push({
+      amount: blockerPower,
+      sourceId: block.blockerId,
+      targetId: block.attackerId,
+    });
+  }
+
+  return sortCombatAssignments(assignments);
 }
 
 function setSeatResources(seat: MatchState["seats"][SeatId], amount: number) {
@@ -198,10 +365,12 @@ function advanceTurn(state: MatchState) {
   state.shell.phase = "main1";
   state.shell.prioritySeat = nextActiveSeat;
   state.lastPriorityPassSeat = null;
+  clearCombat(state);
   resetTurnResources(state);
   state.continuousEffects = state.continuousEffects.filter(
     (effect) =>
-      effect.expiresAtTurn === null || effect.expiresAtTurn >= state.shell.turnNumber,
+      effect.expiresAtTurn === null ||
+      effect.expiresAtTurn >= state.shell.turnNumber,
   );
 }
 
@@ -381,9 +550,12 @@ function matchesTargetSelector(input: {
 }
 
 function hasValidAbilityTargets(input: {
-  ability: Extract<MatchState["cardCatalog"][string]["abilities"][number], {
-    kind: "activated";
-  }>;
+  ability: Extract<
+    MatchState["cardCatalog"][string]["abilities"][number],
+    {
+      kind: "activated";
+    }
+  >;
   controllerSeat: SeatId;
   sourceInstanceId: string;
   state: MatchState;
@@ -524,6 +696,7 @@ function moveBattlefieldCard(
     }
 
     battlefield.splice(cardIndex, 1);
+    delete state.battlefieldEntryTurns[input.instanceId];
     destinationZone.push(input.instanceId);
     return [
       createEvent("cardMoved", {
@@ -794,6 +967,10 @@ function resolveTopOfStack(
     );
     if (destinationZone) {
       destinationZone.push(stackObject.sourceInstanceId);
+      if (stackObject.destinationZone === "battlefield") {
+        state.battlefieldEntryTurns[stackObject.sourceInstanceId] =
+          state.shell.turnNumber;
+      }
       events.push(
         createEvent("cardMoved", {
           cardInstanceId: stackObject.sourceInstanceId,
@@ -831,6 +1008,85 @@ function resolveTopOfStack(
   return events;
 }
 
+function resolveCombatDamage(
+  state: MatchState,
+  createEvent: ReturnType<typeof createEventFactory>,
+  assignments: CombatAssignment[],
+) {
+  const events: MatchEvent[] = [
+    createEvent("combatDamageAssigned", {
+      assignments,
+    }),
+  ];
+  const derived = deriveBattlefieldCardStates(state);
+  const cardDamage = new Map<string, number>();
+  const seatDamage = new Map<SeatId, number>();
+
+  for (const assignment of assignments) {
+    if (assignment.targetId in state.seats) {
+      const seatId = assignment.targetId as SeatId;
+      seatDamage.set(seatId, (seatDamage.get(seatId) ?? 0) + assignment.amount);
+      continue;
+    }
+
+    cardDamage.set(
+      assignment.targetId,
+      (cardDamage.get(assignment.targetId) ?? 0) + assignment.amount,
+    );
+  }
+
+  for (const [seatId, amount] of seatDamage) {
+    const seat = state.seats[seatId];
+    if (!seat || amount <= 0) {
+      continue;
+    }
+
+    const previousLifeTotal = seat.lifeTotal;
+    seat.lifeTotal -= amount;
+    events.push(
+      createEvent("lifeTotalChanged", {
+        from: previousLifeTotal,
+        reason: "combat",
+        seat: seatId,
+        to: seat.lifeTotal,
+      }),
+    );
+  }
+
+  for (const [targetId, amount] of cardDamage) {
+    const targetState = derived[targetId];
+    if (
+      !targetState ||
+      amount < (targetState.toughness ?? Number.POSITIVE_INFINITY)
+    ) {
+      continue;
+    }
+
+    events.push(
+      ...moveBattlefieldCard(state, createEvent, {
+        instanceId: targetId,
+        publicReason: "combatDamage",
+        toZone: getDestroyDestination(state, targetId),
+      }),
+    );
+  }
+
+  events.push(...applyStateBasedActions(state, createEvent));
+  events.push(...applyLifeTotalCheck(state, createEvent));
+  clearCombat(state);
+  const previousPhase = state.shell.phase;
+  state.shell.phase = "main2";
+  state.shell.prioritySeat = state.shell.activeSeat;
+  state.lastPriorityPassSeat = null;
+  events.push(
+    createEvent("phaseAdvanced", {
+      from: previousPhase,
+      to: state.shell.phase,
+    }),
+  );
+  return events;
+}
+
 function finalizeState(
   state: MatchState,
   events: MatchEvent[],
@@ -853,7 +1109,12 @@ function finalizeState(
 
 function cloneState(state: MatchState): MatchState {
   return {
+    battlefieldEntryTurns: { ...(state.battlefieldEntryTurns ?? {}) },
     cardCatalog: cloneCardCatalog(state.cardCatalog),
+    combat: {
+      attackers: sortCombatAttackers(state.combat?.attackers ?? []),
+      blocks: sortCombatBlocks(state.combat?.blocks ?? []),
+    },
     continuousEffects: (state.continuousEffects ?? []).map((effect) => ({
       ...effect,
       targetIds: [...(effect.targetIds ?? [])],
@@ -1051,6 +1312,340 @@ export function reduceGameplayIntent(
       seat: intent.seat,
     });
     return finalizeState(nextState, [event]);
+  }
+
+  if (intent.kind === "declareAttackers") {
+    if (nextState.shell.phase !== "attack") {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPhase",
+      };
+    }
+    if (nextState.shell.prioritySeat !== intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "notPriorityOwner",
+      };
+    }
+    if (nextState.shell.activeSeat !== intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidSeat",
+      };
+    }
+
+    const defendingSeat = getOtherSeatId(nextState, intent.seat);
+    if (!defendingSeat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidSeat",
+      };
+    }
+
+    const normalizedAttackers = sortCombatAttackers(intent.payload.attackers);
+    if (
+      new Set(normalizedAttackers.map((attacker) => attacker.attackerId))
+        .size !== normalizedAttackers.length
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "unsupportedIntent",
+      };
+    }
+
+    if (
+      normalizedAttackers.some(
+        (attacker) =>
+          attacker.defenderSeat !== defendingSeat ||
+          !nextSeat.battlefield.includes(attacker.attackerId) ||
+          !canAttack(nextState, intent.seat, attacker.attackerId),
+      )
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "cardNotInZone",
+      };
+    }
+
+    nextState.combat.attackers = normalizedAttackers;
+    nextState.combat.blocks = [];
+    nextState.lastPriorityPassSeat = null;
+    nextState.shell.version += 1;
+
+    const nextPhase = normalizedAttackers.length === 0 ? "main2" : "block";
+    nextState.shell.phase = nextPhase;
+    nextState.shell.prioritySeat =
+      nextPhase === "block" ? defendingSeat : nextState.shell.activeSeat;
+
+    return finalizeState(nextState, [
+      createEvent("attackersDeclared", {
+        attackers: normalizedAttackers,
+        seat: intent.seat,
+      }),
+      createEvent("phaseAdvanced", {
+        from: "attack",
+        to: nextPhase,
+      }),
+    ]);
+  }
+
+  if (intent.kind === "declareBlockers") {
+    if (nextState.shell.phase !== "block") {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPhase",
+      };
+    }
+    if (nextState.shell.prioritySeat !== intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "notPriorityOwner",
+      };
+    }
+    if (nextState.shell.activeSeat === intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidSeat",
+      };
+    }
+    if (nextState.combat.attackers.length === 0) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPhase",
+      };
+    }
+
+    const normalizedBlocks = sortCombatBlocks(intent.payload.blocks);
+    if (
+      new Set(normalizedBlocks.map((block) => block.blockerId)).size !==
+        normalizedBlocks.length ||
+      new Set(normalizedBlocks.map((block) => block.attackerId)).size !==
+        normalizedBlocks.length
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "unsupportedIntent",
+      };
+    }
+
+    const attackerIds = new Set(
+      nextState.combat.attackers.map((attacker) => attacker.attackerId),
+    );
+    if (
+      normalizedBlocks.some(
+        (block) =>
+          !attackerIds.has(block.attackerId) ||
+          !nextSeat.battlefield.includes(block.blockerId) ||
+          !canBlock(nextState, intent.seat, block.blockerId, block.attackerId),
+      )
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "cardNotInZone",
+      };
+    }
+
+    nextState.combat.blocks = normalizedBlocks;
+    nextState.lastPriorityPassSeat = null;
+    nextState.shell.phase = "damage";
+    nextState.shell.prioritySeat = nextState.shell.activeSeat;
+    nextState.shell.version += 1;
+
+    return finalizeState(nextState, [
+      createEvent("blockersDeclared", {
+        blocks: normalizedBlocks,
+        seat: intent.seat,
+      }),
+      createEvent("phaseAdvanced", {
+        from: "block",
+        to: "damage",
+      }),
+    ]);
+  }
+
+  if (intent.kind === "assignCombatDamage") {
+    if (nextState.shell.phase !== "damage") {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPhase",
+      };
+    }
+    if (nextState.shell.prioritySeat !== intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "notPriorityOwner",
+      };
+    }
+    if (nextState.shell.activeSeat !== intent.seat) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidSeat",
+      };
+    }
+    if (nextState.combat.attackers.length === 0) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPhase",
+      };
+    }
+
+    const expectedAssignments = buildDefaultCombatAssignments(nextState);
+    const submittedAssignments = sortCombatAssignments(
+      intent.payload.assignments,
+    );
+    if (
+      JSON.stringify(submittedAssignments) !==
+      JSON.stringify(expectedAssignments)
+    ) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "unsupportedIntent",
+      };
+    }
+
+    nextState.shell.version += 1;
+    return finalizeState(
+      nextState,
+      resolveCombatDamage(nextState, createEvent, expectedAssignments),
+    );
+  }
+
+  if (intent.kind === "choosePromptOptions") {
+    const prompt = resolvePrompt(
+      nextState,
+      intent.seat,
+      "choice",
+      intent.payload.choiceIds,
+    );
+    if (!prompt) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPrompt",
+      };
+    }
+
+    nextState.shell.version += 1;
+    return finalizeState(nextState, [
+      createEvent("promptResolved", {
+        choiceIds: [...prompt.resolvedChoiceIds],
+        promptId: prompt.promptId,
+        seat: intent.seat,
+      }),
+    ]);
+  }
+
+  if (intent.kind === "chooseTargets") {
+    const prompt = resolvePrompt(
+      nextState,
+      intent.seat,
+      "targets",
+      intent.payload.targetIds,
+    );
+    if (!prompt) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPrompt",
+      };
+    }
+
+    nextState.shell.version += 1;
+    return finalizeState(nextState, [
+      createEvent("promptResolved", {
+        choiceIds: [...prompt.resolvedChoiceIds],
+        promptId: prompt.promptId,
+        seat: intent.seat,
+      }),
+    ]);
+  }
+
+  if (intent.kind === "chooseModes") {
+    const prompt = resolvePrompt(
+      nextState,
+      intent.seat,
+      "modes",
+      intent.payload.modeIds,
+    );
+    if (!prompt) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPrompt",
+      };
+    }
+
+    nextState.shell.version += 1;
+    return finalizeState(nextState, [
+      createEvent("promptResolved", {
+        choiceIds: [...prompt.resolvedChoiceIds],
+        promptId: prompt.promptId,
+        seat: intent.seat,
+      }),
+    ]);
+  }
+
+  if (intent.kind === "chooseCosts") {
+    const prompt = resolvePrompt(
+      nextState,
+      intent.seat,
+      "costs",
+      intent.payload.costIds,
+    );
+    if (!prompt) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "invalidPrompt",
+      };
+    }
+
+    nextState.shell.version += 1;
+    return finalizeState(nextState, [
+      createEvent("promptResolved", {
+        choiceIds: [...prompt.resolvedChoiceIds],
+        promptId: prompt.promptId,
+        seat: intent.seat,
+      }),
+    ]);
   }
 
   if (intent.kind === "playCard") {
@@ -1324,6 +1919,33 @@ export function reduceGameplayIntent(
     if (otherSeat && nextState.lastPriorityPassSeat === otherSeat) {
       if (nextState.stack.length > 0) {
         events.push(...resolveTopOfStack(nextState, createEvent));
+      } else if (
+        nextState.shell.phase === "damage" &&
+        nextState.combat.attackers.length > 0
+      ) {
+        events.push(
+          ...resolveCombatDamage(
+            nextState,
+            createEvent,
+            buildDefaultCombatAssignments(nextState),
+          ),
+        );
+      } else if (
+        (nextState.shell.phase === "attack" ||
+          nextState.shell.phase === "block" ||
+          nextState.shell.phase === "damage") &&
+        nextState.combat.attackers.length === 0
+      ) {
+        const previousPhase = nextState.shell.phase;
+        nextState.shell.phase = "main2";
+        nextState.shell.prioritySeat = nextState.shell.activeSeat;
+        nextState.lastPriorityPassSeat = null;
+        events.push(
+          createEvent("phaseAdvanced", {
+            from: previousPhase,
+            to: nextState.shell.phase,
+          }),
+        );
       } else {
         const previousPhase = nextState.shell.phase;
         advancePhase(nextState);

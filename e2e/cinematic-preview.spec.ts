@@ -17,9 +17,10 @@ test("loads bundled cinematic GLBs in the preview surface", async ({
 
   const archiveModelResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(
-        "/cinematics/cards/archive-apprentice/summon.glb",
-      ) && response.status() === 200,
+      response
+        .url()
+        .includes("/cinematics/cards/archive-apprentice/summon.glb") &&
+      response.status() === 200,
   );
 
   await page.goto("/?previewCinematics=1");

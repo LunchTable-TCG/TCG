@@ -2,14 +2,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  createCatalogEntriesForFormat,
-  starterFormat,
-} from "@lunchtable/card-content";
-import {
   createAgentMatchContext,
   createDecisionFrame,
   listLegalBotActions,
 } from "@lunchtable/bot-sdk";
+import {
+  createCatalogEntriesForFormat,
+  starterFormat,
+} from "@lunchtable/card-content";
 import {
   BENCHMARK_RESULT_VERSION,
   type BenchmarkMeasurementV1,
@@ -357,7 +357,9 @@ const measurements = [
   measure("scripted-current-format-match", 40, () => {
     const winnerSeat = runScriptedCurrentFormatMatch();
     if (winnerSeat !== "seat-0") {
-      throw new Error(`Expected scripted match winner to be seat-0, received ${winnerSeat}`);
+      throw new Error(
+        `Expected scripted match winner to be seat-0, received ${winnerSeat}`,
+      );
     }
   }),
 ];

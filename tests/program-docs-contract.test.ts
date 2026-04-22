@@ -31,11 +31,17 @@ describe("program docs contract", () => {
     }
 
     const executionPlan = readFile(join(programDir, "EXECUTION_PLAN.md"));
-    const verificationMatrix = readFile(join(programDir, "VERIFICATION_MATRIX.md"));
+    const verificationMatrix = readFile(
+      join(programDir, "VERIFICATION_MATRIX.md"),
+    );
     const benchmarkBudgets = readFile(join(programDir, "BENCHMARK_BUDGETS.md"));
 
-    expect(executionPlan).toContain("Phase 19: Program Control Plane and Source of Truth");
-    expect(executionPlan).toContain("Phase 24: Benchmarks, Regression Gates, and Release Readiness");
+    expect(executionPlan).toContain(
+      "Phase 19: Program Control Plane and Source of Truth",
+    );
+    expect(executionPlan).toContain(
+      "Phase 24: Benchmarks, Regression Gates, and Release Readiness",
+    );
     expect(verificationMatrix).toContain("./scripts/phase-check.sh regression");
     expect(benchmarkBudgets).toContain("bun run benchmark:deterministic");
   });
@@ -49,10 +55,15 @@ describe("program docs contract", () => {
 
     expect(readme).toContain("docs/program/EXECUTION_PLAN.md");
     expect(readme).toContain("bun run benchmark:deterministic");
-    expect(implementationPhases).toContain("## Phase 19: Program Control Plane and Source of Truth");
-    expect(implementationPhases).toContain("## Phase 24: Benchmarks, Regression Gates, and Release Readiness");
-    expect(session).toContain("**Current Phase**: Phase 19");
+    expect(implementationPhases).toContain(
+      "## Phase 19: Program Control Plane and Source of Truth",
+    );
+    expect(implementationPhases).toContain(
+      "## Phase 24: Benchmarks, Regression Gates, and Release Readiness",
+    );
+    expect(session).toContain("**Current Phase**: Phase 24");
     expect(session).toContain("docs/program/CHURN_TRACKER.md");
+    expect(session).toContain("## Final Health Audit");
     expect(phaseLoopDoc).toContain("docs/program/VERIFICATION_MATRIX.md");
     expect(resumeScript).toContain("docs/program/EXECUTION_PLAN.md");
     expect(resumeScript).toContain("docs/program/BENCHMARK_BUDGETS.md");

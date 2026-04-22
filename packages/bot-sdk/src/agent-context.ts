@@ -8,7 +8,10 @@ import type {
   MatchSeatView,
   MatchView,
 } from "@lunchtable/shared-types";
-import { AGENT_MATCH_CONTEXT_VERSION } from "@lunchtable/shared-types";
+import {
+  AGENT_MATCH_CONTEXT_VERSION,
+  assertMatchSeatId,
+} from "@lunchtable/shared-types";
 
 import type {
   BotDecisionFrame,
@@ -17,7 +20,10 @@ import type {
 } from "./types";
 
 function nowMs() {
-  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+  if (
+    typeof performance !== "undefined" &&
+    typeof performance.now === "function"
+  ) {
     return performance.now();
   }
 
@@ -29,7 +35,9 @@ function createActionId(frame: BotDecisionFrame, suffix: string) {
 }
 
 function getCurrentSeat(view: MatchSeatView) {
-  return view.seats.find((candidate) => candidate.seat === view.viewerSeat) ?? null;
+  return (
+    view.seats.find((candidate) => candidate.seat === view.viewerSeat) ?? null
+  );
 }
 
 function getCurrentResourceTotal(view: MatchSeatView): number {
@@ -59,6 +67,10 @@ function getBattlefieldCards(view: MatchSeatView) {
   );
 }
 
+function getOpponentSeat(view: MatchSeatView) {
+  return view.seats.find((seat) => seat.seat !== view.viewerSeat)?.seat ?? null;
+}
+
 function getCatalogEntry(
   catalog: CardCatalogEntry[],
   cardId: string,
@@ -66,7 +78,9 @@ function getCatalogEntry(
   return catalog.find((entry) => entry.cardId === cardId) ?? null;
 }
 
-function toActionArgs(intent: BotSupportedIntent): LegalActionDescriptorV1["args"] {
+function toActionArgs(
+  intent: BotSupportedIntent,
+): LegalActionDescriptorV1["args"] {
   return Object.entries(intent.payload).reduce<LegalActionDescriptorV1["args"]>(
     (args, [key, value]) => {
       if (
@@ -192,6 +206,251 @@ function listAbilityTargetCandidates(input: {
     default:
       return [];
   }
+}
+
+function listAttackerSubsets(cards: MatchCardView[]) {
+  const limitedCards = cards.slice(0, 4);
+  const subsets: MatchCardView[][] = [[]];
+
+  for (const card of limitedCards) {
+    const nextSubsets = subsets.map((subset) => [...subset, card]);
+    subsets.push(...nextSubsets);
+  }
+
+  return subsets
+    .map((subset) =>
+      subset.sort((left, right) => left.name.localeCompare(right.name)),
+    )
+    .sort((left, right) => right.length - left.length);
+}
+
+function canAttackWithCard(card: MatchCardView, seat: string) {
+  return (
+    card.controllerSeat === seat &&
+    (card.statLine?.power ?? 0) > 0 &&
+    !card.annotations.includes("summoningSick")
+  );
+}
+
+function canBlockWithCard(
+  blocker: MatchCardView,
+  attacker: MatchCardView,
+  seat: string,
+) {
+  return (
+    blocker.controllerSeat === seat &&
+    (blocker.statLine?.power ?? 0) > 0 &&
+    (blocker.statLine?.toughness ?? 0) > 0 &&
+    (!attacker.keywords.includes("flying") ||
+      blocker.keywords.includes("flying"))
+  );
+}
+
+function listCombatAttackActions(frame: BotDecisionFrame): BotLegalAction[] {
+  if (!frame.view.availableIntents.includes("declareAttackers")) {
+    return [];
+  }
+
+  const defenderSeat = getOpponentSeat(frame.view);
+  if (!defenderSeat) {
+    return [];
+  }
+
+  const attackers = getZoneCards(frame.view, "battlefield").filter((card) =>
+    canAttackWithCard(card, frame.seat),
+  );
+
+  return listAttackerSubsets(attackers).map((subset, index) =>
+    createDescriptor({
+      frame,
+      humanLabel:
+        subset.length === 0
+          ? "Skip attacks"
+          : `Attack with ${subset.map((card) => card.name).join(", ")}`,
+      intent: {
+        intentId: createActionId(
+          frame,
+          `attack:${index}:${subset.map((card) => card.instanceId).join(",") || "none"}`,
+        ),
+        kind: "declareAttackers",
+        matchId: frame.matchId,
+        payload: {
+          attackers: subset.map((card) => ({
+            attackerId: card.instanceId,
+            defenderSeat: assertMatchSeatId(defenderSeat),
+            laneId: null,
+          })),
+        },
+        seat: frame.seat,
+        stateVersion: frame.view.match.version,
+      },
+      machineLabel:
+        subset.length === 0
+          ? "declare_attackers()"
+          : `declare_attackers(${subset.map((card) => card.cardId).join(",")})`,
+      priority:
+        subset.reduce(
+          (total, card) =>
+            total +
+            (card.statLine?.power ?? 0) +
+            (card.statLine?.toughness ?? 0),
+          0,
+        ) +
+        subset.length * 10,
+    }),
+  );
+}
+
+function listCombatBlockActions(frame: BotDecisionFrame): BotLegalAction[] {
+  if (!frame.view.availableIntents.includes("declareBlockers")) {
+    return [];
+  }
+
+  const battlefieldById = new Map(
+    getBattlefieldCards(frame.view).map((card) => [card.instanceId, card]),
+  );
+  const attackers = frame.view.combat.attackers
+    .map((attacker) => battlefieldById.get(attacker.attackerId))
+    .filter((card): card is MatchCardView => card !== undefined);
+  const blockers = getZoneCards(frame.view, "battlefield").filter(
+    (card) => card.controllerSeat === frame.seat,
+  );
+
+  const actions: BotLegalAction[] = [
+    createDescriptor({
+      frame,
+      humanLabel: "Declare no blocks",
+      intent: {
+        intentId: createActionId(frame, "block:none"),
+        kind: "declareBlockers",
+        matchId: frame.matchId,
+        payload: {
+          blocks: [],
+        },
+        seat: frame.seat,
+        stateVersion: frame.view.match.version,
+      },
+      machineLabel: "declare_blockers()",
+      priority: 1,
+    }),
+  ];
+
+  for (const attacker of attackers) {
+    for (const blocker of blockers) {
+      if (!canBlockWithCard(blocker, attacker, frame.seat)) {
+        continue;
+      }
+
+      actions.push(
+        createDescriptor({
+          frame,
+          humanLabel: `Block ${attacker.name} with ${blocker.name}`,
+          intent: {
+            intentId: createActionId(
+              frame,
+              `block:${attacker.instanceId}:${blocker.instanceId}`,
+            ),
+            kind: "declareBlockers",
+            matchId: frame.matchId,
+            payload: {
+              blocks: [
+                {
+                  attackerId: attacker.instanceId,
+                  blockerId: blocker.instanceId,
+                },
+              ],
+            },
+            seat: frame.seat,
+            stateVersion: frame.view.match.version,
+          },
+          machineLabel: `declare_blockers(${blocker.cardId}->${attacker.cardId})`,
+          priority:
+            (attacker.statLine?.power ?? 0) +
+            (blocker.statLine?.toughness ?? 0) +
+            10,
+        }),
+      );
+    }
+  }
+
+  return actions;
+}
+
+function buildDefaultCombatAssignmentsFromView(view: MatchSeatView) {
+  const battlefieldById = new Map(
+    getBattlefieldCards(view).map((card) => [card.instanceId, card]),
+  );
+  const blockerByAttacker = new Map(
+    view.combat.blocks.map((block) => [block.attackerId, block.blockerId]),
+  );
+
+  const assignments: Array<{
+    amount: number;
+    sourceId: string;
+    targetId: string;
+  }> = [];
+
+  for (const attacker of view.combat.attackers) {
+    const attackerCard = battlefieldById.get(attacker.attackerId);
+    const power = attackerCard?.statLine?.power ?? 0;
+    if (power <= 0) {
+      continue;
+    }
+
+    const blockerId = blockerByAttacker.get(attacker.attackerId);
+    assignments.push({
+      amount: power,
+      sourceId: attacker.attackerId,
+      targetId: blockerId ?? attacker.defenderSeat,
+    });
+  }
+
+  for (const block of view.combat.blocks) {
+    const blockerCard = battlefieldById.get(block.blockerId);
+    const power = blockerCard?.statLine?.power ?? 0;
+    if (power <= 0) {
+      continue;
+    }
+
+    assignments.push({
+      amount: power,
+      sourceId: block.blockerId,
+      targetId: block.attackerId,
+    });
+  }
+
+  return assignments.sort((left, right) => {
+    if (left.sourceId === right.sourceId) {
+      return left.targetId.localeCompare(right.targetId);
+    }
+    return left.sourceId.localeCompare(right.sourceId);
+  });
+}
+
+function listCombatDamageActions(frame: BotDecisionFrame): BotLegalAction[] {
+  if (!frame.view.availableIntents.includes("assignCombatDamage")) {
+    return [];
+  }
+
+  const assignments = buildDefaultCombatAssignmentsFromView(frame.view);
+  return [
+    createDescriptor({
+      frame,
+      humanLabel: "Resolve combat damage",
+      intent: {
+        intentId: createActionId(frame, "combat-damage"),
+        kind: "assignCombatDamage",
+        matchId: frame.matchId,
+        payload: {
+          assignments,
+        },
+        seat: frame.seat,
+        stateVersion: frame.view.match.version,
+      },
+      machineLabel: "assign_combat_damage()",
+      priority: 700,
+    }),
+  ];
 }
 
 function listPlayableCardActions(frame: BotDecisionFrame): BotLegalAction[] {
@@ -385,7 +644,10 @@ function buildPromptChoiceIntent(input: {
       frame: input.frame,
       humanLabel: `Take mulligan to ${input.choice.choiceId.split(":")[1] ?? "unknown"}`,
       intent: {
-        intentId: createActionId(input.frame, `mulligan:${prompt.promptId}:${input.choice.choiceId}`),
+        intentId: createActionId(
+          input.frame,
+          `mulligan:${prompt.promptId}:${input.choice.choiceId}`,
+        ),
         kind: "takeMulligan",
         matchId: input.frame.matchId,
         payload: {
@@ -407,7 +669,10 @@ function buildPromptChoiceIntent(input: {
       frame: input.frame,
       humanLabel: input.choice.label,
       intent: {
-        intentId: createActionId(input.frame, `prompt:${prompt.promptId}:${input.choice.choiceId}`),
+        intentId: createActionId(
+          input.frame,
+          `prompt:${prompt.promptId}:${input.choice.choiceId}`,
+        ),
         kind: "choosePromptOptions",
         matchId: input.frame.matchId,
         payload: {
@@ -430,7 +695,10 @@ function buildPromptChoiceIntent(input: {
       frame: input.frame,
       humanLabel: input.choice.label,
       intent: {
-        intentId: createActionId(input.frame, `targets:${prompt.promptId}:${input.choice.choiceId}`),
+        intentId: createActionId(
+          input.frame,
+          `targets:${prompt.promptId}:${input.choice.choiceId}`,
+        ),
         kind: "chooseTargets",
         matchId: input.frame.matchId,
         payload: {
@@ -453,7 +721,10 @@ function buildPromptChoiceIntent(input: {
       frame: input.frame,
       humanLabel: input.choice.label,
       intent: {
-        intentId: createActionId(input.frame, `modes:${prompt.promptId}:${input.choice.choiceId}`),
+        intentId: createActionId(
+          input.frame,
+          `modes:${prompt.promptId}:${input.choice.choiceId}`,
+        ),
         kind: "chooseModes",
         matchId: input.frame.matchId,
         payload: {
@@ -476,7 +747,10 @@ function buildPromptChoiceIntent(input: {
       frame: input.frame,
       humanLabel: input.choice.label,
       intent: {
-        intentId: createActionId(input.frame, `costs:${prompt.promptId}:${input.choice.choiceId}`),
+        intentId: createActionId(
+          input.frame,
+          `costs:${prompt.promptId}:${input.choice.choiceId}`,
+        ),
         kind: "chooseCosts",
         matchId: input.frame.matchId,
         payload: {
@@ -540,9 +814,14 @@ function listCommandActions(frame: BotDecisionFrame) {
     actions.push(
       createDescriptor({
         frame,
-        humanLabel: seat.autoPassEnabled ? "Disable auto-pass" : "Enable auto-pass",
+        humanLabel: seat.autoPassEnabled
+          ? "Disable auto-pass"
+          : "Enable auto-pass",
         intent: {
-          intentId: createActionId(frame, `auto-pass:${seat.autoPassEnabled ? "off" : "on"}`),
+          intentId: createActionId(
+            frame,
+            `auto-pass:${seat.autoPassEnabled ? "off" : "on"}`,
+          ),
           kind: "toggleAutoPass",
           matchId: frame.matchId,
           payload: {
@@ -586,6 +865,9 @@ export function listLegalActionDescriptors(
 ): BotLegalAction[] {
   return [
     ...listPromptActions(frame),
+    ...listCombatDamageActions(frame),
+    ...listCombatBlockActions(frame),
+    ...listCombatAttackActions(frame),
     ...listPlayableCardActions(frame),
     ...listActivatedAbilityActions(frame),
     ...listCommandActions(frame),
@@ -598,7 +880,9 @@ export function listLegalActionDescriptors(
   });
 }
 
-function buildPromptDecision(view: MatchView): AgentMatchContextV1["promptDecision"] {
+function buildPromptDecision(
+  view: MatchView,
+): AgentMatchContextV1["promptDecision"] {
   if (!view.prompt) {
     return null;
   }
@@ -706,6 +990,12 @@ export function createAgentMatchContext(input: {
       input.view.kind === "seat" ? [...input.view.availableIntents] : [],
     builtAt: receivedAt,
     buildDurationMs: Number((buildFinishedAt - buildStartedAt).toFixed(3)),
+    combat: {
+      attackers: input.view.combat.attackers.map((attacker) => ({
+        ...attacker,
+      })),
+      blocks: input.view.combat.blocks.map((block) => ({ ...block })),
+    },
     legalActions,
     match: input.view.match,
     prompt: input.view.prompt,
@@ -730,6 +1020,7 @@ export function createAgentMatchContext(input: {
         annotations: [...card.annotations],
         counters: { ...card.counters },
         keywords: [...card.keywords],
+        permissions: [...(card.permissions ?? [])],
         statLine: card.statLine ? { ...card.statLine } : null,
       })),
     })),

@@ -7,9 +7,9 @@ import type {
 } from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 
-import { buildPersistedMatchBundle } from "../convex/lib/matches";
-import { BotRunner, type RunnerConfig } from "../apps/bot-runner/src/runner";
 import { createDecisionPlanner } from "../apps/bot-runner/src/policy";
+import { BotRunner, type RunnerConfig } from "../apps/bot-runner/src/runner";
+import { buildPersistedMatchBundle } from "../convex/lib/matches";
 import { buildStarterDeck } from "./helpers/starterDeck";
 
 async function flushAsyncWork(turns = 24) {
@@ -46,7 +46,9 @@ function createBotSeatView(): MatchSeatView {
     turnNumber: 1,
   });
 
-  const view = bundle.views.find((entry) => entry.viewerSeat === "seat-1")?.view;
+  const view = bundle.views.find(
+    (entry) => entry.viewerSeat === "seat-1",
+  )?.view;
   if (!view) {
     throw new Error("Expected bot seat view");
   }
@@ -126,7 +128,9 @@ class FakeRunnerBackend {
           "includeCompleted" in args &&
           (args as { includeCompleted?: boolean }).includeCompleted === false
         ) {
-          const subscriber = onValue as (assignments: BotAssignmentSnapshot[]) => void;
+          const subscriber = onValue as (
+            assignments: BotAssignmentSnapshot[],
+          ) => void;
           this.assignmentSubscribers.add(subscriber);
           return {
             unsubscribe: () => {
@@ -142,7 +146,9 @@ class FakeRunnerBackend {
           typeof (args as { matchId?: unknown }).matchId === "string"
         ) {
           const matchId = (args as { matchId: string }).matchId;
-          const subscriber = onValue as (seatView: MatchSeatView | null) => void;
+          const subscriber = onValue as (
+            seatView: MatchSeatView | null,
+          ) => void;
           const subscribers =
             this.seatViewSubscribers.get(matchId) ?? new Set();
           subscribers.add(subscriber);
@@ -175,7 +181,9 @@ class FakeRunnerBackend {
           throw new Error("Unexpected query");
         }
 
-        return this.seatViews.get((args as { matchId: string }).matchId) ?? null;
+        return (
+          this.seatViews.get((args as { matchId: string }).matchId) ?? null
+        );
       },
       setAuth: () => {},
       subscribeToConnectionState: () => {},
@@ -292,7 +300,8 @@ describe("bot runner lifecycle", () => {
     expect(
       backend.telemetry.some(
         (event) =>
-          event.name === "bot.seat.intentSubmitted" && event.matchId === matchId,
+          event.name === "bot.seat.intentSubmitted" &&
+          event.matchId === matchId,
       ),
     ).toBe(true);
 

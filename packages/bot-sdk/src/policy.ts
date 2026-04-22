@@ -75,8 +75,7 @@ function selectPreferredAction(
 ): BotLegalAction | null {
   return (
     actions.find(
-      (action) =>
-        action.kind !== "concede" && action.kind !== "toggleAutoPass",
+      (action) => action.kind !== "concede" && action.kind !== "toggleAutoPass",
     ) ?? null
   );
 }

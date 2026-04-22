@@ -31,3 +31,24 @@ Artifacts are written to:
   patch.
 - Live-model telemetry such as token counts, invalid-response rate, and p95 turn
   latency is informative but non-gating.
+
+## Browser Budgets
+
+These are local Playwright budgets enforced by `bun run test:e2e`.
+
+| Surface | Local Budget | Why it matters |
+| --- | --- | --- |
+| Homepage hero ready | `<= 3.00 s` | game-first shell must become readable quickly |
+| Practice match mount after click | `<= 12.00 s` | live match entry cannot regress silently under local full-stack runs |
+| Cinematic preview ready | `<= 4.00 s` | summon-preview sandbox should stay responsive |
+| Cinematic swap interaction | `<= 2.50 s` | summon overlay activation should stay within a usable local budget |
+
+## Latest Validated Run
+
+Recorded during `bun run release:proof` on `2026-04-21`.
+
+| Benchmark | Observed Mean | Budget | Result |
+| --- | --- | --- | --- |
+| `agent-context-build` | `0.075 ms` | `<= 2.00 ms` | pass |
+| `legal-action-catalog` | `0.056 ms` | `<= 1.00 ms` | pass |
+| `scripted-current-format-match` | `2.322 ms` | `<= 6.00 ms` | pass |

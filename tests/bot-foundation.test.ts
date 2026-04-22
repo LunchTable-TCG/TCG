@@ -2,13 +2,17 @@ import {
   createCatalogEntriesForFormat,
   starterFormat,
 } from "@lunchtable/card-content";
-import type { MatchSeatView } from "@lunchtable/shared-types";
+import type {
+  MatchCardView,
+  MatchSeatView,
+  MatchZoneView,
+} from "@lunchtable/shared-types";
 import { describe, expect, it } from "vitest";
 import {
+  createAgentMatchContext,
   createDecisionFrame,
   createExternalDecisionEnvelope,
   createExternalDecisionPrompt,
-  createAgentMatchContext,
   getCatalogForFormat,
   listLegalBotActions,
   planBaselineIntent,
@@ -215,6 +219,185 @@ function createPrioritySeatView(): MatchSeatView {
 
       return zone;
     }),
+  };
+}
+
+function createCombatSeatView(
+  kind: "attack" | "block" | "damage",
+): MatchSeatView {
+  const base = createPrioritySeatView();
+  const attackerId = "seat-1:ember-summoner:battlefield:1";
+  const blockerId = "seat-0:tidecall-apprentice:battlefield:1";
+
+  const createBattlefieldCard = (
+    card: Pick<
+      MatchCardView,
+      | "cardId"
+      | "controllerSeat"
+      | "instanceId"
+      | "name"
+      | "ownerSeat"
+      | "statLine"
+    >,
+  ): MatchCardView => ({
+    annotations: [],
+    ...card,
+    counters: {},
+    isTapped: false,
+    keywords: [],
+    permissions: [],
+    slotId: null,
+    visibility: "public",
+    zone: "battlefield",
+  });
+  const createBattlefieldZone = (
+    cards: MatchCardView[],
+    ownerSeat: MatchZoneView["ownerSeat"],
+  ): MatchZoneView => ({
+    cards,
+    cardCount: cards.length,
+    ownerSeat,
+    visibility: "public",
+    zone: "battlefield",
+  });
+  const primaryCards: MatchCardView[] =
+    kind === "block"
+      ? [
+          createBattlefieldCard({
+            cardId: "tidecall-apprentice",
+            controllerSeat: "seat-0",
+            instanceId: blockerId,
+            name: "Tidecall Apprentice",
+            ownerSeat: "seat-0",
+            statLine: { power: 1, toughness: 2 },
+          }),
+        ]
+      : [
+          createBattlefieldCard({
+            cardId: "ember-summoner",
+            controllerSeat: "seat-1",
+            instanceId: attackerId,
+            name: "Ember Summoner",
+            ownerSeat: "seat-1",
+            statLine: { power: 2, toughness: 2 },
+          }),
+        ];
+  const zones: MatchZoneView[] = [
+    createBattlefieldZone(primaryCards, kind === "block" ? "seat-0" : "seat-1"),
+    ...(kind === "block"
+      ? []
+      : [
+          createBattlefieldZone(
+            [
+              createBattlefieldCard({
+                cardId: "tidecall-apprentice",
+                controllerSeat: "seat-0",
+                instanceId: blockerId,
+                name: "Tidecall Apprentice",
+                ownerSeat: "seat-0",
+                statLine: { power: 1, toughness: 2 },
+              }),
+            ],
+            "seat-0",
+          ),
+        ]),
+  ];
+
+  return {
+    ...base,
+    availableIntents:
+      kind === "attack"
+        ? ["declareAttackers", "passPriority", "toggleAutoPass", "concede"]
+        : kind === "block"
+          ? ["declareBlockers", "passPriority", "toggleAutoPass", "concede"]
+          : ["assignCombatDamage", "passPriority", "toggleAutoPass", "concede"],
+    combat:
+      kind === "attack"
+        ? {
+            attackers: [],
+            blocks: [],
+          }
+        : kind === "block"
+          ? {
+              attackers: [
+                {
+                  attackerId,
+                  defenderSeat: "seat-0",
+                  laneId: null,
+                },
+              ],
+              blocks: [],
+            }
+          : {
+              attackers: [
+                {
+                  attackerId,
+                  defenderSeat: "seat-0",
+                  laneId: null,
+                },
+              ],
+              blocks: [
+                {
+                  attackerId,
+                  blockerId,
+                },
+              ],
+            },
+    match: {
+      ...base.match,
+      activeSeat: "seat-1",
+      phase: kind,
+      prioritySeat: kind === "block" ? "seat-0" : "seat-1",
+    },
+    viewerSeat: kind === "block" ? "seat-0" : "seat-1",
+    seats: base.seats.map((seat) => ({
+      ...seat,
+      hasPriority: seat.seat === (kind === "block" ? "seat-0" : "seat-1"),
+      isActiveTurn: seat.seat === "seat-1",
+    })),
+    zones,
+  };
+}
+
+function createPromptSeatView(
+  kind: "choice" | "costs" | "modes" | "targets",
+): MatchSeatView {
+  return {
+    ...createPrioritySeatView(),
+    availableIntents: [
+      kind === "choice"
+        ? "choosePromptOptions"
+        : kind === "targets"
+          ? "chooseTargets"
+          : kind === "modes"
+            ? "chooseModes"
+            : "chooseCosts",
+      "toggleAutoPass",
+      "concede",
+    ],
+    prompt: {
+      choices: [
+        {
+          choiceId: `${kind}:alpha`,
+          disabled: false,
+          hint: null,
+          label: `${kind} alpha`,
+        },
+        {
+          choiceId: `${kind}:beta`,
+          disabled: false,
+          hint: null,
+          label: `${kind} beta`,
+        },
+      ],
+      expiresAt: null,
+      kind,
+      maxSelections: 1,
+      message: `Resolve ${kind}`,
+      minSelections: 1,
+      ownerSeat: "seat-1",
+      promptId: `prompt:${kind}`,
+    },
   };
 }
 
@@ -448,6 +631,41 @@ describe("bot foundation helpers", () => {
     ]);
   });
 
+  it("enumerates attacker, blocker, and combat-damage intents as legal bot actions", () => {
+    const attackFrame = createDecisionFrame({
+      catalog: getCatalogForFormat(starterFormat.formatId),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 15),
+      view: createCombatSeatView("attack"),
+    });
+    const blockFrame = createDecisionFrame({
+      catalog: getCatalogForFormat(starterFormat.formatId),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 16),
+      view: createCombatSeatView("block"),
+    });
+    const damageFrame = createDecisionFrame({
+      catalog: getCatalogForFormat(starterFormat.formatId),
+      receivedAt: Date.UTC(2026, 3, 3, 12, 1, 17),
+      view: createCombatSeatView("damage"),
+    });
+
+    expect(
+      listLegalBotActions(attackFrame).map((action) => action.kind),
+    ).toContain("declareAttackers");
+    expect(
+      listLegalBotActions(blockFrame).map((action) => action.kind),
+    ).toContain("declareBlockers");
+    expect(
+      listLegalBotActions(damageFrame).map((action) => action.kind),
+    ).toContain("assignCombatDamage");
+    expect(planBaselineIntent(attackFrame)?.intent.kind).toBe(
+      "declareAttackers",
+    );
+    expect(planBaselineIntent(blockFrame)?.intent.kind).toBe("declareBlockers");
+    expect(planBaselineIntent(damageFrame)?.intent.kind).toBe(
+      "assignCombatDamage",
+    );
+  });
+
   it("waits instead of conceding when only passive controls remain", () => {
     const frame = createDecisionFrame({
       catalog: createCatalogEntriesForFormat(starterFormat),
@@ -464,4 +682,41 @@ describe("bot foundation helpers", () => {
     ]);
     expect(planBaselineIntent(frame)).toBeNull();
   });
+
+  it.each([
+    {
+      expectedKind: "choosePromptOptions",
+      expectedMachineLabel: "choose_prompt_option(choice:alpha)",
+      kind: "choice" as const,
+    },
+    {
+      expectedKind: "chooseTargets",
+      expectedMachineLabel: "choose_target(targets:alpha)",
+      kind: "targets" as const,
+    },
+    {
+      expectedKind: "chooseModes",
+      expectedMachineLabel: "choose_mode(modes:alpha)",
+      kind: "modes" as const,
+    },
+    {
+      expectedKind: "chooseCosts",
+      expectedMachineLabel: "choose_cost(costs:alpha)",
+      kind: "costs" as const,
+    },
+  ])(
+    "enumerates %s prompt selections as legal bot actions",
+    ({ expectedKind, expectedMachineLabel, kind }) => {
+      const frame = createDecisionFrame({
+        catalog: createCatalogEntriesForFormat(starterFormat),
+        receivedAt: Date.UTC(2026, 3, 3, 12, 2, 0),
+        view: createPromptSeatView(kind),
+      });
+
+      const action = listLegalBotActions(frame)[0];
+
+      expect(action?.kind).toBe(expectedKind);
+      expect(action?.machineLabel).toBe(expectedMachineLabel);
+    },
+  );
 });

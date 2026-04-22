@@ -7,6 +7,10 @@
     "recordedAt": 1775217600000,
     "view": {
       "availableIntents": [],
+      "combat": {
+        "attackers": [],
+        "blocks": []
+      },
       "kind": "spectator",
       "match": {
         "activeSeat": "seat-0",
@@ -280,6 +284,10 @@
     "recordedAt": 1775217600004,
     "view": {
       "availableIntents": [],
+      "combat": {
+        "attackers": [],
+        "blocks": []
+      },
       "kind": "spectator",
       "match": {
         "activeSeat": "seat-0",
@@ -565,6 +573,10 @@
     "recordedAt": 1775217600008,
     "view": {
       "availableIntents": [],
+      "combat": {
+        "attackers": [],
+        "blocks": []
+      },
       "kind": "spectator",
       "match": {
         "activeSeat": "seat-0",

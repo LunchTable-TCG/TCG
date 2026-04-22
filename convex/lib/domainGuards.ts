@@ -180,6 +180,7 @@ function isMatchCardView(value: unknown) {
     isStringArray(value.keywords) &&
     isString(value.name) &&
     isString(value.ownerSeat) &&
+    (value.permissions === undefined || isStringArray(value.permissions)) &&
     isNullableString(value.slotId) &&
     (value.statLine === null || isMatchCardStatLine(value.statLine)) &&
     isMatchVisibility(value.visibility) &&
@@ -230,6 +231,29 @@ function isMatchPromptView(value: unknown) {
     isNumber(value.minSelections) &&
     isString(value.ownerSeat) &&
     isString(value.promptId)
+  );
+}
+
+function isMatchCombatAttackerView(value: unknown) {
+  return (
+    isObject(value) &&
+    isString(value.attackerId) &&
+    isString(value.defenderSeat) &&
+    isNullableString(value.laneId)
+  );
+}
+
+function isMatchCombatBlockView(value: unknown) {
+  return (
+    isObject(value) && isString(value.attackerId) && isString(value.blockerId)
+  );
+}
+
+function isMatchCombatView(value: unknown) {
+  return (
+    isObject(value) &&
+    isArrayOf(value.attackers, isMatchCombatAttackerView) &&
+    isArrayOf(value.blocks, isMatchCombatBlockView)
   );
 }
 
@@ -400,7 +424,9 @@ function isMatchStackObjectState(value: unknown) {
 export function isMatchState(value: unknown): value is MatchState {
   return (
     isObject(value) &&
+    isRecordOfNumbers(value.battlefieldEntryTurns) &&
     isRecordOf(value.cardCatalog, isMatchCardCatalogEntry) &&
+    isMatchCombatView(value.combat) &&
     isNumber(value.eventSequence) &&
     isNullableString(value.lastPriorityPassSeat) &&
     isArrayOf(value.prompts, isMatchPromptState) &&
@@ -432,6 +458,7 @@ export function isMatchSeatView(value: unknown): value is MatchSeatView {
   return (
     isObject(value) &&
     isArrayOf(value.availableIntents, isGameplayIntentKind) &&
+    isMatchCombatView(value.combat) &&
     value.kind === "seat" &&
     isMatchShell(value.match) &&
     (value.prompt === null || isMatchPromptView(value.prompt)) &&
@@ -450,6 +477,7 @@ export function isMatchSpectatorView(
     isObject(value) &&
     Array.isArray(value.availableIntents) &&
     value.availableIntents.length === 0 &&
+    isMatchCombatView(value.combat) &&
     value.kind === "spectator" &&
     isMatchShell(value.match) &&
     value.prompt === null &&

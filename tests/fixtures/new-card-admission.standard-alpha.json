@@ -1,0 +1,25 @@
+{
+  "activateMachineLabel": "activate_ability(signal-ace:rally-signal,target=tidecall-apprentice)",
+  "catalogEntry": {
+    "cardId": "signal-ace",
+    "reasoning": {
+      "effectKinds": ["grantKeyword", "grantPermission"],
+      "promptSurfaces": ["targets"],
+      "rulesSummary": [
+        "Haste",
+        "Pay 1 mana: Target friendly unit gains haste until end of turn."
+      ],
+      "stats": {
+        "power": 2,
+        "toughness": 1
+      },
+      "targetClasses": ["friendlyUnit", "target"],
+      "timingAffordances": [
+        "mainPhaseCast",
+        "slowActivation",
+        "static:permissions"
+      ]
+    }
+  },
+  "playMachineLabel": "play_card(signal-ace)"
+}

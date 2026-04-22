@@ -7,7 +7,6 @@ import type {
 } from "@lunchtable/shared-types";
 import { parseReplayFramesJson } from "./matchJson";
 
-
 export const REPLAY_FRAME_SLICE_SIZE = 16;
 
 export function describeReplayEvent(event: MatchEvent): string {

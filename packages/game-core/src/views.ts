@@ -1,6 +1,7 @@
 import type {
   GameplayIntentKind,
   MatchCardView,
+  MatchCombatView,
   MatchEvent,
   MatchEventSummary,
   MatchPromptView,
@@ -60,8 +61,16 @@ function createCardView(
     zone === "battlefield"
       ? deriveBattlefieldCardStates(state)[instanceId]
       : null;
+  const annotations = [...(derivedState?.annotations ?? [])];
+  if (
+    zone === "battlefield" &&
+    state.battlefieldEntryTurns[instanceId] === state.shell.turnNumber &&
+    !derivedState?.permissions.includes("ignoreSummoningSickness")
+  ) {
+    annotations.push("summoningSick");
+  }
   return {
-    annotations: [...(derivedState?.annotations ?? [])],
+    annotations,
     cardId,
     controllerSeat: seat,
     counters: {},
@@ -70,6 +79,7 @@ function createCardView(
     keywords: [...(derivedState?.keywords ?? card?.keywords ?? [])],
     name: card?.name ?? cardId,
     ownerSeat: seat,
+    permissions: [...(derivedState?.permissions ?? [])],
     slotId: null,
     statLine: derivedState
       ? {
@@ -163,7 +173,9 @@ function getCardNameFromInstanceId(
   return state.cardCatalog[cardId]?.name ?? cardId;
 }
 
-function getCardIdFromEventInstanceId(instanceId: string | null): string | null {
+function getCardIdFromEventInstanceId(
+  instanceId: string | null,
+): string | null {
   if (!instanceId) {
     return null;
   }
@@ -227,7 +239,8 @@ function createRecentEventSummary(
     );
 
     return {
-      cardId: getCardIdFromEventInstanceId(event.payload.cardInstanceId) ?? undefined,
+      cardId:
+        getCardIdFromEventInstanceId(event.payload.cardInstanceId) ?? undefined,
       cardName: cardName ?? undefined,
       focusInstanceId: event.payload.cardInstanceId,
       kind: event.kind,
@@ -286,7 +299,8 @@ function createRecentEventSummary(
     return {
       abilityId: event.payload.abilityId,
       cardId:
-        getCardIdFromEventInstanceId(event.payload.sourceInstanceId) ?? undefined,
+        getCardIdFromEventInstanceId(event.payload.sourceInstanceId) ??
+        undefined,
       cardName: cardName ?? undefined,
       focusInstanceId: event.payload.sourceInstanceId,
       kind: event.kind,
@@ -294,6 +308,42 @@ function createRecentEventSummary(
         ? `${cardName} activated ${event.payload.abilityId}${targetLabel}`
         : `Activated ${event.payload.abilityId}`,
       seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "attackersDeclared") {
+    return {
+      kind: event.kind,
+      label:
+        event.payload.attackers.length === 0
+          ? "Skipped attacks"
+          : `Declared ${event.payload.attackers.length} attacker${event.payload.attackers.length === 1 ? "" : "s"}`,
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "blockersDeclared") {
+    return {
+      kind: event.kind,
+      label:
+        event.payload.blocks.length === 0
+          ? "Declared no blocks"
+          : `Declared ${event.payload.blocks.length} block${event.payload.blocks.length === 1 ? "" : "s"}`,
+      seat: event.payload.seat,
+      sequence: event.sequence,
+    };
+  }
+
+  if (event.kind === "combatDamageAssigned") {
+    return {
+      kind: event.kind,
+      label:
+        event.payload.assignments.length === 0
+          ? "Combat damage skipped"
+          : `Combat damage assigned (${event.payload.assignments.length})`,
+      seat: null,
       sequence: event.sequence,
     };
   }
@@ -413,6 +463,17 @@ function createStackViews(state: MatchState): MatchStackItemView[] {
   }));
 }
 
+function createCombatView(state: MatchState): MatchCombatView {
+  return {
+    attackers: state.combat.attackers.map((attacker) => ({
+      ...attacker,
+    })),
+    blocks: state.combat.blocks.map((block) => ({
+      ...block,
+    })),
+  };
+}
+
 function createPromptView(
   prompt: MatchState["prompts"][number],
 ): MatchPromptView {
@@ -445,6 +506,76 @@ function seatHasActivatedAbility(state: MatchState, viewerSeat: SeatId) {
   );
 }
 
+function getOtherSeatId(state: MatchState, viewerSeat: SeatId): SeatId | null {
+  return (
+    (Object.keys(state.seats) as SeatId[]).find(
+      (seat) => seat !== viewerSeat,
+    ) ?? null
+  );
+}
+
+function canAttack(state: MatchState, viewerSeat: SeatId, instanceId: string) {
+  const derived = deriveBattlefieldCardStates(state)[instanceId];
+  if (!derived || derived.controllerSeat !== viewerSeat) {
+    return false;
+  }
+
+  if ((derived.power ?? 0) <= 0) {
+    return false;
+  }
+
+  const entryTurn = state.battlefieldEntryTurns[instanceId];
+  if (
+    entryTurn === state.shell.turnNumber &&
+    !derived.permissions.includes("ignoreSummoningSickness")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function canBlockAttacker(
+  state: MatchState,
+  viewerSeat: SeatId,
+  blockerId: string,
+  attackerId: string,
+) {
+  const derived = deriveBattlefieldCardStates(state);
+  const blocker = derived[blockerId];
+  const attacker = derived[attackerId];
+  if (!blocker || !attacker || blocker.controllerSeat !== viewerSeat) {
+    return false;
+  }
+
+  if ((blocker.power ?? 0) <= 0 || (blocker.toughness ?? 0) <= 0) {
+    return false;
+  }
+
+  if (
+    attacker.keywords.includes("flying") &&
+    !blocker.permissions.includes("canBlockFlying")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function seatHasCombatAttack(state: MatchState, viewerSeat: SeatId) {
+  return state.seats[viewerSeat].battlefield.some((instanceId) =>
+    canAttack(state, viewerSeat, instanceId),
+  );
+}
+
+function seatHasCombatBlock(state: MatchState, viewerSeat: SeatId) {
+  return state.combat.attackers.some((attacker) =>
+    state.seats[viewerSeat].battlefield.some((blockerId) =>
+      canBlockAttacker(state, viewerSeat, blockerId, attacker.attackerId),
+    ),
+  );
+}
+
 function createAvailableIntents(
   state: MatchState,
   viewerSeat: SeatId,
@@ -457,11 +588,49 @@ function createAvailableIntents(
     return ["keepOpeningHand", "takeMulligan", ...intents];
   }
 
+  if (prompt?.kind === "choice") {
+    return ["choosePromptOptions", ...intents];
+  }
+
+  if (prompt?.kind === "targets") {
+    return ["chooseTargets", ...intents];
+  }
+
+  if (prompt?.kind === "modes") {
+    return ["chooseModes", ...intents];
+  }
+
+  if (prompt?.kind === "costs") {
+    return ["chooseCosts", ...intents];
+  }
+
   if (
     state.shell.status === "active" &&
     state.shell.prioritySeat === viewerSeat &&
     !prompt
   ) {
+    if (
+      state.shell.phase === "damage" &&
+      state.shell.activeSeat === viewerSeat &&
+      state.combat.attackers.length > 0
+    ) {
+      intents.unshift("assignCombatDamage");
+    }
+    if (
+      state.shell.phase === "block" &&
+      state.shell.activeSeat !== viewerSeat &&
+      state.combat.attackers.length > 0 &&
+      seatHasCombatBlock(state, viewerSeat)
+    ) {
+      intents.unshift("declareBlockers");
+    }
+    if (
+      state.shell.phase === "attack" &&
+      state.shell.activeSeat === viewerSeat &&
+      seatHasCombatAttack(state, viewerSeat)
+    ) {
+      intents.unshift("declareAttackers");
+    }
     if (seatHasActivatedAbility(state, viewerSeat)) {
       intents.unshift("activateAbility");
     }
@@ -501,6 +670,7 @@ export function createSeatView(
 
   return {
     availableIntents: createAvailableIntents(state, viewerSeat, prompt),
+    combat: createCombatView(state),
     kind: "seat",
     match: state.shell,
     prompt: prompt ? createPromptView(prompt) : null,
@@ -520,6 +690,7 @@ export function createSpectatorView(
 ): MatchSpectatorView {
   return {
     availableIntents: [],
+    combat: createCombatView(state),
     kind: "spectator",
     match: state.shell,
     prompt: null,

@@ -37,8 +37,8 @@ import {
   toBotIdentityRecord,
 } from "./lib/agents";
 import { issueActorAuthToken } from "./lib/jwt";
-import { recordTelemetryEvent } from "./lib/telemetry";
 import { deserializeSeatView, deserializeSpectatorView } from "./lib/matches";
+import { recordTelemetryEvent } from "./lib/telemetry";
 import { requireViewerUser } from "./lib/viewer";
 
 function requireRunnerSecret(secret: string) {

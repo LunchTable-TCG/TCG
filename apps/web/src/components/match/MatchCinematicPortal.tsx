@@ -2,9 +2,9 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import type { ReactNode } from "react";
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import type { Group, Material, Mesh, Object3D, Texture } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
-import type { Group, Material, Mesh, Object3D, Texture } from "three";
 
 import type {
   MatchCinematicAssetBundle,
@@ -180,11 +180,7 @@ function HeroGlyph({ model }: { model: MatchCinematicSceneModel }) {
     <group ref={groupRef} scale={model.glyphScale} position={[0, -0.18, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.88, 0]}>
         <torusGeometry args={[0.72, 0.06, 18, 72]} />
-        <meshBasicMaterial
-          color={model.ringColor}
-          opacity={0.68}
-          transparent
-        />
+        <meshBasicMaterial color={model.ringColor} opacity={0.68} transparent />
       </mesh>
 
       <mesh ref={haloRef} position={[0, 0.16, -0.08]}>
@@ -257,6 +253,11 @@ function HeroGlyph({ model }: { model: MatchCinematicSceneModel }) {
 function OrbitingShards({ model }: { model: MatchCinematicSceneModel }) {
   const groupRef = useRef<Group>(null);
   const shardRefs = useRef<Array<Mesh | null>>([]);
+  const shardKeys = useMemo(
+    () =>
+      Array.from({ length: model.shardCount }, (_, index) => `shard-${index}`),
+    [model.shardCount],
+  );
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
@@ -284,9 +285,9 @@ function OrbitingShards({ model }: { model: MatchCinematicSceneModel }) {
 
   return (
     <group ref={groupRef}>
-      {Array.from({ length: model.shardCount }, (_, index) => (
+      {shardKeys.map((shardKey, index) => (
         <mesh
-          key={index}
+          key={shardKey}
           ref={(mesh: Mesh | null) => {
             shardRefs.current[index] = mesh;
           }}
@@ -323,11 +324,7 @@ function AuraSheet({ model }: { model: MatchCinematicSceneModel }) {
   return (
     <mesh ref={meshRef} position={[0, 0.12, -0.48]}>
       <circleGeometry args={[1.08, 48]} />
-      <meshBasicMaterial
-        color={model.auraColor}
-        opacity={0.2}
-        transparent
-      />
+      <meshBasicMaterial color={model.auraColor} opacity={0.2} transparent />
     </mesh>
   );
 }

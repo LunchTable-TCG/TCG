@@ -9,6 +9,10 @@ import { summarizeTableParity } from "../apps/web/src/components/match/MatchShel
 function createSeatView(): MatchSeatView {
   return {
     availableIntents: ["passPriority"],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "seat",
     match: {
       activeSeat: "seat-0",
@@ -89,6 +93,10 @@ function createSpectatorView(): MatchSpectatorView {
   const seatView = createSeatView();
   return {
     availableIntents: [],
+    combat: {
+      attackers: [],
+      blocks: [],
+    },
     kind: "spectator",
     match: seatView.match,
     prompt: null,

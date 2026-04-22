@@ -1,5 +1,6 @@
 import type {
   CardCatalogEntry,
+  MatchCardView,
   MatchSeatView,
   MatchSpectatorView,
   MatchView,
@@ -18,10 +19,118 @@ export interface ActivatedAbilityAction {
   targetLabel?: string;
 }
 
+export interface CombatAction {
+  assignments?: Array<{
+    amount: number;
+    sourceId: string;
+    targetId: string;
+  }>;
+  attackers?: Array<{
+    attackerId: string;
+    defenderSeat: string;
+    laneId: string | null;
+  }>;
+  blocks?: Array<{
+    attackerId: string;
+    blockerId: string;
+  }>;
+  kind: "assignCombatDamage" | "declareAttackers" | "declareBlockers";
+  label: string;
+}
+
 function getBattlefieldCards(view: MatchSeatView) {
   return view.zones.flatMap((zone) =>
     zone.zone === "battlefield" ? zone.cards : [],
   );
+}
+
+function getOpponentSeat(view: MatchSeatView) {
+  return view.seats.find((seat) => seat.seat !== view.viewerSeat)?.seat ?? null;
+}
+
+function canAttack(card: MatchCardView, seat: string) {
+  return (
+    card.controllerSeat === seat &&
+    (card.statLine?.power ?? 0) > 0 &&
+    !card.annotations.includes("summoningSick")
+  );
+}
+
+function canBlock(
+  blocker: MatchCardView,
+  attacker: MatchCardView,
+  seat: string,
+) {
+  return (
+    blocker.controllerSeat === seat &&
+    (blocker.statLine?.power ?? 0) > 0 &&
+    (blocker.statLine?.toughness ?? 0) > 0 &&
+    (!attacker.keywords.includes("flying") ||
+      blocker.keywords.includes("flying"))
+  );
+}
+
+function listAttackerSubsets(cards: MatchCardView[]) {
+  const limitedCards = cards.slice(0, 4);
+  const subsets: MatchCardView[][] = [[]];
+
+  for (const card of limitedCards) {
+    const nextSubsets = subsets.map((subset) => [...subset, card]);
+    subsets.push(...nextSubsets);
+  }
+
+  return subsets.sort((left, right) => right.length - left.length);
+}
+
+function buildDefaultCombatAssignments(view: MatchSeatView) {
+  const battlefieldById = new Map(
+    getBattlefieldCards(view).map((card) => [card.instanceId, card]),
+  );
+  const blockerByAttacker = new Map(
+    view.combat.blocks.map((block) => [block.attackerId, block.blockerId]),
+  );
+
+  return view.combat.attackers
+    .flatMap((attacker) => {
+      const attackerCard = battlefieldById.get(attacker.attackerId);
+      const attackerPower = attackerCard?.statLine?.power ?? 0;
+      if (attackerPower <= 0) {
+        return [];
+      }
+
+      const assignments: CombatAction["assignments"] = [
+        {
+          amount: attackerPower,
+          sourceId: attacker.attackerId,
+          targetId:
+            blockerByAttacker.get(attacker.attackerId) ?? attacker.defenderSeat,
+        },
+      ];
+
+      const blockerId = blockerByAttacker.get(attacker.attackerId);
+      if (!blockerId) {
+        return assignments;
+      }
+
+      const blockerCard = battlefieldById.get(blockerId);
+      const blockerPower = blockerCard?.statLine?.power ?? 0;
+      if (blockerPower <= 0) {
+        return assignments;
+      }
+
+      assignments.push({
+        amount: blockerPower,
+        sourceId: blockerId,
+        targetId: attacker.attackerId,
+      });
+      return assignments;
+    })
+    .sort((left, right) => {
+      if (left.sourceId === right.sourceId) {
+        return left.targetId.localeCompare(right.targetId);
+      }
+      return left.sourceId.localeCompare(right.sourceId);
+    });
 }
 
 function listTargetCandidates(input: {
@@ -167,6 +276,81 @@ export function listActivatedAbilityActions(
         }));
       });
   });
+}
+
+export function listCombatActions(view: MatchSeatView | null): CombatAction[] {
+  if (!view) {
+    return [];
+  }
+
+  if (view.availableIntents.includes("assignCombatDamage")) {
+    return [
+      {
+        assignments: buildDefaultCombatAssignments(view),
+        kind: "assignCombatDamage",
+        label: "Resolve combat damage",
+      },
+    ];
+  }
+
+  if (view.availableIntents.includes("declareBlockers")) {
+    const battlefieldById = new Map(
+      getBattlefieldCards(view).map((card) => [card.instanceId, card]),
+    );
+    const attackers = view.combat.attackers
+      .map((attacker) => battlefieldById.get(attacker.attackerId))
+      .filter((card): card is MatchCardView => card !== undefined);
+    const blockers =
+      getZoneView(view, view.viewerSeat, "battlefield")?.cards ?? [];
+
+    return [
+      {
+        blocks: [],
+        kind: "declareBlockers",
+        label: "Declare no blocks",
+      },
+      ...attackers.flatMap((attacker) =>
+        blockers
+          .filter((blocker) => canBlock(blocker, attacker, view.viewerSeat))
+          .map((blocker) => ({
+            blocks: [
+              {
+                attackerId: attacker.instanceId,
+                blockerId: blocker.instanceId,
+              },
+            ],
+            kind: "declareBlockers" as const,
+            label: `Block ${attacker.name} with ${blocker.name}`,
+          })),
+      ),
+    ];
+  }
+
+  if (view.availableIntents.includes("declareAttackers")) {
+    const defenderSeat = getOpponentSeat(view);
+    if (!defenderSeat) {
+      return [];
+    }
+
+    const attackers = (
+      getZoneView(view, view.viewerSeat, "battlefield")?.cards ?? []
+    ).filter((card) => canAttack(card, view.viewerSeat));
+
+    return listAttackerSubsets(attackers).map((subset) => ({
+      attackers: subset.map((card) => ({
+        attackerId: card.instanceId,
+        defenderSeat,
+        laneId: null,
+      })),
+      kind: "declareAttackers" as const,
+      label:
+        subset.length === 0
+          ? "Skip attacks"
+          : `Attack with ${subset.map((card) => card.name).join(", ")}`,
+    }));
+  }
+
+  return [];
 }
 
 export function deriveMatchCinematicCue(

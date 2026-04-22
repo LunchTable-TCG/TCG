@@ -162,4 +162,141 @@ describe("persisted intent helpers", () => {
     ).toHaveLength(1);
     expect(castResult.shell.prioritySeat).toBe("seat-1");
   });
+
+  it("rebuilds persisted seat views across a full combat exchange", () => {
+    const bundle = createActiveBundle();
+    const keepSeat0 = buildPersistedIntentResult({
+      events: bundle.events,
+      intent: {
+        intentId: "intent_keep_combat_001",
+        kind: "keepOpeningHand",
+        matchId: bundle.shell.id,
+        payload: {},
+        seat: "seat-0",
+        stateVersion: bundle.shell.version,
+      },
+      state: bundle.state,
+    });
+    const keepSeat1 = buildPersistedIntentResult({
+      events: keepSeat0.allEvents,
+      intent: {
+        intentId: "intent_keep_combat_002",
+        kind: "keepOpeningHand",
+        matchId: bundle.shell.id,
+        payload: {},
+        seat: "seat-1",
+        stateVersion: keepSeat0.state.shell.version,
+      },
+      state: keepSeat0.state,
+    });
+
+    keepSeat1.state.shell.activeSeat = "seat-0";
+    keepSeat1.state.shell.phase = "attack";
+    keepSeat1.state.shell.prioritySeat = "seat-0";
+    keepSeat1.state.shell.turnNumber = 3;
+    keepSeat1.state.seats["seat-0"].battlefield = [
+      "seat-0:ember-summoner:battlefield:1",
+    ];
+    keepSeat1.state.seats["seat-1"].battlefield = [
+      "seat-1:ember-summoner:battlefield:1",
+    ];
+
+    const attackers = buildPersistedIntentResult({
+      events: keepSeat1.allEvents,
+      intent: {
+        intentId: "intent_attackers_bundle_001",
+        kind: "declareAttackers",
+        matchId: bundle.shell.id,
+        payload: {
+          attackers: [
+            {
+              attackerId: "seat-0:ember-summoner:battlefield:1",
+              defenderSeat: "seat-1",
+              laneId: null,
+            },
+          ],
+        },
+        seat: "seat-0",
+        stateVersion: keepSeat1.state.shell.version,
+      },
+      state: keepSeat1.state,
+    });
+
+    expect(attackers.transition.outcome).toBe("applied");
+    expect(
+      attackers.views.find((view) => view.viewerSeat === "seat-1")?.view.combat
+        .attackers,
+    ).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        defenderSeat: "seat-1",
+        laneId: null,
+      },
+    ]);
+
+    const blockers = buildPersistedIntentResult({
+      events: attackers.allEvents,
+      intent: {
+        intentId: "intent_blockers_bundle_001",
+        kind: "declareBlockers",
+        matchId: bundle.shell.id,
+        payload: {
+          blocks: [
+            {
+              attackerId: "seat-0:ember-summoner:battlefield:1",
+              blockerId: "seat-1:ember-summoner:battlefield:1",
+            },
+          ],
+        },
+        seat: "seat-1",
+        stateVersion: attackers.state.shell.version,
+      },
+      state: attackers.state,
+    });
+
+    expect(blockers.transition.outcome).toBe("applied");
+    expect(blockers.shell.phase).toBe("damage");
+    expect(blockers.spectatorView.combat.blocks).toEqual([
+      {
+        attackerId: "seat-0:ember-summoner:battlefield:1",
+        blockerId: "seat-1:ember-summoner:battlefield:1",
+      },
+    ]);
+
+    const damage = buildPersistedIntentResult({
+      events: blockers.allEvents,
+      intent: {
+        intentId: "intent_damage_bundle_001",
+        kind: "assignCombatDamage",
+        matchId: bundle.shell.id,
+        payload: {
+          assignments: [
+            {
+              amount: 2,
+              sourceId: "seat-0:ember-summoner:battlefield:1",
+              targetId: "seat-1:ember-summoner:battlefield:1",
+            },
+            {
+              amount: 2,
+              sourceId: "seat-1:ember-summoner:battlefield:1",
+              targetId: "seat-0:ember-summoner:battlefield:1",
+            },
+          ],
+        },
+        seat: "seat-0",
+        stateVersion: blockers.state.shell.version,
+      },
+      state: blockers.state,
+    });
+
+    expect(damage.transition.outcome).toBe("applied");
+    expect(damage.appendedEvents.map((event) => event.kind)).toEqual([
+      "combatDamageAssigned",
+      "cardMoved",
+      "cardMoved",
+      "phaseAdvanced",
+    ]);
+    expect(damage.shell.phase).toBe("main2");
+    expect(damage.spectatorView.combat.attackers).toEqual([]);
+  });
 });

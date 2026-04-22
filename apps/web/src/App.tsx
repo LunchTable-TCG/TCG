@@ -1843,6 +1843,13 @@ export function App() {
     }
   }, [liveMatchShell, selectedMatchId]);
 
+  const replayRefreshKey = [
+    liveMatchShell?.id ?? "none",
+    liveMatchShell?.lastEventNumber ?? "none",
+    liveMatchShell?.status ?? "none",
+    liveMatchShell?.winnerSeat ?? "none",
+  ].join(":");
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1872,6 +1879,7 @@ export function App() {
         }
       } finally {
         if (!cancelled) {
+          void replayRefreshKey;
           setReplayLoading(false);
         }
       }
@@ -1882,13 +1890,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [
-    liveMatchShell?.id,
-    liveMatchShell?.lastEventNumber,
-    liveMatchShell?.status,
-    liveMatchShell?.winnerSeat,
-    selectedMatchId,
-  ]);
+  }, [replayRefreshKey, selectedMatchId]);
 
   useEffect(() => {
     let cancelled = false;

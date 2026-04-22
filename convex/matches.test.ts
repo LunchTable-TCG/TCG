@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 // @vitest-environment edge-runtime
 
-import { createGameState } from "@lunchtable/game-core";
 import { starterFormat } from "@lunchtable/card-content";
+import { createGameState } from "@lunchtable/game-core";
 import { type TestConvex, convexTest } from "convex-test";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -104,13 +104,14 @@ describe("matches backend", () => {
       string,
       unknown
     >;
-    delete legacySnapshot.continuousEffects;
-    delete (legacySnapshot.prompts as Array<Record<string, unknown>>)[0]
-      .choiceIds;
-    delete (legacySnapshot.prompts as Array<Record<string, unknown>>)[0]
-      .resolvedChoiceIds;
-    delete (legacySnapshot.stack as Array<Record<string, unknown>>)[0]
-      .targetIds;
+    legacySnapshot.continuousEffects = undefined;
+    (legacySnapshot.prompts as Array<Record<string, unknown>>)[0].choiceIds =
+      undefined;
+    (
+      legacySnapshot.prompts as Array<Record<string, unknown>>
+    )[0].resolvedChoiceIds = undefined;
+    (legacySnapshot.stack as Array<Record<string, unknown>>)[0].targetIds =
+      undefined;
 
     const normalized = deserializeMatchState(JSON.stringify(legacySnapshot));
     const reparsed = JSON.parse(serializeMatchState(normalized)) as Record<

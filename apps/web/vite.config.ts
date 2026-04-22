@@ -12,10 +12,7 @@ export default defineConfig({
             return undefined;
           }
 
-          if (
-            id.includes("/three/") ||
-            id.includes("/@react-three/fiber/")
-          ) {
+          if (id.includes("/three/") || id.includes("/@react-three/fiber/")) {
             return "three-runtime";
           }
 
