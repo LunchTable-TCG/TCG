@@ -18,6 +18,12 @@ has_local_convex_env() {
   [[ -f "$ROOT/.env.local" ]] && rg -q '^VITE_CONVEX_URL=' "$ROOT/.env.local"
 }
 
+ensure_playwright_chromium() {
+  if [[ -f "$ROOT/playwright.config.ts" ]]; then
+    bunx playwright install --with-deps chromium
+  fi
+}
+
 reset_local_convex_state() {
   rm -rf "$ROOT/.convex/local"
   rm -f "$ROOT/.env.local"
@@ -134,6 +140,9 @@ fi
 
 echo "==> Generating Convex bindings"
 bunx convex codegen
+
+echo "==> Ensuring Playwright Chromium"
+ensure_playwright_chromium
 
 echo "==> Running full gate"
 ./scripts/phase-check.sh full

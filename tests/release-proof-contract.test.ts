@@ -29,10 +29,12 @@ describe("release proof contract", () => {
     const releaseScript = readFile(releaseScriptPath);
 
     expect(releaseDoc).toContain("bunx convex codegen");
+    expect(releaseDoc).toContain("Playwright Chromium");
     expect(releaseDoc).toContain("./scripts/phase-check.sh full");
     expect(releaseDoc).toContain("./scripts/phase-check.sh regression");
     expect(releaseScript).toContain("bun run setup:convex-auth-local --sync");
     expect(releaseScript).toContain("bunx convex codegen");
+    expect(releaseScript).toContain("playwright install --with-deps chromium");
     expect(releaseScript).toContain("./scripts/phase-check.sh full");
     expect(releaseScript).toContain("./scripts/phase-check.sh regression");
     expect(releaseScript).toContain("git tag -a v0.1.0");
