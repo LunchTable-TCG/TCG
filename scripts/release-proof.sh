@@ -18,6 +18,21 @@ has_local_convex_env() {
   [[ -f "$ROOT/.env.local" ]] && rg -q '^VITE_CONVEX_URL=' "$ROOT/.env.local"
 }
 
+reset_local_convex_state() {
+  rm -rf "$ROOT/.convex/local"
+  rm -f "$ROOT/.env.local"
+}
+
+bootstrap_log_requires_auth_sync() {
+  local log_path="$1"
+  rg -q 'used in auth config file but its value was not set' "$log_path"
+}
+
+bootstrap_log_requires_local_reset() {
+  local log_path="$1"
+  rg -q 'This deployment is using an older version of the Convex backend\. Upgrade now\?' "$log_path"
+}
+
 bootstrap_local_convex() {
   local bootstrap_log
   bootstrap_log="$(mktemp)"
@@ -28,14 +43,58 @@ bootstrap_local_convex() {
     return 0
   fi
 
-  if ! rg -q 'used in auth config file but its value was not set' "$bootstrap_log"; then
+  if bootstrap_log_requires_auth_sync "$bootstrap_log"; then
     rm -f "$bootstrap_log"
-    return 1
+    bun run setup:convex-auth-local --sync
+    bunx convex dev --once --typecheck disable --tail-logs disable
+    return 0
+  fi
+
+  if bootstrap_log_requires_local_reset "$bootstrap_log"; then
+    rm -f "$bootstrap_log"
+    reset_local_convex_state
+    CONVEX_AGENT_MODE=anonymous \
+      bunx convex dev --once --typecheck disable --tail-logs disable
+    bun run setup:convex-auth-local --sync
+    return 0
   fi
 
   rm -f "$bootstrap_log"
-  bun run setup:convex-auth-local --sync
-  bunx convex dev --once --typecheck disable --tail-logs disable
+  return 1
+}
+
+start_convex_backend() {
+  local startup_log
+  startup_log="$(mktemp)"
+
+  : >"$CONVEX_LOG"
+  bunx convex dev --typecheck disable --tail-logs disable >"$CONVEX_LOG" 2>&1 &
+  CONVEX_PID=$!
+
+  for _ in {1..60}; do
+    if is_convex_running; then
+      rm -f "$startup_log"
+      return 0
+    fi
+    if [[ -f "$CONVEX_LOG" ]]; then
+      cp "$CONVEX_LOG" "$startup_log" 2>/dev/null || true
+      if bootstrap_log_requires_local_reset "$startup_log"; then
+        kill "$CONVEX_PID" >/dev/null 2>&1 || true
+        wait "$CONVEX_PID" >/dev/null 2>&1 || true
+        CONVEX_PID=""
+        reset_local_convex_state
+        bootstrap_local_convex
+        rm -f "$startup_log"
+        : >"$CONVEX_LOG"
+        bunx convex dev --typecheck disable --tail-logs disable >"$CONVEX_LOG" 2>&1 &
+        CONVEX_PID=$!
+      fi
+    fi
+    sleep 1
+  done
+
+  rm -f "$startup_log"
+  return 1
 }
 
 cleanup() {
@@ -66,18 +125,7 @@ bun run setup:convex-auth-local --sync
 
 if ! is_convex_running; then
   echo "==> Bootstrapping local Convex backend"
-  : >"$CONVEX_LOG"
-  bunx convex dev --typecheck disable --tail-logs disable >"$CONVEX_LOG" 2>&1 &
-  CONVEX_PID=$!
-
-  for _ in {1..60}; do
-    if is_convex_running; then
-      break
-    fi
-    sleep 1
-  done
-
-  if ! is_convex_running; then
+  if ! start_convex_backend; then
     echo "Convex backend did not start. Recent log output:" >&2
     tail -n 40 "$CONVEX_LOG" >&2 || true
     exit 1

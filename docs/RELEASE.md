@@ -26,7 +26,9 @@ This does the following in order:
 5. runs `./scripts/phase-check.sh regression`
 
 The script prints the validated commit hash at the end. If the working tree is
-dirty, it warns instead of silently treating that state as release-ready.
+dirty, it warns instead of silently treating that state as release-ready. If a
+stale local Convex deployment triggers the interactive backend-upgrade prompt,
+the script resets the local Convex state and retries non-interactively.
 
 ## Cut A Tag
 
