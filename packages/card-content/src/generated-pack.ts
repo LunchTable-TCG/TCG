@@ -34,7 +34,13 @@ export type GeneratedCardTabletopPack = GeneratedCardTabletopPackRuleset & {
 
 export type GeneratedCardTabletopPackValidationIssue =
   GamePackValidationIssue & {
-    code: "duplicateObjectId" | "duplicateSeatId" | "duplicateZoneId";
+    code:
+      | "duplicateObjectId"
+      | "duplicateSeatId"
+      | "duplicateZoneId"
+      | "unknownObjectOwnerSeat"
+      | "unknownObjectZone"
+      | "unknownZoneOwnerSeat";
   };
 
 export type GeneratedCardTabletopPackValidationResult = Omit<
@@ -170,6 +176,8 @@ export function createGeneratedCardTabletopPack(): GeneratedCardTabletopPack {
 export function validateGeneratedCardTabletopPack(
   pack: GeneratedCardTabletopPack,
 ): GeneratedCardTabletopPackValidationResult {
+  const knownSeatIds = new Set(pack.seats.map((seat) => seat.id));
+  const knownZoneIds = new Set(pack.zones.map((zone) => zone.id));
   const issues = [
     ...collectDuplicateIssues(
       pack.objects.map((object) => object.id),
@@ -186,6 +194,43 @@ export function validateGeneratedCardTabletopPack(
       "duplicateZoneId",
       "zone",
     ),
+    ...pack.objects.flatMap((object) => {
+      const objectIssues: GeneratedCardTabletopPackValidationIssue[] = [];
+
+      if (!knownZoneIds.has(object.zoneId)) {
+        objectIssues.push({
+          code: "unknownObjectZone",
+          message: `${object.id}: unknown object zone ${object.zoneId}`,
+          path: "object.zoneId",
+          severity: "error",
+        });
+      }
+
+      if (object.ownerSeat !== null && !knownSeatIds.has(object.ownerSeat)) {
+        objectIssues.push({
+          code: "unknownObjectOwnerSeat",
+          message: `${object.id}: unknown object owner seat ${object.ownerSeat}`,
+          path: "object.ownerSeat",
+          severity: "error",
+        });
+      }
+
+      return objectIssues;
+    }),
+    ...pack.zones.flatMap((zone) => {
+      if (zone.ownerSeat === null || knownSeatIds.has(zone.ownerSeat)) {
+        return [];
+      }
+
+      return [
+        {
+          code: "unknownZoneOwnerSeat",
+          message: `${zone.id}: unknown zone owner seat ${zone.ownerSeat}`,
+          path: "zone.ownerSeat",
+          severity: "error",
+        } satisfies GeneratedCardTabletopPackValidationIssue,
+      ];
+    }),
   ];
 
   return {
