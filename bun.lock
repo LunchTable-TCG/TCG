@@ -80,6 +80,12 @@
     "packages/games-core": {
       "name": "@lunchtable/games-core",
     },
+    "packages/games-tabletop": {
+      "name": "@lunchtable/games-tabletop",
+      "dependencies": {
+        "@lunchtable/games-core": "workspace:*",
+      },
+    },
     "packages/render-pixi": {
       "name": "@lunchtable/render-pixi",
       "dependencies": {
@@ -239,6 +245,8 @@
     "@lunchtable/game-core": ["@lunchtable/game-core@workspace:packages/game-core"],
 
     "@lunchtable/games-core": ["@lunchtable/games-core@workspace:packages/games-core"],
+
+    "@lunchtable/games-tabletop": ["@lunchtable/games-tabletop@workspace:packages/games-tabletop"],
 
     "@lunchtable/render-pixi": ["@lunchtable/render-pixi@workspace:packages/render-pixi"],
 
