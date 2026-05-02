@@ -54,7 +54,12 @@ describe("lunchtable init scaffolding", () => {
       expect(result.templateId).toBe("dice");
       expect(result.files).toEqual([
         ".gitignore",
+        ".agents/skills/build-lunchtable-game/SKILL.md",
+        ".agents/skills/evaluate-lunchtable-agent/SKILL.md",
+        ".agents/skills/play-lunchtable-game/SKILL.md",
         "README.md",
+        "llms-full.txt",
+        "llms.txt",
         "package.json",
         "src/agents/a2a.ts",
         "src/agents/baseline.ts",
@@ -87,6 +92,28 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(parityTestSource).toContain("chooses from legal actions");
+
+      const llmsText = await readFile(
+        join(targetDirectory, "llms.txt"),
+        "utf8",
+      );
+      expect(llmsText).toContain("# Dice tabletop game");
+      expect(llmsText).toContain("> Agent-native Lunch Table Games starter");
+      expect(llmsText).toContain("## Agent Skills");
+
+      const fullLlmsText = await readFile(
+        join(targetDirectory, "llms-full.txt"),
+        "utf8",
+      );
+      expect(fullLlmsText).toContain("## Authority Model");
+      expect(fullLlmsText).toContain("Agents submit legal action ids");
+
+      const playSkill = await readFile(
+        join(targetDirectory, ".agents/skills/play-lunchtable-game/SKILL.md"),
+        "utf8",
+      );
+      expect(playSkill).toContain("name: play-lunchtable-game");
+      expect(playSkill).toContain("Use when an agent needs to join");
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -105,6 +132,17 @@ describe("lunchtable init scaffolding", () => {
         });
 
         expect(result.files).toContain("src/game.ts");
+        expect(result.files).toContain("llms.txt");
+        expect(result.files).toContain("llms-full.txt");
+        expect(result.files).toContain(
+          ".agents/skills/play-lunchtable-game/SKILL.md",
+        );
+        expect(result.files).toContain(
+          ".agents/skills/build-lunchtable-game/SKILL.md",
+        );
+        expect(result.files).toContain(
+          ".agents/skills/evaluate-lunchtable-agent/SKILL.md",
+        );
         expect(result.files).toContain("src/agents/baseline.ts");
         expect(result.files).toContain("src/agents/external-http.ts");
         expect(result.files).toContain("src/agents/mcp.ts");

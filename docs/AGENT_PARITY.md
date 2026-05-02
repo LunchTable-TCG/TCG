@@ -184,6 +184,8 @@ Every CLI scaffold must include:
 - MCP tool manifest
 - A2A agent card
 - deterministic self-play runner
+- `llms.txt` and `llms-full.txt`
+- repo-local `SKILL.md` files for play, build, and evaluation workflows
 - `agent-parity` and `self-play` tests
 
 This keeps generated TCG, dice, side-scroller, and 3D shooter starters aligned

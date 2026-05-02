@@ -1,0 +1,61 @@
+# Lunch Table Games Full LLM Context
+
+> Complete agent-readable context for maintaining the Lunch Table Games monorepo and generated starters.
+
+## Product Scope
+
+Lunch Table Games is a browser-first, deterministic, agent-native game library. It starts from the owned TCG implementation and extracts portable primitives for card/tabletop duels, dice games, side-scroller shells, and 3D shooter/arena shells.
+
+## Agent-Native Starter Contract
+
+Every `bunx lunchtable init` starter must include:
+
+- deterministic ruleset and initial state in `src/game.ts`
+- baseline local agent in `src/agents/baseline.ts`
+- external HTTP envelope adapter in `src/agents/external-http.ts`
+- MCP tool manifest in `src/agents/mcp.ts`
+- A2A agent card helper in `src/agents/a2a.ts`
+- deterministic self-play in `src/agents/self-play.ts`
+- `llms.txt` and `llms-full.txt`
+- `.agents/skills/play-lunchtable-game/SKILL.md`
+- `.agents/skills/build-lunchtable-game/SKILL.md`
+- `.agents/skills/evaluate-lunchtable-agent/SKILL.md`
+- tests for game construction, agent parity, and self-play
+
+Agents submit legal action ids, never arbitrary state mutations. The runtime resolves each chosen action id against the current legal action catalog and applies the associated intent through the ruleset.
+
+## Generic Package Boundaries
+
+- `@lunchtable/games-core` owns deterministic state, ruleset contracts, replay, lifecycle, and RNG.
+- `@lunchtable/games-tabletop` owns seats, zones, tabletop components, visibility, and generated pack types.
+- `@lunchtable/games-ai` owns legal action descriptors, observation frames, external envelopes, MCP and A2A metadata helpers, policies, and agent-turn execution.
+- `@lunchtable/games-render` owns renderer-neutral scene, camera, interaction, and cue models.
+
+Generic packages must not import TCG rules, card content, Convex, React, Pixi, Three.js, or app code.
+
+## Authority Model
+
+1. A human or agent receives a scoped seat view.
+2. The ruleset lists legal intents for that seat.
+3. The AI package maps those intents to legal action descriptors.
+4. The human or agent chooses one action id, or no action.
+5. The runtime resolves the action id against the current legal catalog.
+6. The ruleset applies the intent and emits next state plus events.
+7. Projections derive views, scenes, replay frames, and agent observation frames.
+
+Renderers, MCP tools, A2A cards, external HTTP services, and advisory agents never mutate authoritative state directly.
+
+## Generated-Game Rules
+
+Generated games enter through validated packs and starter scaffolds. They must be deterministic, testable, and replayable before becoming publishable. Data-only content is preferred; custom ruleset plugins are only for behavior that cannot be represented in data.
+
+## Verification Commands
+
+- `bun install --frozen-lockfile`
+- `bun run lint`
+- `bun run typecheck`
+- `bun run build`
+- `bun run test:unit`
+- `bun run test:e2e`
+
+Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.

@@ -56,6 +56,15 @@ external HTTP envelopes, MCP tool metadata, an A2A agent card, self-play, and
 agent parity tests. Agents submit legal action ids through the same ruleset path
 as human seats.
 
+The monorepo and every scaffold also ship LLM-readable maps and repo-local
+skills:
+
+- `llms.txt`
+- `llms-full.txt`
+- `.agents/skills/play-lunchtable-game/SKILL.md`
+- `.agents/skills/build-lunchtable-game/SKILL.md`
+- `.agents/skills/evaluate-lunchtable-agent/SKILL.md`
+
 ## Development
 
 ```bash

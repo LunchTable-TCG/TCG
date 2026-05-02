@@ -252,8 +252,28 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: ".gitignore",
     },
     {
+      content: createBuildGameSkill,
+      path: ".agents/skills/build-lunchtable-game/SKILL.md",
+    },
+    {
+      content: createEvaluateAgentSkill,
+      path: ".agents/skills/evaluate-lunchtable-agent/SKILL.md",
+    },
+    {
+      content: createPlayGameSkill,
+      path: ".agents/skills/play-lunchtable-game/SKILL.md",
+    },
+    {
       content: createReadme,
       path: "README.md",
+    },
+    {
+      content: createLlmsFullTxt,
+      path: "llms-full.txt",
+    },
+    {
+      content: createLlmsTxt,
+      path: "llms.txt",
     },
     {
       content: createPackageJson,
@@ -316,6 +336,164 @@ view, legal action, and authoritative intent path from day one.
 ${input.packageManager} install
 ${input.packageManager} run test
 \`\`\`
+`;
+}
+
+function createLlmsTxt(input: ScaffoldFileInput): string {
+  return `# ${input.template.name}
+
+> Agent-native Lunch Table Games starter for ${input.template.description} Human players and AI agents share scoped views, legal action ids, and the same authoritative ruleset path.
+
+## Core Files
+
+- [README.md](README.md): Human setup and development commands.
+- [llms-full.txt](llms-full.txt): Full LLM context for agents working in this starter.
+- [src/game.ts](src/game.ts): Deterministic ruleset, state, legal intents, components, and render hints.
+- [src/agents/baseline.ts](src/agents/baseline.ts): Local baseline agent and observation-frame helpers.
+- [src/agents/external-http.ts](src/agents/external-http.ts): External agent envelope and response resolver.
+- [src/agents/mcp.ts](src/agents/mcp.ts): MCP tool manifest for gameplay agents.
+- [src/agents/a2a.ts](src/agents/a2a.ts): A2A agent card helper.
+- [src/agents/self-play.ts](src/agents/self-play.ts): Deterministic self-play runner.
+
+## Agent Skills
+
+- [.agents/skills/play-lunchtable-game/SKILL.md](.agents/skills/play-lunchtable-game/SKILL.md): Join, observe, choose legal actions, and submit turns.
+- [.agents/skills/build-lunchtable-game/SKILL.md](.agents/skills/build-lunchtable-game/SKILL.md): Extend this starter while preserving deterministic authority.
+- [.agents/skills/evaluate-lunchtable-agent/SKILL.md](.agents/skills/evaluate-lunchtable-agent/SKILL.md): Run self-play, parity, and legality checks.
+
+## Verification
+
+- [tests/game.test.ts](tests/game.test.ts): Starter construction smoke test.
+- [tests/agent-parity.test.ts](tests/agent-parity.test.ts): Agent legal-action parity and protocol-surface checks.
+- [tests/self-play.test.ts](tests/self-play.test.ts): Agent-vs-agent deterministic smoke test.
+`;
+}
+
+function createLlmsFullTxt(input: ScaffoldFileInput): string {
+  return `# ${input.template.name} Full LLM Context
+
+> Complete agent-readable context for a ${input.template.id} Lunch Table Games starter.
+
+## Authority Model
+
+Agents submit legal action ids, never arbitrary state mutations. The runtime resolves each chosen action id against the current legal action catalog and submits the associated intent through the ruleset.
+
+Rules:
+
+- Derive a scoped seat view before asking an agent to decide.
+- Build legal actions from \`ruleset.listLegalIntents(state, seat)\`.
+- Reject any external response that does not match a known \`actionId\`.
+- Apply actions only through \`ruleset.applyIntent(state, intent)\`.
+- Renderers and agents read projections; they do not mutate state directly.
+
+## Starter Shape
+
+- Template id: \`${input.template.id}\`
+- Package name: \`${input.packageName}\`
+- Package manager: \`${input.packageManager}\`
+- Description: ${input.template.description}
+
+## Agent Entrypoints
+
+- \`createStarterDecisionFrame\` creates a scoped observation frame.
+- \`runBaselineAgentTurn\` runs a local agent through the authoritative path.
+- \`createExternalAgentRequest\` builds a hosted-agent envelope.
+- \`resolveExternalAgentResponse\` rejects invented action ids.
+- \`createStarterMcpToolManifest\` exposes tool metadata.
+- \`createStarterA2aAgentCard\` exposes discovery metadata.
+- \`runStarterSelfPlay\` proves two agent seats can participate immediately.
+
+## Skills
+
+Use \`.agents/skills/play-lunchtable-game/SKILL.md\` when playing the game, \`.agents/skills/build-lunchtable-game/SKILL.md\` when extending the ruleset, and \`.agents/skills/evaluate-lunchtable-agent/SKILL.md\` when testing agent behavior.
+
+## Done Criteria
+
+- \`${input.packageManager} run typecheck\` passes.
+- \`${input.packageManager} run test\` passes.
+- Agents only choose from legal action ids.
+- Hidden or private state is exposed only through scoped seat views.
+`;
+}
+
+function createPlayGameSkill(): string {
+  return `---
+name: play-lunchtable-game
+description: Use when an agent needs to join, observe, or play a Lunch Table Games scaffold through legal actions.
+---
+
+# Play Lunch Table Game
+
+Use when an agent needs to join a game seat, inspect the current scoped view, choose one legal action, or submit a turn.
+
+## Workflow
+
+1. Read \`llms.txt\` and \`llms-full.txt\`.
+2. Use \`createStarterDecisionFrame\` to get scoped view and legal actions.
+3. Choose one \`actionId\` from \`frame.legalActions\`, or choose \`null\`.
+4. Resolve external choices through \`resolveExternalAgentResponse\`.
+5. Submit through \`runBaselineAgentTurn\` or the equivalent authoritative runtime path.
+6. Run \`bun run test -- tests/agent-parity.test.ts tests/self-play.test.ts\` after changing agent behavior.
+
+## Rules
+
+- Never invent an intent payload.
+- Never mutate game state directly.
+- Never read hidden information outside the current seat view.
+- Treat humans and agents as equal seats.
+`;
+}
+
+function createBuildGameSkill(): string {
+  return `---
+name: build-lunchtable-game
+description: Use when extending a Lunch Table Games scaffold with new rules, objects, legal actions, scenes, or generated game content.
+---
+
+# Build Lunch Table Game
+
+Use this skill when changing the ruleset, state shape, tabletop components, render scene, or game content.
+
+## Workflow
+
+1. Read \`src/game.ts\`, \`llms-full.txt\`, and the tests under \`tests/\`.
+2. Add or update tests for state, legal intents, agent parity, and self-play.
+3. Keep all authoritative changes in the ruleset contract.
+4. Keep agents on legal action ids and scoped views.
+5. Run \`bun run typecheck\` and \`bun run test\`.
+
+## Rules
+
+- Do not add renderer-only state to the authority model.
+- Do not leak private zones into spectator or opponent views.
+- Do not let MCP, A2A, or HTTP adapters bypass \`applyIntent\`.
+- Keep generated-game content data-driven unless a custom ruleset plugin is required.
+`;
+}
+
+function createEvaluateAgentSkill(): string {
+  return `---
+name: evaluate-lunchtable-agent
+description: Use when testing or comparing agents in a Lunch Table Games scaffold.
+---
+
+# Evaluate Lunch Table Agent
+
+Use this skill when validating that an agent can play fairly and deterministically.
+
+## Workflow
+
+1. Run \`bun run test -- tests/agent-parity.test.ts\`.
+2. Run \`bun run test -- tests/self-play.test.ts\`.
+3. Check that every selected \`actionId\` exists in the current legal action catalog.
+4. Check that state version increases only after applied transitions.
+5. Compare self-play results after rules or policy changes.
+
+## Rules
+
+- A stronger model may reason better, but it does not get more game authority.
+- Invalid external action ids must fail loudly.
+- Evaluation fixtures should use deterministic seeds and stable timestamps.
 `;
 }
 

@@ -160,6 +160,8 @@ Every starter must also include agent participation surfaces:
 - MCP-compatible gameplay tool manifest
 - A2A-compatible agent card
 - deterministic self-play runner
+- `llms.txt` and `llms-full.txt`
+- repo-local `SKILL.md` files for play, build, and evaluation workflows
 - agent parity tests proving agents choose from legal actions and submit through the ruleset
 
 ## Generated Game Packs

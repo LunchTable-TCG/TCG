@@ -1,7 +1,15 @@
 .DS_Store
 .convex/
 convex/tsconfig.json
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/build-lunchtable-game/
+!.agents/skills/build-lunchtable-game/SKILL.md
+!.agents/skills/evaluate-lunchtable-agent/
+!.agents/skills/evaluate-lunchtable-agent/SKILL.md
+!.agents/skills/play-lunchtable-game/
+!.agents/skills/play-lunchtable-game/SKILL.md
 node_modules/
 dist/
 coverage/

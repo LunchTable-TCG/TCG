@@ -1,0 +1,31 @@
+# Lunch Table Games
+
+> Browser-first, agent-native game library for deterministic tabletop, card, dice, side-scroller, and 3D arena starters. Human players and AI agents share scoped views, legal action ids, and authoritative ruleset transitions.
+
+## Core Docs
+
+- [README.md](README.md): Workspace, CLI, development, and release commands.
+- [llms-full.txt](llms-full.txt): Full LLM context for the monorepo and scaffold contract.
+- [docs/AGENT_PARITY.md](docs/AGENT_PARITY.md): Gameplay-agent authority, visibility, and protocol rules.
+- [docs/superpowers/specs/2026-05-02-lunch-table-games-design.md](docs/superpowers/specs/2026-05-02-lunch-table-games-design.md): Approved Lunch Table Games design.
+- [docs/program/AGENT_GAMEPLAY_CONTRACT.md](docs/program/AGENT_GAMEPLAY_CONTRACT.md): Production gameplay-agent contract.
+
+## Packages
+
+- [packages/games-core/src/index.ts](packages/games-core/src/index.ts): Deterministic runtime primitives.
+- [packages/games-tabletop/src/index.ts](packages/games-tabletop/src/index.ts): Tabletop seats, objects, zones, packs, and visibility.
+- [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, protocol, and parity helpers.
+- [packages/games-render/src/index.ts](packages/games-render/src/index.ts): Renderer-neutral scene and camera primitives.
+- [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts): `lunchtable init` scaffold generator.
+
+## Agent Skills
+
+- [.agents/skills/play-lunchtable-game/SKILL.md](.agents/skills/play-lunchtable-game/SKILL.md): Play through legal actions.
+- [.agents/skills/build-lunchtable-game/SKILL.md](.agents/skills/build-lunchtable-game/SKILL.md): Extend game rules and scaffold output.
+- [.agents/skills/evaluate-lunchtable-agent/SKILL.md](.agents/skills/evaluate-lunchtable-agent/SKILL.md): Validate parity, self-play, and determinism.
+
+## Verification
+
+- [tests/program-docs-contract.test.ts](tests/program-docs-contract.test.ts): Repo docs, LLM files, and skills contract.
+- [packages/cli/src/scaffold.test.ts](packages/cli/src/scaffold.test.ts): Starter scaffold contract.
+- [packages/games-ai/src/agent.test.ts](packages/games-ai/src/agent.test.ts): Agent-native primitive contract.

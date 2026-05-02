@@ -29,3 +29,5 @@ Every starter includes:
 - `src/agents/self-play.ts`: deterministic two-seat self-play.
 - `tests/agent-parity.test.ts`: legal-action and external-response parity checks.
 - `tests/self-play.test.ts`: agent-vs-agent smoke coverage.
+- `llms.txt` and `llms-full.txt`: LLM-readable starter maps.
+- `.agents/skills/`: play, build, and evaluate skills for gameplay agents.

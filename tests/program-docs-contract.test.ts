@@ -11,6 +11,9 @@ const phaseLoopDocPath = join(rootDir, "docs", "PHASE_LOOP.md");
 const resumeScriptPath = join(rootDir, "scripts", "resume.sh");
 const packageJsonPath = join(rootDir, "package.json");
 const programDir = join(rootDir, "docs", "program");
+const llmsTxtPath = join(rootDir, "llms.txt");
+const llmsFullTxtPath = join(rootDir, "llms-full.txt");
+const agentsSkillsDir = join(rootDir, ".agents", "skills");
 
 const requiredProgramDocs = [
   "EXECUTION_PLAN.md",
@@ -75,5 +78,29 @@ describe("program docs contract", () => {
     expect(packageJson).toContain(
       '"test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts"',
     );
+  });
+
+  it("ships LLM-readable repo maps and agent skills", () => {
+    expect(existsSync(llmsTxtPath)).toBe(true);
+    expect(existsSync(llmsFullTxtPath)).toBe(true);
+    expect(
+      existsSync(join(agentsSkillsDir, "play-lunchtable-game", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      existsSync(join(agentsSkillsDir, "build-lunchtable-game", "SKILL.md")),
+    ).toBe(true);
+    expect(
+      existsSync(
+        join(agentsSkillsDir, "evaluate-lunchtable-agent", "SKILL.md"),
+      ),
+    ).toBe(true);
+
+    expect(readFile(llmsTxtPath)).toContain("# Lunch Table Games");
+    expect(readFile(llmsFullTxtPath)).toContain(
+      "## Agent-Native Starter Contract",
+    );
+    expect(
+      readFile(join(agentsSkillsDir, "play-lunchtable-game", "SKILL.md")),
+    ).toContain("name: play-lunchtable-game");
   });
 });
