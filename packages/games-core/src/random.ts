@@ -9,8 +9,8 @@ export function deriveDeterministicNumber(
   const input = `${random.seed}:${random.cursor}`;
   let hash = 2166136261;
 
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
+  for (const character of input) {
+    hash ^= character.charCodeAt(0);
     hash = Math.imul(hash, 16777619);
   }
 
