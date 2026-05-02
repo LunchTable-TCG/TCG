@@ -1,3 +1,5 @@
+import type { RenderCameraHint, RenderInteractionHint } from "./camera";
+
 export interface RenderViewport {
   height: number;
   width: number;
@@ -34,7 +36,9 @@ export interface RenderObjectModel {
 }
 
 export interface RenderSceneModel {
+  camera?: RenderCameraHint | null;
   cue: RenderCue | null;
+  interactions?: RenderInteractionHint[];
   objects: RenderObjectModel[];
   viewport: RenderViewport;
 }

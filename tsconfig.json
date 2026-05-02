@@ -20,6 +20,7 @@
       "@lunchtable/games-ai": ["packages/games-ai/src/index.ts"],
       "@lunchtable/games-render": ["packages/games-render/src/index.ts"],
       "@lunchtable/games-tabletop": ["packages/games-tabletop/src/index.ts"],
+      "lunchtable": ["packages/cli/src/index.ts"],
       "@lunchtable/bot-sdk": ["packages/bot-sdk/src/index.ts"],
       "@lunchtable/card-content": ["packages/card-content/src/index.ts"],
       "@lunchtable/render-pixi": ["packages/render-pixi/src/index.ts"],

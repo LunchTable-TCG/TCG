@@ -1,11 +1,14 @@
 {
   "name": "@lunchtable/games-tabletop",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
     "@lunchtable/games-core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

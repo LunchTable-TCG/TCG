@@ -1,3 +1,14 @@
+export {
+  createCameraHint,
+  createInteractionHint,
+} from "./camera";
+export type {
+  RenderCameraHint,
+  RenderCameraMode,
+  RenderInteractionAffordance,
+  RenderInteractionHint,
+  RenderVector3,
+} from "./camera";
 export { createSceneCue } from "./scene";
 export type {
   RenderCue,

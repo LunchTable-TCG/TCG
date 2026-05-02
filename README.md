@@ -9,8 +9,13 @@ apps/
   web/
   bot-runner/
 packages/
+  cli/
   bot-sdk/
   shared-types/
+  games-core/
+  games-tabletop/
+  games-ai/
+  games-render/
   game-core/
   card-content/
   render-pixi/
@@ -26,6 +31,24 @@ bun install
 bun run lint
 bun run typecheck
 bun run test
+```
+
+## Lunch Table Games CLI
+
+The publishable CLI package is `lunchtable`. Once released, users can scaffold
+a starter game with:
+
+```bash
+bunx lunchtable init
+```
+
+Non-interactive scaffolding supports the current starter families:
+
+```bash
+bunx lunchtable init my-card-game --template tcg --yes
+bunx lunchtable init my-dice-game --template dice --yes
+bunx lunchtable init my-runner --template side-scroller --yes
+bunx lunchtable init my-arena --template shooter-3d --yes
 ```
 
 ## Development

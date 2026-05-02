@@ -73,6 +73,13 @@
         "@lunchtable/shared-types": "workspace:*",
       },
     },
+    "packages/cli": {
+      "name": "lunchtable",
+      "version": "0.1.0",
+      "bin": {
+        "lunchtable": "./src/index.ts",
+      },
+    },
     "packages/game-core": {
       "name": "@lunchtable/game-core",
       "dependencies": {
@@ -82,15 +89,19 @@
     },
     "packages/games-ai": {
       "name": "@lunchtable/games-ai",
+      "version": "0.1.0",
     },
     "packages/games-core": {
       "name": "@lunchtable/games-core",
+      "version": "0.1.0",
     },
     "packages/games-render": {
       "name": "@lunchtable/games-render",
+      "version": "0.1.0",
     },
     "packages/games-tabletop": {
       "name": "@lunchtable/games-tabletop",
+      "version": "0.1.0",
       "dependencies": {
         "@lunchtable/games-core": "workspace:*",
       },
@@ -487,6 +498,8 @@
     "loupe": ["loupe@3.2.1", "", {}, "sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ=="],
 
     "lru-cache": ["lru-cache@5.1.1", "", { "dependencies": { "yallist": "^3.0.2" } }, "sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w=="],
+
+    "lunchtable": ["lunchtable@workspace:packages/cli"],
 
     "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
 

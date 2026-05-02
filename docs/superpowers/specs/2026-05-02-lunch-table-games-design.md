@@ -24,6 +24,7 @@ Generic packages:
 - `@lunchtable/games-tabletop`: seats, zones, tabletop objects, decks, dice, boards, permissions, visibility primitives.
 - `@lunchtable/games-ai`: legal actions, decision frames, external agent envelopes, parity helpers.
 - `@lunchtable/games-render`: renderer-neutral scene models, interaction hints, cue models, camera hints.
+- `lunchtable`: CLI entry point for `bunx lunchtable init` starter scaffolds.
 
 First proof game packages and surfaces:
 
@@ -131,6 +132,27 @@ interface GameRuleset<TConfig, TState, TIntent, TSeatView, TSpectatorView, TScen
 
 The current TCG reducer, state version checks, hidden-zone projections, replay helpers, prompts, legal bot action descriptors, and Pixi scene model become the first concrete implementation.
 
+## CLI Starter Contract
+
+The `lunchtable` CLI is the public project entry point. It starts with:
+
+```bash
+bunx lunchtable init
+```
+
+The CLI presents starter choices and can run non-interactively through
+`--template` and `--yes`. The supported starter choices are:
+
+- `tcg`: card/tabletop duel starter using zones, card-like objects, and priority intents.
+- `dice`: deterministic dice/tabletop starter using dice components and board surfaces.
+- `side-scroller`: side-scroller starter shell using side-scroller camera hints and movement intents.
+- `shooter-3d`: first-person arena starter shell using 3D camera hints, arena pieces, and action intents.
+
+These starters are admission-ready shells, not full game engines. Each starter
+must include a typed ruleset, initial state, legal intents, render-scene hints,
+tests, and package metadata using the generic Lunch Table Games packages. The
+CLI does not execute arbitrary generated code.
+
 ## Generated Game Packs
 
 AI-generated games enter through validated game packs, not arbitrary runtime code.
@@ -218,6 +240,11 @@ The extraction is complete only if all gates pass:
 ## V0 Done Definition
 
 v0 is done when Lunch Table Games exposes generic tabletop primitives in the monorepo, the existing TCG runs on them, and a generated card/tabletop duel pack can be validated, simulated by bots, rendered in the browser, and replayed deterministically.
+
+The public starting point additionally includes `bunx lunchtable init` scaffolds
+for TCG, dice tabletop, side-scroller, and 3D shooter shells so new generated
+games can begin from the same deterministic ruleset, tabletop primitive, AI
+decision, and renderer-neutral contracts.
 
 ## Out Of Scope For V0
 

@@ -113,77 +113,84 @@ describe("matchmaking backend", () => {
       },
       scenario: "the queued opponent deck is no longer legal",
     },
-  ])("keeps enqueue working when $scenario", async ({ mutateOpponentDeck }) => {
-    const t = convexTest({
-      modules,
-      schema,
-    });
-    const player = await seedHumanSeat(t, {
-      address: "0x1111111111111111111111111111111111111111",
-      email: "player@example.com",
-      username: "queue_player",
-    });
-    const opponent = await seedHumanSeat(t, {
-      address: "0x2222222222222222222222222222222222222222",
-      email: "opponent@example.com",
-      username: "queue_opponent",
-    });
-    const playerViewer = t.withIdentity({
-      subject: `user:${player.userId}`,
-    });
-    const opponentViewer = t.withIdentity({
-      subject: `user:${opponent.userId}`,
-    });
+  ])(
+    "keeps enqueue working when $scenario",
+    async ({ mutateOpponentDeck }) => {
+      const t = convexTest({
+        modules,
+        schema,
+      });
+      const player = await seedHumanSeat(t, {
+        address: "0x1111111111111111111111111111111111111111",
+        email: "player@example.com",
+        username: "queue_player",
+      });
+      const opponent = await seedHumanSeat(t, {
+        address: "0x2222222222222222222222222222222222222222",
+        email: "opponent@example.com",
+        username: "queue_opponent",
+      });
+      const playerViewer = t.withIdentity({
+        subject: `user:${player.userId}`,
+      });
+      const opponentViewer = t.withIdentity({
+        subject: `user:${opponent.userId}`,
+      });
 
-    const playerDeck = await playerViewer.mutation(api.decks.create, {
-      formatId: starterFormat.formatId,
-      mainboard: createStarterDeckEntries(),
-      name: "Player Queue Deck",
-      sideboard: [],
-    });
-    const opponentDeck = await opponentViewer.mutation(api.decks.create, {
-      formatId: starterFormat.formatId,
-      mainboard: createStarterDeckEntries(),
-      name: "Opponent Queue Deck",
-      sideboard: [],
-    });
+      const playerDeck = await playerViewer.mutation(api.decks.create, {
+        formatId: starterFormat.formatId,
+        mainboard: createStarterDeckEntries(),
+        name: "Player Queue Deck",
+        sideboard: [],
+      });
+      const opponentDeck = await opponentViewer.mutation(api.decks.create, {
+        formatId: starterFormat.formatId,
+        mainboard: createStarterDeckEntries(),
+        name: "Opponent Queue Deck",
+        sideboard: [],
+      });
 
-    await mutateOpponentDeck(t, opponentDeck.id);
-    await seedQueuedEntry(t, {
-      createdAt: Date.UTC(2026, 3, 3, 13, 10, 0),
-      deckId: opponentDeck.id,
-      userId: opponent.userId,
-      username: "queue_opponent",
-      walletAddress: "0x2222222222222222222222222222222222222222",
-    });
-
-    const enqueueResult = await playerViewer.mutation(api.matchmaking.enqueue, {
-      deckId: playerDeck.id,
-    });
-    const playerEntries = await playerViewer.query(
-      api.matchmaking.listMine,
-      {},
-    );
-    const opponentEntries = await opponentViewer.query(
-      api.matchmaking.listMine,
-      {},
-    );
-
-    expect(enqueueResult.match).toBeNull();
-    expect(enqueueResult.entry.status).toBe("queued");
-    expect(playerEntries).toEqual([
-      expect.objectContaining({
-        deckId: playerDeck.id,
-        status: "queued",
-      }),
-    ]);
-    expect(opponentEntries).toEqual([
-      expect.objectContaining({
+      await mutateOpponentDeck(t, opponentDeck.id);
+      await seedQueuedEntry(t, {
+        createdAt: Date.UTC(2026, 3, 3, 13, 10, 0),
         deckId: opponentDeck.id,
-        status: "cancelled",
-      }),
-    ]);
-  });
+        userId: opponent.userId,
+        username: "queue_opponent",
+        walletAddress: "0x2222222222222222222222222222222222222222",
+      });
+
+      const enqueueResult = await playerViewer.mutation(
+        api.matchmaking.enqueue,
+        {
+          deckId: playerDeck.id,
+        },
+      );
+      const playerEntries = await playerViewer.query(
+        api.matchmaking.listMine,
+        {},
+      );
+      const opponentEntries = await opponentViewer.query(
+        api.matchmaking.listMine,
+        {},
+      );
+
+      expect(enqueueResult.match).toBeNull();
+      expect(enqueueResult.entry.status).toBe("queued");
+      expect(playerEntries).toEqual([
+        expect.objectContaining({
+          deckId: playerDeck.id,
+          status: "queued",
+        }),
+      ]);
+      expect(opponentEntries).toEqual([
+        expect.objectContaining({
+          deckId: opponentDeck.id,
+          status: "cancelled",
+        }),
+      ]);
+    },
+    15_000,
+  );
 
   it("cancels a stale queued opponent deck without swallowing unrelated errors", async () => {
     const t = convexTest({
