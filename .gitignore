@@ -10,6 +10,7 @@ test-results/
 .env
 .env.*
 .phase-loop/logs/
+.worktrees/
 .claude/
 .factory/
 .neovate/
