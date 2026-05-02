@@ -51,6 +51,11 @@ bunx lunchtable init my-runner --template side-scroller --yes
 bunx lunchtable init my-arena --template shooter-3d --yes
 ```
 
+Each scaffold is agent-native from day one: it includes a baseline local agent,
+external HTTP envelopes, MCP tool metadata, an A2A agent card, self-play, and
+agent parity tests. Agents submit legal action ids through the same ruleset path
+as human seats.
+
 ## Development
 
 ```bash

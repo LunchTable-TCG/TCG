@@ -260,12 +260,40 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "package.json",
     },
     {
+      content: createA2aAgentSource,
+      path: "src/agents/a2a.ts",
+    },
+    {
+      content: createBaselineAgentSource(templateId),
+      path: "src/agents/baseline.ts",
+    },
+    {
+      content: createExternalHttpAgentSource,
+      path: "src/agents/external-http.ts",
+    },
+    {
+      content: createMcpAgentSource,
+      path: "src/agents/mcp.ts",
+    },
+    {
+      content: createSelfPlaySource,
+      path: "src/agents/self-play.ts",
+    },
+    {
       content: createGameSource(templateId),
       path: "src/game.ts",
     },
     {
+      content: createAgentParityTestSource(templateId),
+      path: "tests/agent-parity.test.ts",
+    },
+    {
       content: createGameTestSource(templateId),
       path: "tests/game.test.ts",
+    },
+    {
+      content: createSelfPlayTestSource(templateId),
+      path: "tests/self-play.test.ts",
     },
     {
       content: createTsconfig,
@@ -279,12 +307,226 @@ function createReadme(input: ScaffoldFileInput): string {
 
 ${input.template.description}
 
+This starter is agent-native. Human players and AI agents share the same seat,
+view, legal action, and authoritative intent path from day one.
+
 ## Development
 
 \`\`\`bash
 ${input.packageManager} install
 ${input.packageManager} run test
 \`\`\`
+`;
+}
+
+function createBaselineAgentSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  const functionName = getFactoryName(templateId);
+  return () => `import {
+  createAgentCapabilityManifest,
+  createAgentObservationFrame,
+  createFirstLegalActionPolicy,
+  createLegalActionDescriptors,
+  runAgentTurn,
+  type AgentTransportKind,
+  type LegalActionDescriptor,
+} from "@lunchtable/games-ai";
+
+import { ${functionName} } from "../game";
+
+type StarterGame = ReturnType<typeof ${functionName}>;
+type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
+type StarterIntent = ReturnType<StarterGame["ruleset"]["listLegalIntents"]>[number];
+type StarterTransition = ReturnType<StarterGame["ruleset"]["applyIntent"]>;
+type StarterEvent = StarterTransition["events"][number];
+export type StarterSeatView = ReturnType<StarterGame["ruleset"]["deriveSeatView"]>;
+export type StarterAction = LegalActionDescriptor<StarterIntent>;
+
+export const baselineAgentManifest = createAgentCapabilityManifest({
+  agentId: "baseline-agent",
+  displayName: "Baseline Agent",
+  supportedTransports: ["local", "external-http", "mcp", "a2a"],
+});
+
+export function createStarterInitialState(): StarterState {
+  const game = ${functionName}();
+  return game.ruleset.createInitialState(game.config);
+}
+
+export function createStarterDecisionFrame(input: {
+  receivedAt: number;
+  seat: string;
+  state: StarterState;
+  transport: AgentTransportKind;
+}) {
+  const game = ${functionName}();
+  const legalActions = createLegalActionDescriptors(
+    game.ruleset.listLegalIntents(input.state, input.seat),
+    { actionIdPrefix: input.seat },
+  );
+
+  return createAgentObservationFrame({
+    deadlineAt: null,
+    gameId: game.manifest.title,
+    legalActions,
+    receivedAt: input.receivedAt,
+    rulesetId: game.manifest.title,
+    seat: input.seat,
+    stateVersion: input.state.shell.version,
+    transport: input.transport,
+    view: game.ruleset.deriveSeatView(input.state, input.seat),
+  });
+}
+
+export function createBaselineAgentPolicy() {
+  return createFirstLegalActionPolicy<StarterSeatView, StarterAction>();
+}
+
+export async function runBaselineAgentTurn(input: {
+  receivedAt: number;
+  seat: string;
+  state: StarterState;
+}) {
+  const game = ${functionName}();
+
+  return runAgentTurn<
+    StarterState,
+    StarterIntent,
+    StarterEvent,
+    StarterSeatView,
+    StarterAction
+  >({
+    createLegalActions: (intents) =>
+      createLegalActionDescriptors(intents, { actionIdPrefix: input.seat }),
+    deadlineAt: null,
+    gameId: game.manifest.title,
+    policy: createBaselineAgentPolicy(),
+    receivedAt: input.receivedAt,
+    ruleset: game.ruleset,
+    rulesetId: game.manifest.title,
+    seat: input.seat,
+    state: input.state,
+    stateVersion: input.state.shell.version,
+    transport: "local",
+  });
+}
+`;
+}
+
+function createExternalHttpAgentSource(): string {
+  return `import {
+  createExternalDecisionEnvelope,
+  resolveExternalActionId,
+} from "@lunchtable/games-ai";
+
+import {
+  createStarterDecisionFrame,
+  type StarterAction,
+  type StarterSeatView,
+} from "./baseline";
+
+export interface ExternalAgentResponse {
+  actionId: string | null;
+}
+
+export function createExternalAgentRequest(input: {
+  gameId: string;
+  receivedAt: number;
+  requestId: string;
+  rulesetId: string;
+  seat: string;
+  state: Parameters<typeof createStarterDecisionFrame>[0]["state"];
+}) {
+  const frame = createStarterDecisionFrame({
+    receivedAt: input.receivedAt,
+    seat: input.seat,
+    state: input.state,
+    transport: "external-http",
+  });
+
+  return createExternalDecisionEnvelope<StarterSeatView, StarterAction>(frame, {
+    gameId: input.gameId,
+    requestId: input.requestId,
+    rulesetId: input.rulesetId,
+  });
+}
+
+export function resolveExternalAgentResponse(
+  frame: ReturnType<typeof createStarterDecisionFrame>,
+  response: ExternalAgentResponse,
+) {
+  return resolveExternalActionId(frame.legalActions, response.actionId);
+}
+`;
+}
+
+function createMcpAgentSource(): string {
+  return `import { createMcpToolManifest } from "@lunchtable/games-ai";
+
+import { baselineAgentManifest } from "./baseline";
+
+export function createStarterMcpToolManifest() {
+  return createMcpToolManifest(baselineAgentManifest);
+}
+`;
+}
+
+function createA2aAgentSource(): string {
+  return `import { createLunchTableA2aAgentCard } from "@lunchtable/games-ai";
+
+import { baselineAgentManifest } from "./baseline";
+
+export function createStarterA2aAgentCard(endpointUrl: string) {
+  return createLunchTableA2aAgentCard(baselineAgentManifest, {
+    endpointUrl,
+    providerName: "Lunch Table Games",
+  });
+}
+`;
+}
+
+function createSelfPlaySource(): string {
+  return `import { createStarterInitialState, runBaselineAgentTurn } from "./baseline";
+
+export interface SelfPlayStep {
+  actionId: string | null;
+  outcome: string;
+  seat: string;
+}
+
+export async function runStarterSelfPlay(input: {
+  receivedAt: number;
+  turns: number;
+}) {
+  let state = createStarterInitialState();
+  const seats = ["seat-0", "seat-1"] as const;
+  const steps: SelfPlayStep[] = [];
+
+  for (let turn = 0; turn < input.turns; turn += 1) {
+    const seat = seats[turn % seats.length];
+    const result = await runBaselineAgentTurn({
+      receivedAt: input.receivedAt + turn,
+      seat,
+      state,
+    });
+
+    if (result.transition !== null) {
+      state = result.transition.nextState;
+    }
+
+    steps.push({
+      actionId: result.action === null ? null : result.action.actionId,
+      outcome: result.outcome,
+      seat,
+    });
+  }
+
+  return {
+    state,
+    steps,
+  };
+}
 `;
 }
 
@@ -363,6 +605,94 @@ describe("${templateId} scaffold", () => {
     expect(game.manifest.runtime).toBe("lunchtable");
     expect(game.components.length).toBeGreaterThan(0);
     expect(game.ruleset.createInitialState(game.config).shell.status).toBe("playing");
+  });
+});
+`;
+}
+
+function createAgentParityTestSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () => `import { describe, expect, it } from "vitest";
+
+import {
+  createStarterDecisionFrame,
+  createStarterInitialState,
+  runBaselineAgentTurn,
+} from "../src/agents/baseline";
+import { resolveExternalAgentResponse } from "../src/agents/external-http";
+import { createStarterA2aAgentCard } from "../src/agents/a2a";
+import { createStarterMcpToolManifest } from "../src/agents/mcp";
+
+describe("${templateId} agent parity", () => {
+  it("chooses from legal actions and submits through the ruleset", async () => {
+    const state = createStarterInitialState();
+    const frame = createStarterDecisionFrame({
+      receivedAt: 1777739000000,
+      seat: "seat-0",
+      state,
+      transport: "local",
+    });
+    const result = await runBaselineAgentTurn({
+      receivedAt: 1777739000000,
+      seat: "seat-0",
+      state,
+    });
+
+    expect(frame.legalActions.length).toBeGreaterThan(0);
+    expect(frame.legalActions.map((action) => action.actionId)).toContain(
+      result.action?.actionId,
+    );
+    expect(result.transition?.outcome).toBe("applied");
+  });
+
+  it("rejects invented external action ids", () => {
+    const state = createStarterInitialState();
+    const frame = createStarterDecisionFrame({
+      receivedAt: 1777739000000,
+      seat: "seat-0",
+      state,
+      transport: "external-http",
+    });
+
+    expect(() =>
+      resolveExternalAgentResponse(frame, { actionId: "invented-action" }),
+    ).toThrow("External agent returned an unrecognized actionId");
+  });
+
+  it("ships MCP tools and an A2A agent card", () => {
+    expect(createStarterMcpToolManifest().tools.map((tool) => tool.name)).toContain(
+      "submitAction",
+    );
+    expect(
+      createStarterA2aAgentCard("https://agents.example.test/lunchtable").skills.map(
+        (skill) => skill.id,
+      ),
+    ).toContain("play-legal-action");
+  });
+});
+`;
+}
+
+function createSelfPlayTestSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () => `import { describe, expect, it } from "vitest";
+
+import { runStarterSelfPlay } from "../src/agents/self-play";
+
+describe("${templateId} agent self-play", () => {
+  it("runs deterministic baseline agents from both seats", async () => {
+    const result = await runStarterSelfPlay({
+      receivedAt: 1777739000000,
+      turns: 2,
+    });
+
+    expect(result.steps).toEqual([
+      expect.objectContaining({ outcome: "submitted", seat: "seat-0" }),
+      expect.objectContaining({ outcome: "submitted", seat: "seat-1" }),
+    ]);
+    expect(result.state.shell.version).toBe(2);
   });
 });
 `;

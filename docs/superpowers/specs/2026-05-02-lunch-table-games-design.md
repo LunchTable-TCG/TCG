@@ -153,6 +153,15 @@ must include a typed ruleset, initial state, legal intents, render-scene hints,
 tests, and package metadata using the generic Lunch Table Games packages. The
 CLI does not execute arbitrary generated code.
 
+Every starter must also include agent participation surfaces:
+
+- baseline local agent policy
+- external HTTP decision envelope
+- MCP-compatible gameplay tool manifest
+- A2A-compatible agent card
+- deterministic self-play runner
+- agent parity tests proving agents choose from legal actions and submit through the ruleset
+
 ## Generated Game Packs
 
 AI-generated games enter through validated game packs, not arbitrary runtime code.
@@ -221,6 +230,16 @@ The AI package should preserve these constraints from the current TCG implementa
 - External decision services receive envelopes of legal actions and scoped context.
 - External responses resolve to one known action id or no action.
 - Bot submissions use the same authoritative mutation path as human submissions.
+
+The generic AI package additionally exposes portable agent primitives:
+
+- `AgentCapabilityManifest`
+- `AgentObservationFrame`
+- `AgentPolicy`
+- canonical gameplay tool descriptors
+- MCP tool manifest helpers
+- A2A agent card helpers
+- deterministic agent-turn and self-play helpers
 
 The Convex Agent component and future model integrations can support coaching, commentary, deck advice, tutorial help, and content generation, but they are not live match authority.
 

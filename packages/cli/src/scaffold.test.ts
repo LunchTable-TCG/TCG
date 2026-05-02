@@ -56,8 +56,15 @@ describe("lunchtable init scaffolding", () => {
         ".gitignore",
         "README.md",
         "package.json",
+        "src/agents/a2a.ts",
+        "src/agents/baseline.ts",
+        "src/agents/external-http.ts",
+        "src/agents/mcp.ts",
+        "src/agents/self-play.ts",
         "src/game.ts",
+        "tests/agent-parity.test.ts",
         "tests/game.test.ts",
+        "tests/self-play.test.ts",
         "tsconfig.json",
       ]);
 
@@ -67,6 +74,19 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(gameSource).toContain("createDiceDuelGame");
       expect(gameSource).toContain("@lunchtable/games-tabletop");
+
+      const baselineAgentSource = await readFile(
+        join(targetDirectory, "src/agents/baseline.ts"),
+        "utf8",
+      );
+      expect(baselineAgentSource).toContain("runAgentTurn");
+      expect(baselineAgentSource).toContain("createFirstLegalActionPolicy");
+
+      const parityTestSource = await readFile(
+        join(targetDirectory, "tests/agent-parity.test.ts"),
+        "utf8",
+      );
+      expect(parityTestSource).toContain("chooses from legal actions");
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -85,6 +105,13 @@ describe("lunchtable init scaffolding", () => {
         });
 
         expect(result.files).toContain("src/game.ts");
+        expect(result.files).toContain("src/agents/baseline.ts");
+        expect(result.files).toContain("src/agents/external-http.ts");
+        expect(result.files).toContain("src/agents/mcp.ts");
+        expect(result.files).toContain("src/agents/a2a.ts");
+        expect(result.files).toContain("src/agents/self-play.ts");
+        expect(result.files).toContain("tests/agent-parity.test.ts");
+        expect(result.files).toContain("tests/self-play.test.ts");
         expect(result.templateId).toBe(template.id);
       }
     } finally {

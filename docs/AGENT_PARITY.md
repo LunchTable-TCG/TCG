@@ -159,6 +159,56 @@ Responsibilities:
 - submit intent
 - handle retries and stale state gracefully
 
+### `@lunchtable/games-ai`
+
+Exports generic starter-grade primitives:
+
+- `AgentCapabilityManifest`
+- `AgentObservationFrame`
+- `AgentPolicy`
+- canonical gameplay tools:
+  `joinGameSeat`, `observeGame`, `listLegalActions`, `submitAction`,
+  `passPriority`, `getRules`, `getObjective`, `getReplay`,
+  `subscribeEvents`, `runSelfPlay`, `evaluateAgent`
+- `runAgentTurn`, which derives the seat view, lists legal actions, accepts an
+  agent decision, and calls the ruleset `applyIntent`
+- MCP tool manifest helpers for tool-based agents
+- A2A agent card helpers for discovery-oriented agents
+
+### `lunchtable init`
+
+Every CLI scaffold must include:
+
+- baseline local agent policy
+- external HTTP envelope adapter
+- MCP tool manifest
+- A2A agent card
+- deterministic self-play runner
+- `agent-parity` and `self-play` tests
+
+This keeps generated TCG, dice, side-scroller, and 3D shooter starters aligned
+with the production rule: agents play through legal action ids and never receive
+private authority.
+
+## Protocol Alignment
+
+The starter surfaces follow current primary agent standards without depending on
+any single model vendor:
+
+- MCP tools expose game participation as named tool calls with input schemas:
+  <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+- MCP resources remain the right place for read-only rules, replay, and pack
+  manifests:
+  <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+- A2A agent cards advertise agent capabilities and skills for discovery:
+  <https://a2a-protocol.org/v0.3.0/specification/>
+- OpenAI Agents-style agents can map these tools, guardrails, and evaluations
+  onto the same legal-action contract:
+  <https://openai.github.io/openai-agents-js/openai/agents-core/classes/agent/>
+- Multi-agent evaluation should preserve turn-based and simultaneous-action
+  environment compatibility inspired by PettingZoo's AEC and Parallel APIs:
+  <https://pettingzoo.farama.org/>
+
 ## Human-Agent Features
 
 Separate from live play parity, the product can support "human agents" and AI assistants for:

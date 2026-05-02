@@ -11,6 +11,10 @@ export function resolveExternalActionId<TAction extends LegalActionDescriptor>(
 export function resolveExternalActionId<TAction extends LegalActionDescriptor>(
   actions: TAction[],
   actionId: string | null,
+): TAction | null;
+export function resolveExternalActionId<TAction extends LegalActionDescriptor>(
+  actions: TAction[],
+  actionId: string | null,
 ): TAction | null {
   if (actionId === null) {
     return null;
