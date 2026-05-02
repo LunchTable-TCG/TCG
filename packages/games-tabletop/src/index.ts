@@ -14,4 +14,4 @@ export type {
   TabletopZone,
   ZoneId,
 } from "./primitives";
-export { canSeatViewObject } from "./visibility";
+export { canSeatCountObject, canSeatViewObject } from "./visibility";
