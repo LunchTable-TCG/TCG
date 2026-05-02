@@ -97,8 +97,13 @@ describe("GameRuleset", () => {
     const transition = counterRuleset.applyIntent(initialState, {
       kind: "increment",
     });
-    const seatView = counterRuleset.deriveSeatView(transition.nextState, "seat-0");
-    const spectatorView = counterRuleset.deriveSpectatorView(transition.nextState);
+    const seatView = counterRuleset.deriveSeatView(
+      transition.nextState,
+      "seat-0",
+    );
+    const spectatorView = counterRuleset.deriveSpectatorView(
+      transition.nextState,
+    );
     const scene = counterRuleset.deriveRenderScene(transition.nextState, {
       height: 720,
       width: 1280,
@@ -111,9 +116,9 @@ describe("GameRuleset", () => {
       },
       outcome: "applied",
     });
-    expect(counterRuleset.listLegalIntents(transition.nextState, "seat-0")).toEqual([
-      { kind: "increment" },
-    ]);
+    expect(
+      counterRuleset.listLegalIntents(transition.nextState, "seat-0"),
+    ).toEqual([{ kind: "increment" }]);
     expect(seatView).toEqual({
       count: 4,
       legalIntentCount: 1,
