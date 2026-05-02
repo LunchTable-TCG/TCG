@@ -72,4 +72,61 @@ describe("generated card tabletop pack admission", () => {
       ok: false,
     });
   });
+
+  it("rejects duplicate object ids", () => {
+    const pack = createGeneratedCardTabletopPack();
+    const object = pack.objects[0];
+
+    pack.objects.push({
+      ...object,
+      name: `${object.name} Copy`,
+    });
+
+    expect(validateGeneratedCardTabletopPack(pack)).toMatchObject({
+      issues: [
+        {
+          code: "duplicateObjectId",
+        },
+      ],
+      ok: false,
+    });
+  });
+
+  it("rejects duplicate seat ids", () => {
+    const pack = createGeneratedCardTabletopPack();
+    const seat = pack.seats[0];
+
+    pack.seats.push({
+      ...seat,
+      name: `${seat.name} Copy`,
+    });
+
+    expect(validateGeneratedCardTabletopPack(pack)).toMatchObject({
+      issues: [
+        {
+          code: "duplicateSeatId",
+        },
+      ],
+      ok: false,
+    });
+  });
+
+  it("rejects duplicate zone ids", () => {
+    const pack = createGeneratedCardTabletopPack();
+    const zone = pack.zones[0];
+
+    pack.zones.push({
+      ...zone,
+      name: `${zone.name} Copy`,
+    });
+
+    expect(validateGeneratedCardTabletopPack(pack)).toMatchObject({
+      issues: [
+        {
+          code: "duplicateZoneId",
+        },
+      ],
+      ok: false,
+    });
+  });
 });
