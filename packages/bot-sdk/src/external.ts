@@ -1,6 +1,6 @@
 import type { MatchSeatView } from "@lunchtable/shared-types";
 
-import { resolveExternalActionId } from "../../games-ai/src";
+import { resolveExternalActionId } from "@lunchtable/games-ai";
 import { listLegalBotActions } from "./legal-actions";
 import type {
   BotDecisionFrame,
