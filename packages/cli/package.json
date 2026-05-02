@@ -8,6 +8,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "@lunchtable/games-tabletop": "workspace:*"
+  },
   "files": ["src", "README.md"],
   "publishConfig": {
     "access": "public"

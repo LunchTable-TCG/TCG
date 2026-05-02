@@ -16,8 +16,9 @@ export interface ScaffoldTemplate {
 }
 
 export interface ParsedInitArgs {
-  command: "help" | "init" | "list-templates";
+  command: "eval" | "help" | "init" | "list-templates" | "validate";
   force: boolean;
+  json: boolean;
   packageManager: PackageManager;
   targetDirectory: string | null;
   templateId: ScaffoldTemplateId | null;
@@ -101,6 +102,10 @@ export function parseInitArgs(args: string[]): ParsedInitArgs {
 
   if (args[0] === "templates" || args[0] === "list-templates") {
     return createParsedArgs("list-templates");
+  }
+
+  if (args[0] === "validate" || args[0] === "eval") {
+    return parsePathCommandArgs(args);
   }
 
   if (args[0] !== "init") {
@@ -205,11 +210,41 @@ function createParsedArgs(command: ParsedInitArgs["command"]): ParsedInitArgs {
   return {
     command,
     force: false,
+    json: false,
     packageManager: "bun",
     targetDirectory: null,
     templateId: null,
     yes: false,
   };
+}
+
+function parsePathCommandArgs(args: string[]): ParsedInitArgs {
+  const command = args[0] === "validate" ? "validate" : "eval";
+  const parsed = createParsedArgs(command);
+  let index = 1;
+
+  while (index < args.length) {
+    const arg = args[index];
+
+    if (arg === "--json") {
+      parsed.json = true;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+
+    if (parsed.targetDirectory !== null) {
+      throw new Error(`Unexpected extra argument: ${arg}`);
+    }
+
+    parsed.targetDirectory = arg;
+    index += 1;
+  }
+
+  return parsed;
 }
 
 function isScaffoldTemplateId(value: string): value is ScaffoldTemplateId {
@@ -268,6 +303,10 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "README.md",
     },
     {
+      content: createGameJson(templateId),
+      path: "game.json",
+    },
+    {
       content: createLlmsFullTxt,
       path: "llms-full.txt",
     },
@@ -276,8 +315,16 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "llms.txt",
     },
     {
+      content: createObjectsJson(templateId),
+      path: "objects.json",
+    },
+    {
       content: createPackageJson,
       path: "package.json",
+    },
+    {
+      content: createRulesetJson(templateId),
+      path: "ruleset.json",
     },
     {
       content: createA2aAgentSource,
@@ -337,6 +384,220 @@ ${input.packageManager} install
 ${input.packageManager} run test
 \`\`\`
 `;
+}
+
+function createGameJson(templateId: ScaffoldTemplateId): ScaffoldFileFactory {
+  return (input) =>
+    `${JSON.stringify(
+      {
+        description: input.template.description,
+        extensionLevel: 1,
+        genre: getPackGenre(templateId),
+        id: `${input.packageName}-${templateId}`,
+        name: input.template.name,
+        runtime: "lunchtable",
+        runtimeVersion: "0.1.0",
+        version: "0.1.0",
+      },
+      null,
+      2,
+    )}\n`;
+}
+
+function createObjectsJson(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () =>
+    `${JSON.stringify(
+      {
+        objects: createPackObjects(templateId),
+        seats: [
+          createPackSeat("seat-0", "human"),
+          createPackSeat("seat-1", "ai"),
+        ],
+        zones: [
+          createPackZone("table", "board", "Shared Table", null, "public"),
+          createPackZone(
+            "seat-0-private",
+            "hand",
+            "Seat 0 Private",
+            "seat-0",
+            "private-owner",
+          ),
+          createPackZone(
+            "seat-1-private",
+            "hand",
+            "Seat 1 Private",
+            "seat-1",
+            "private-owner",
+          ),
+          createPackZone(
+            "discard",
+            "discard",
+            "Shared Discard",
+            null,
+            "public",
+          ),
+        ],
+      },
+      null,
+      2,
+    )}\n`;
+}
+
+function createRulesetJson(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () =>
+    `${JSON.stringify(
+      {
+        legalIntents: createPackLegalIntents(templateId),
+        phases: createPackPhases(templateId),
+        victory: createPackVictory(templateId),
+      },
+      null,
+      2,
+    )}\n`;
+}
+
+function getPackGenre(templateId: ScaffoldTemplateId): string {
+  if (templateId === "tcg") {
+    return "card-tabletop";
+  }
+
+  if (templateId === "dice") {
+    return "dice-tabletop";
+  }
+
+  if (templateId === "side-scroller") {
+    return "side-scroller";
+  }
+
+  return "arena-shooter-3d";
+}
+
+function createPackObjects(templateId: ScaffoldTemplateId) {
+  if (templateId === "tcg") {
+    return [
+      createPackObject("board:table", "Duel Table", "table", null),
+      createPackObject(
+        "card:starter",
+        "Starter Card",
+        "seat-0-private",
+        "seat-0",
+      ),
+    ];
+  }
+
+  if (templateId === "dice") {
+    return [
+      createPackObject("board:felt", "Felt Board", "table", null),
+      createPackObject("die:attack", "Attack Die", "table", null),
+    ];
+  }
+
+  if (templateId === "side-scroller") {
+    return [
+      createPackObject("board:level-1", "Level 1", "table", null),
+      createPackObject("piece:hero", "Hero", "table", "seat-0"),
+    ];
+  }
+
+  return [
+    createPackObject("board:arena", "Arena", "table", null),
+    createPackObject("piece:player", "Player", "table", "seat-0"),
+  ];
+}
+
+function createPackObject(
+  id: string,
+  name: string,
+  zoneId: string,
+  ownerSeat: string | null,
+) {
+  return {
+    id,
+    kind: id.split(":")[0],
+    name,
+    ownerSeat,
+    state: "ready",
+    visibility: ownerSeat === null ? "public" : "private-owner",
+    zoneId,
+  };
+}
+
+function createPackSeat(id: string, actorType: "ai" | "human") {
+  return {
+    actorType,
+    id,
+    name: id === "seat-0" ? "Seat 0" : "Seat 1",
+    permissions: ["submitIntent"],
+    status: "ready",
+  };
+}
+
+function createPackZone(
+  id: string,
+  kind: "board" | "discard" | "hand",
+  name: string,
+  ownerSeat: string | null,
+  visibility: "private-owner" | "public",
+) {
+  return {
+    id,
+    kind,
+    name,
+    ordering: kind === "board" ? "unordered" : "ordered",
+    ownerSeat,
+    visibility,
+  };
+}
+
+function createPackLegalIntents(templateId: ScaffoldTemplateId) {
+  if (templateId === "tcg") {
+    return [{ kind: "playCard" }, { kind: "pass" }];
+  }
+
+  if (templateId === "dice") {
+    return [{ kind: "roll" }, { kind: "pass" }];
+  }
+
+  if (templateId === "side-scroller") {
+    return [
+      { direction: "left", kind: "move" },
+      { direction: "right", kind: "move" },
+    ];
+  }
+
+  return [{ kind: "fire" }, { kind: "reload" }];
+}
+
+function createPackPhases(templateId: ScaffoldTemplateId) {
+  if (templateId === "tcg") {
+    return ["main", "combat", "end"];
+  }
+
+  if (templateId === "dice") {
+    return ["roll", "score"];
+  }
+
+  if (templateId === "side-scroller") {
+    return ["run"];
+  }
+
+  return ["combat"];
+}
+
+function createPackVictory(templateId: ScaffoldTemplateId) {
+  if (templateId === "side-scroller") {
+    return { kind: "reach-goal" };
+  }
+
+  if (templateId === "shooter-3d") {
+    return { kind: "score-limit" };
+  }
+
+  return { kind: "last-seat-standing" };
 }
 
 function createLlmsTxt(input: ScaffoldFileInput): string {
@@ -951,10 +1212,24 @@ const zones: TabletopZone[] = [
 const ruleset: GameRuleset<TcgConfig, TcgState, TcgIntent, TcgEvent, TcgState, TcgState, RenderSceneModel> = {
   applyIntent(state, intent) {
     if (intent.kind === "playCard") {
+      const hand = state.hands[intent.seatId];
+      if (hand === undefined || !hand.includes(intent.cardId)) {
+        return {
+          events: [],
+          nextState: state,
+          outcome: "rejected",
+          reason: "cardNotInHand",
+        };
+      }
+
       return {
         events: [{ kind: "cardPlayed", seatId: intent.seatId }],
         nextState: {
           ...state,
+          hands: {
+            ...state.hands,
+            [intent.seatId]: hand.filter((cardId) => cardId !== intent.cardId),
+          },
           shell: { ...state.shell, version: state.shell.version + 1 },
         },
         outcome: "applied",
@@ -994,8 +1269,13 @@ const ruleset: GameRuleset<TcgConfig, TcgState, TcgIntent, TcgEvent, TcgState, T
   deriveSpectatorView(state) {
     return state;
   },
-  listLegalIntents(_state, seatId) {
-    return [{ kind: "pass", seatId }];
+  listLegalIntents(state, seatId) {
+    const hand = state.hands[seatId];
+    if (hand === undefined || hand.length === 0) {
+      return [{ kind: "pass", seatId }];
+    }
+
+    return [{ cardId: hand[0], kind: "playCard", seatId }, { kind: "pass", seatId }];
   },
 };
 

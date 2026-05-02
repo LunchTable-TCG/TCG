@@ -3,6 +3,12 @@ import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 
 import {
+  type PortablePackEvaluationResult,
+  type PortablePackValidationResult,
+  evaluatePortablePackDirectory,
+  validatePortablePackDirectory,
+} from "./pack";
+import {
   type PackageManager,
   type ScaffoldTemplateId,
   createScaffoldProject,
@@ -20,6 +26,32 @@ async function main(args: string[]): Promise<void> {
 
   if (parsed.command === "list-templates") {
     stdout.write(createTemplateListText());
+    return;
+  }
+
+  if (parsed.command === "validate") {
+    const result = await validatePortablePackDirectory(
+      parsed.targetDirectory ?? ".",
+    );
+    stdout.write(
+      parsed.json
+        ? `${JSON.stringify(result, null, 2)}\n`
+        : createValidationText(parsed.targetDirectory ?? ".", result),
+    );
+    process.exitCode = result.ok ? 0 : 1;
+    return;
+  }
+
+  if (parsed.command === "eval") {
+    const result = await evaluatePortablePackDirectory(
+      parsed.targetDirectory ?? ".",
+    );
+    stdout.write(
+      parsed.json
+        ? `${JSON.stringify(result, null, 2)}\n`
+        : createEvaluationText(parsed.targetDirectory ?? ".", result),
+    );
+    process.exitCode = result.ok ? 0 : 1;
     return;
   }
 
@@ -66,6 +98,8 @@ function createHelpText(): string {
 
 Usage:
   lunchtable init [directory] [--template <id>] [--yes]
+  lunchtable validate [directory] [--json]
+  lunchtable eval [directory] [--json]
   lunchtable templates
 
 Templates:
@@ -113,6 +147,39 @@ Next:
   cd ${targetDirectory}
   ${packageManager} install
   ${packageManager} run test
+`;
+}
+
+function createValidationText(
+  directory: string,
+  result: PortablePackValidationResult,
+): string {
+  if (result.ok) {
+    return `Validated ${directory}
+
+Objects: ${result.summary.objectCount}
+Seats: ${result.summary.seatCount}
+Zones: ${result.summary.zoneCount}
+Legal intents: ${result.summary.legalIntentCount}
+`;
+  }
+
+  return `Validation failed for ${directory}
+
+${result.issues.map((issue) => `- ${issue.path}: ${issue.message}`).join("\n")}
+`;
+}
+
+function createEvaluationText(
+  directory: string,
+  result: PortablePackEvaluationResult,
+): string {
+  return `Evaluated ${directory}
+
+Score: ${result.score}
+${result.checks
+  .map((check) => `- ${check.ok ? "pass" : "fail"} ${check.name}`)
+  .join("\n")}
 `;
 }
 

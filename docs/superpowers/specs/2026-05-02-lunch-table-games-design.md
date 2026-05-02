@@ -140,6 +140,13 @@ The `lunchtable` CLI is the public project entry point. It starts with:
 bunx lunchtable init
 ```
 
+Generated starters can be admitted and evaluated with:
+
+```bash
+bunx lunchtable validate <directory>
+bunx lunchtable eval <directory>
+```
+
 The CLI presents starter choices and can run non-interactively through
 `--template` and `--yes`. The supported starter choices are:
 
@@ -150,8 +157,8 @@ The CLI presents starter choices and can run non-interactively through
 
 These starters are admission-ready shells, not full game engines. Each starter
 must include a typed ruleset, initial state, legal intents, render-scene hints,
-tests, and package metadata using the generic Lunch Table Games packages. The
-CLI does not execute arbitrary generated code.
+tests, portable pack files, and package metadata using the generic Lunch Table
+Games packages. The CLI does not execute arbitrary generated code.
 
 Every starter must also include agent participation surfaces:
 

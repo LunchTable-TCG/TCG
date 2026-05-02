@@ -1,5 +1,8 @@
+import {
+  type GamePack,
+  validatePortableGamePack,
+} from "@lunchtable/games-tabletop";
 import type {
-  GamePack,
   GamePackManifest,
   GamePackValidationIssue,
   GamePackValidationResult,
@@ -32,20 +35,11 @@ export type GeneratedCardTabletopPack = GeneratedCardTabletopPackRuleset & {
   zones: TabletopZone[];
 };
 
-export type GeneratedCardTabletopPackValidationIssue =
-  GamePackValidationIssue & {
-    code:
-      | "duplicateObjectId"
-      | "duplicateSeatId"
-      | "duplicateZoneId"
-      | "unknownObjectOwnerSeat"
-      | "unknownObjectZone"
-      | "unknownZoneOwnerSeat";
-  };
+export type GeneratedCardTabletopPackValidationIssue = GamePackValidationIssue;
 
 export type GeneratedCardTabletopPackValidationResult = Omit<
   GamePackValidationResult,
-  "issues" | "valid"
+  "issues" | "summary" | "valid"
 > & {
   issues: GeneratedCardTabletopPackValidationIssue[];
   ok: boolean;
@@ -53,80 +47,13 @@ export type GeneratedCardTabletopPackValidationResult = Omit<
 
 const seatIds = ["seat-0", "seat-1"] as const;
 
-function createSeatZones(seatId: (typeof seatIds)[number]): TabletopZone[] {
-  return [
-    {
-      id: `${seatId}-deck`,
-      kind: "deck",
-      name: `${seatId} Deck`,
-      ordering: "ordered",
-      ownerSeat: seatId,
-      visibility: "private-owner",
-    },
-    {
-      id: `${seatId}-hand`,
-      kind: "hand",
-      name: `${seatId} Hand`,
-      ordering: "ordered",
-      ownerSeat: seatId,
-      visibility: "private-owner",
-    },
-    {
-      id: `${seatId}-board`,
-      kind: "board",
-      name: `${seatId} Board`,
-      ordering: "unordered",
-      ownerSeat: seatId,
-      visibility: "public",
-    },
-    {
-      id: `${seatId}-discard`,
-      kind: "discard",
-      name: `${seatId} Discard`,
-      ordering: "ordered",
-      ownerSeat: seatId,
-      visibility: "public",
-    },
-  ];
-}
-
-function collectDuplicateIssues(
-  ids: string[],
-  code: GeneratedCardTabletopPackValidationIssue["code"],
-  label: "object" | "seat" | "zone",
-): GeneratedCardTabletopPackValidationIssue[] {
-  const seen = new Set<string>();
-  const reported = new Set<string>();
-  const issues: GeneratedCardTabletopPackValidationIssue[] = [];
-
-  for (const id of ids) {
-    if (!seen.has(id)) {
-      seen.add(id);
-      continue;
-    }
-
-    if (reported.has(id)) {
-      continue;
-    }
-
-    reported.add(id);
-    issues.push({
-      code,
-      message: `${id}: duplicate ${label} id`,
-      path: label,
-      severity: "error",
-    });
-  }
-
-  return issues;
-}
-
 export function createGeneratedCardTabletopPack(): GeneratedCardTabletopPack {
   return {
     manifest: {
       description: "Generated tabletop admission pack for Standard Alpha.",
       id: "standard-alpha-card-duel",
       name: "Standard Alpha Card Duel",
+      runtime: "lunchtable",
       runtimeVersion: "0.1.0",
       title: "Standard Alpha Card Duel",
       version: "0.1.0",
@@ -176,65 +103,47 @@ export function createGeneratedCardTabletopPack(): GeneratedCardTabletopPack {
 export function validateGeneratedCardTabletopPack(
   pack: GeneratedCardTabletopPack,
 ): GeneratedCardTabletopPackValidationResult {
-  const knownSeatIds = new Set(pack.seats.map((seat) => seat.id));
-  const knownZoneIds = new Set(pack.zones.map((zone) => zone.id));
-  const issues = [
-    ...collectDuplicateIssues(
-      pack.objects.map((object) => object.id),
-      "duplicateObjectId",
-      "object",
-    ),
-    ...collectDuplicateIssues(
-      pack.seats.map((seat) => seat.id),
-      "duplicateSeatId",
-      "seat",
-    ),
-    ...collectDuplicateIssues(
-      pack.zones.map((zone) => zone.id),
-      "duplicateZoneId",
-      "zone",
-    ),
-    ...pack.objects.flatMap((object) => {
-      const objectIssues: GeneratedCardTabletopPackValidationIssue[] = [];
-
-      if (!knownZoneIds.has(object.zoneId)) {
-        objectIssues.push({
-          code: "unknownObjectZone",
-          message: `${object.id}: unknown object zone ${object.zoneId}`,
-          path: "object.zoneId",
-          severity: "error",
-        });
-      }
-
-      if (object.ownerSeat !== null && !knownSeatIds.has(object.ownerSeat)) {
-        objectIssues.push({
-          code: "unknownObjectOwnerSeat",
-          message: `${object.id}: unknown object owner seat ${object.ownerSeat}`,
-          path: "object.ownerSeat",
-          severity: "error",
-        });
-      }
-
-      return objectIssues;
-    }),
-    ...pack.zones.flatMap((zone) => {
-      if (zone.ownerSeat === null || knownSeatIds.has(zone.ownerSeat)) {
-        return [];
-      }
-
-      return [
-        {
-          code: "unknownZoneOwnerSeat",
-          message: `${zone.id}: unknown zone owner seat ${zone.ownerSeat}`,
-          path: "zone.ownerSeat",
-          severity: "error",
-        } satisfies GeneratedCardTabletopPackValidationIssue,
-      ];
-    }),
-  ];
+  const result = validatePortableGamePack(pack);
 
   return {
-    issues,
-    ok: issues.length === 0,
+    issues: result.issues,
+    ok: result.ok,
   };
+}
+
+function createSeatZones(seatId: (typeof seatIds)[number]): TabletopZone[] {
+  return [
+    {
+      id: `${seatId}-deck`,
+      kind: "deck",
+      name: `${seatId} Deck`,
+      ordering: "ordered",
+      ownerSeat: seatId,
+      visibility: "private-owner",
+    },
+    {
+      id: `${seatId}-hand`,
+      kind: "hand",
+      name: `${seatId} Hand`,
+      ordering: "ordered",
+      ownerSeat: seatId,
+      visibility: "private-owner",
+    },
+    {
+      id: `${seatId}-board`,
+      kind: "board",
+      name: `${seatId} Board`,
+      ordering: "unordered",
+      ownerSeat: seatId,
+      visibility: "public",
+    },
+    {
+      id: `${seatId}-discard`,
+      kind: "discard",
+      name: `${seatId} Discard`,
+      ordering: "ordered",
+      ownerSeat: seatId,
+      visibility: "public",
+    },
+  ];
 }

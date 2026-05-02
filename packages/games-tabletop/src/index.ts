@@ -21,10 +21,14 @@ export type {
   GamePackScenario,
   GameGenre,
   GamePackManifest,
+  GamePackValidationIssueCode,
   GamePackValidationIssue,
   GamePackValidationResult,
+  GamePackValidationSummary,
+  PortableGamePackAdmissionInput,
   PortableGamePack,
 } from "./pack";
+export { validatePortableGamePack } from "./pack";
 export type {
   SeatId,
   TabletopObject,

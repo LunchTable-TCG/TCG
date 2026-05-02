@@ -17,6 +17,7 @@
 - [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, protocol, and parity helpers.
 - [packages/games-render/src/index.ts](packages/games-render/src/index.ts): Renderer-neutral scene and camera primitives.
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts): `lunchtable init` scaffold generator.
+- [packages/cli/src/pack.ts](packages/cli/src/pack.ts): `lunchtable validate` and `lunchtable eval` portable pack checks.
 
 ## Agent Skills
 

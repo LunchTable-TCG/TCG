@@ -12,6 +12,13 @@ Use `--template` for non-interactive scaffolding:
 bunx lunchtable init my-game --template dice --yes
 ```
 
+Validate and evaluate a generated starter:
+
+```bash
+bunx lunchtable validate my-game
+bunx lunchtable eval my-game
+```
+
 Available templates:
 
 - `tcg`

@@ -32,10 +32,32 @@ describe("lunchtable init scaffolding", () => {
     ).toEqual({
       command: "init",
       force: false,
+      json: false,
       packageManager: "bun",
       targetDirectory: "arcade-duel",
       templateId: "side-scroller",
       yes: true,
+    });
+  });
+
+  it("parses validate and eval commands for non-interactive generated games", () => {
+    expect(parseInitArgs(["validate", "generated-pack", "--json"])).toEqual({
+      command: "validate",
+      force: false,
+      json: true,
+      packageManager: "bun",
+      targetDirectory: "generated-pack",
+      templateId: null,
+      yes: false,
+    });
+    expect(parseInitArgs(["eval", "generated-pack"])).toEqual({
+      command: "eval",
+      force: false,
+      json: false,
+      packageManager: "bun",
+      targetDirectory: "generated-pack",
+      templateId: null,
+      yes: false,
     });
   });
 
@@ -58,9 +80,12 @@ describe("lunchtable init scaffolding", () => {
         ".agents/skills/evaluate-lunchtable-agent/SKILL.md",
         ".agents/skills/play-lunchtable-game/SKILL.md",
         "README.md",
+        "game.json",
         "llms-full.txt",
         "llms.txt",
+        "objects.json",
         "package.json",
+        "ruleset.json",
         "src/agents/a2a.ts",
         "src/agents/baseline.ts",
         "src/agents/external-http.ts",
@@ -132,6 +157,9 @@ describe("lunchtable init scaffolding", () => {
         });
 
         expect(result.files).toContain("src/game.ts");
+        expect(result.files).toContain("game.json");
+        expect(result.files).toContain("objects.json");
+        expect(result.files).toContain("ruleset.json");
         expect(result.files).toContain("llms.txt");
         expect(result.files).toContain("llms-full.txt");
         expect(result.files).toContain(

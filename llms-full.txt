@@ -11,6 +11,7 @@ Lunch Table Games is a browser-first, deterministic, agent-native game library. 
 Every `bunx lunchtable init` starter must include:
 
 - deterministic ruleset and initial state in `src/game.ts`
+- portable pack metadata in `game.json`, `objects.json`, and `ruleset.json`
 - baseline local agent in `src/agents/baseline.ts`
 - external HTTP envelope adapter in `src/agents/external-http.ts`
 - MCP tool manifest in `src/agents/mcp.ts`
@@ -59,3 +60,9 @@ Generated games enter through validated packs and starter scaffolds. They must b
 - `bun run test:e2e`
 
 Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.
+
+## CLI Admission Commands
+
+- `bunx lunchtable validate <directory>` validates portable generated pack files.
+- `bunx lunchtable eval <directory>` checks pack validity, agent tests, LLM maps, and skills.
+- `--json` emits machine-readable results for both commands.

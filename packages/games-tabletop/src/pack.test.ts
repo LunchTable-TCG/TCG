@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { GamePackManifest, PortableGamePack } from "./pack";
+import {
+  type GamePackManifest,
+  type PortableGamePack,
+  validatePortableGamePack,
+} from "./pack";
 
 describe("portable game pack contracts", () => {
   it("describes generated starter metadata", () => {
@@ -43,5 +47,96 @@ describe("portable game pack contracts", () => {
     } satisfies PortableGamePack;
 
     expect(pack.scenarios[0]?.setupId).toBe("default-setup");
+  });
+
+  it("validates portable pack object, seat, and zone references", () => {
+    expect(
+      validatePortableGamePack({
+        objects: [
+          {
+            id: "piece:hero",
+            kind: "piece",
+            name: "Hero",
+            ownerSeat: "seat-0",
+            state: "ready",
+            visibility: "private-owner",
+            zoneId: "board",
+          },
+        ],
+        seats: [
+          {
+            actorType: "ai",
+            id: "seat-0",
+            name: "Seat 0",
+            permissions: ["submitIntent"],
+            status: "ready",
+          },
+        ],
+        zones: [
+          {
+            id: "board",
+            kind: "board",
+            name: "Board",
+            ordering: "unordered",
+            ownerSeat: null,
+            visibility: "public",
+          },
+        ],
+      }),
+    ).toEqual({
+      issues: [],
+      ok: true,
+      summary: {
+        objectCount: 1,
+        seatCount: 1,
+        zoneCount: 1,
+      },
+      valid: true,
+    });
+  });
+
+  it("rejects invalid portable pack references", () => {
+    expect(
+      validatePortableGamePack({
+        objects: [
+          {
+            id: "piece:hero",
+            kind: "piece",
+            name: "Hero",
+            ownerSeat: "missing-seat",
+            state: "ready",
+            visibility: "public",
+            zoneId: "missing-zone",
+          },
+        ],
+        seats: [
+          {
+            actorType: "human",
+            id: "seat-0",
+            name: "Seat 0",
+            permissions: ["submitIntent"],
+            status: "ready",
+          },
+        ],
+        zones: [
+          {
+            id: "board",
+            kind: "board",
+            name: "Board",
+            ordering: "unordered",
+            ownerSeat: "missing-seat",
+            visibility: "public",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      issues: [
+        { code: "unknownObjectZone" },
+        { code: "unknownObjectOwnerSeat" },
+        { code: "unknownZoneOwnerSeat" },
+      ],
+      ok: false,
+      valid: false,
+    });
   });
 });
