@@ -77,6 +77,9 @@
         "@lunchtable/shared-types": "workspace:*",
       },
     },
+    "packages/games-core": {
+      "name": "@lunchtable/games-core",
+    },
     "packages/render-pixi": {
       "name": "@lunchtable/render-pixi",
       "dependencies": {
@@ -234,6 +237,8 @@
     "@lunchtable/card-content": ["@lunchtable/card-content@workspace:packages/card-content"],
 
     "@lunchtable/game-core": ["@lunchtable/game-core@workspace:packages/game-core"],
+
+    "@lunchtable/games-core": ["@lunchtable/games-core@workspace:packages/games-core"],
 
     "@lunchtable/render-pixi": ["@lunchtable/render-pixi@workspace:packages/render-pixi"],
 
