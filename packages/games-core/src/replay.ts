@@ -10,6 +10,7 @@ export function replayGameIntents<
   TConfig,
   TState,
   TIntent,
+  TEvent,
   TSeatView,
   TSpectatorView,
   TScene,
@@ -18,15 +19,16 @@ export function replayGameIntents<
     TConfig,
     TState,
     TIntent,
+    TEvent,
     TSeatView,
     TSpectatorView,
     TScene
   >,
   config: TConfig,
-  intents: TIntent[],
-): ReplayResult<TState, { kind: string }, GameTransition<TState>> {
-  const transitions: GameTransition<TState>[] = [];
-  const events: Array<{ kind: string }> = [];
+  intents: readonly NoInfer<TIntent>[],
+): ReplayResult<TState, TEvent, GameTransition<TState, TEvent>> {
+  const transitions: Array<GameTransition<TState, TEvent>> = [];
+  const events: TEvent[] = [];
   let state = ruleset.createInitialState(config);
 
   for (const intent of intents) {

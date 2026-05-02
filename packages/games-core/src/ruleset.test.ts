@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import type { GameRuleset } from "./index";
 import { replayGameIntents } from "./index";
 
@@ -16,6 +16,16 @@ type CounterIntent =
     }
   | {
       kind: "reject";
+    };
+
+type CounterEvent =
+  | {
+      amount: number;
+      kind: "counterIncremented";
+    }
+  | {
+      code: "blocked";
+      kind: "counterRejected";
     };
 
 interface CounterSeatView {
@@ -39,6 +49,7 @@ const counterRuleset: GameRuleset<
   CounterConfig,
   CounterState,
   CounterIntent,
+  CounterEvent,
   CounterSeatView,
   CounterSpectatorView,
   CounterScene
@@ -46,7 +57,7 @@ const counterRuleset: GameRuleset<
   applyIntent: (state, intent) => {
     if (intent.kind === "reject") {
       return {
-        events: [{ kind: "counterRejected" }],
+        events: [{ code: "blocked", kind: "counterRejected" }],
         nextState: state,
         outcome: "rejected",
         reason: "intent rejected",
@@ -54,7 +65,7 @@ const counterRuleset: GameRuleset<
     }
 
     return {
-      events: [{ kind: "counterIncremented" }],
+      events: [{ amount: 1, kind: "counterIncremented" }],
       nextState: {
         count: state.count + 1,
       },
@@ -94,7 +105,7 @@ describe("GameRuleset", () => {
     });
 
     expect(transition).toEqual({
-      events: [{ kind: "counterIncremented" }],
+      events: [{ amount: 1, kind: "counterIncremented" }],
       nextState: {
         count: 4,
       },
@@ -117,6 +128,7 @@ describe("GameRuleset", () => {
         width: 1280,
       },
     });
+    expectTypeOf(transition.events).toEqualTypeOf<CounterEvent[]>();
   });
 
   it("replays intents through the ruleset in order", () => {
@@ -133,21 +145,21 @@ describe("GameRuleset", () => {
     });
     expect(replay.transitions).toEqual([
       {
-        events: [{ kind: "counterIncremented" }],
+        events: [{ amount: 1, kind: "counterIncremented" }],
         nextState: {
           count: 1,
         },
         outcome: "applied",
       },
       {
-        events: [{ kind: "counterIncremented" }],
+        events: [{ amount: 1, kind: "counterIncremented" }],
         nextState: {
           count: 2,
         },
         outcome: "applied",
       },
       {
-        events: [{ kind: "counterRejected" }],
+        events: [{ code: "blocked", kind: "counterRejected" }],
         nextState: {
           count: 2,
         },
@@ -156,9 +168,18 @@ describe("GameRuleset", () => {
       },
     ]);
     expect(replay.events).toEqual([
-      { kind: "counterIncremented" },
-      { kind: "counterIncremented" },
-      { kind: "counterRejected" },
+      { amount: 1, kind: "counterIncremented" },
+      { amount: 1, kind: "counterIncremented" },
+      { code: "blocked", kind: "counterRejected" },
     ]);
+    expectTypeOf(replay.events).toEqualTypeOf<CounterEvent[]>();
+    expectTypeOf(replay.transitions).toEqualTypeOf<
+      Array<{
+        events: CounterEvent[];
+        nextState: CounterState;
+        outcome: "applied" | "noop" | "rejected";
+        reason?: string;
+      }>
+    >();
   });
 });
