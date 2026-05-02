@@ -132,11 +132,14 @@ export interface BotDecisionFrame
   view: MatchSeatView;
 }
 
-export type BotLegalAction = LegalActionDescriptor<BotSupportedIntent> &
-  Omit<LegalActionDescriptorV1, "intent" | "kind"> & {
-    intent: BotSupportedIntent;
-    kind: BotSupportedIntent["kind"];
-  };
+export type BotLegalActionFor<TIntent extends BotSupportedIntent> =
+  LegalActionDescriptor<TIntent> &
+    Omit<LegalActionDescriptorV1, "intent" | "kind"> & {
+      intent: TIntent;
+      kind: TIntent["kind"];
+    };
+
+export type BotLegalAction = BotLegalActionFor<BotSupportedIntent>;
 
 export interface BotExternalDecisionAction {
   actionId: string;

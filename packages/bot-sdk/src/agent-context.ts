@@ -118,19 +118,21 @@ function createLegalityFingerprint(
   ].join(":");
 }
 
-function createDescriptor(input: {
+function createDescriptor<TIntent extends BotSupportedIntent>(input: {
   frame: BotDecisionFrame;
   humanLabel: string;
-  intent: BotSupportedIntent;
+  intent: TIntent;
   machineLabel: string;
   priority: number;
-}): BotLegalAction {
+}) {
+  const kind: TIntent["kind"] = input.intent.kind;
+
   return {
     actionId: input.intent.intentId,
     args: toActionArgs(input.intent),
     humanLabel: input.humanLabel,
     intent: input.intent,
-    kind: input.intent.kind,
+    kind,
     legalityFingerprint: createLegalityFingerprint(input.frame, input.intent),
     machineLabel: input.machineLabel,
     priority: input.priority,
