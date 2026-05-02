@@ -69,6 +69,7 @@
       "name": "@lunchtable/card-content",
       "dependencies": {
         "@lunchtable/game-core": "workspace:*",
+        "@lunchtable/games-tabletop": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
       },
     },
