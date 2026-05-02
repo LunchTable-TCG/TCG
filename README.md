@@ -67,9 +67,15 @@ bun run release:proof
 ```
 
 Each scaffold is agent-native from day one: it includes a baseline local agent,
-external HTTP envelopes, MCP tool metadata, an A2A agent card, self-play, and
-agent parity tests. Agents submit legal action ids through the same ruleset path
-as human seats.
+external HTTP envelopes, a runnable stdio MCP server, MCP tool metadata, an A2A
+agent card, self-play, and agent parity tests. Agents submit legal action ids
+through the same ruleset path as human seats.
+
+Generated starters expose `bun run --silent mcp:stdio` so local MCP clients and
+developer agent tools can connect immediately without script banners on stdout.
+The server supports initialize,
+`tools/list`, `tools/call`, `resources/list`, and `resources/read`, with
+`submitAction` still gated by the current legal action catalog and state version.
 
 The monorepo and every scaffold also ship LLM-readable maps and repo-local
 skills:

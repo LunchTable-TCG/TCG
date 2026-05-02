@@ -359,6 +359,14 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "tests/game.test.ts",
     },
     {
+      content: createMcpServerSource(templateId),
+      path: "src/mcp/server.ts",
+    },
+    {
+      content: createMcpServerTestSource(templateId),
+      path: "tests/mcp-server.test.ts",
+    },
+    {
       content: createSelfPlayTestSource(templateId),
       path: "tests/self-play.test.ts",
     },
@@ -382,6 +390,7 @@ view, legal action, and authoritative intent path from day one.
 \`\`\`bash
 ${input.packageManager} install
 ${input.packageManager} run test
+bun run --silent mcp:stdio
 \`\`\`
 `;
 }
@@ -615,6 +624,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [src/agents/mcp.ts](src/agents/mcp.ts): MCP tool manifest for gameplay agents.
 - [src/agents/a2a.ts](src/agents/a2a.ts): A2A agent card helper.
 - [src/agents/self-play.ts](src/agents/self-play.ts): Deterministic self-play runner.
+- [src/mcp/server.ts](src/mcp/server.ts): Runnable stdio MCP server for local clients and agent tooling.
 
 ## Agent Skills
 
@@ -626,6 +636,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 
 - [tests/game.test.ts](tests/game.test.ts): Starter construction smoke test.
 - [tests/agent-parity.test.ts](tests/agent-parity.test.ts): Agent legal-action parity and protocol-surface checks.
+- [tests/mcp-server.test.ts](tests/mcp-server.test.ts): MCP initialize, resource, and legal-action tool checks.
 - [tests/self-play.test.ts](tests/self-play.test.ts): Agent-vs-agent deterministic smoke test.
 `;
 }
@@ -661,6 +672,7 @@ Rules:
 - \`createExternalAgentRequest\` builds a hosted-agent envelope.
 - \`resolveExternalAgentResponse\` rejects invented action ids.
 - \`createStarterMcpToolManifest\` exposes tool metadata.
+- \`runStarterMcpStdioServer\` exposes a connectable MCP stdio server.
 - \`createStarterA2aAgentCard\` exposes discovery metadata.
 - \`runStarterSelfPlay\` proves two agent seats can participate immediately.
 
@@ -694,7 +706,8 @@ Use when an agent needs to join a game seat, inspect the current scoped view, ch
 3. Choose one \`actionId\` from \`frame.legalActions\`, or choose \`null\`.
 4. Resolve external choices through \`resolveExternalAgentResponse\`.
 5. Submit through \`runBaselineAgentTurn\` or the equivalent authoritative runtime path.
-6. Run \`bun run test -- tests/agent-parity.test.ts tests/self-play.test.ts\` after changing agent behavior.
+6. Use \`bun run --silent mcp:stdio\` when a local MCP client needs to connect.
+7. Run \`bun run test -- tests/agent-parity.test.ts tests/mcp-server.test.ts tests/self-play.test.ts\` after changing agent behavior.
 
 ## Rules
 
@@ -721,7 +734,8 @@ Use this skill when changing the ruleset, state shape, tabletop components, rend
 2. Add or update tests for state, legal intents, agent parity, and self-play.
 3. Keep all authoritative changes in the ruleset contract.
 4. Keep agents on legal action ids and scoped views.
-5. Run \`bun run typecheck\` and \`bun run test\`.
+5. Keep \`src/mcp/server.ts\` wired through the same legal-action runtime.
+6. Run \`bun run typecheck\` and \`bun run test\`.
 
 ## Rules
 
@@ -745,10 +759,11 @@ Use this skill when validating that an agent can play fairly and deterministical
 ## Workflow
 
 1. Run \`bun run test -- tests/agent-parity.test.ts\`.
-2. Run \`bun run test -- tests/self-play.test.ts\`.
-3. Check that every selected \`actionId\` exists in the current legal action catalog.
-4. Check that state version increases only after applied transitions.
-5. Compare self-play results after rules or policy changes.
+2. Run \`bun run test -- tests/mcp-server.test.ts\`.
+3. Run \`bun run test -- tests/self-play.test.ts\`.
+4. Check that every selected \`actionId\` exists in the current legal action catalog.
+5. Check that state version increases only after applied transitions.
+6. Compare self-play results after rules or policy changes.
 
 ## Rules
 
@@ -969,12 +984,535 @@ export async function runStarterSelfPlay(input: {
 `;
 }
 
+function createMcpServerSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  const functionName = getFactoryName(templateId);
+
+  return () => `import { argv, stdin, stdout } from "node:process";
+import { createInterface } from "node:readline/promises";
+
+import { createStarterDecisionFrame } from "../agents/baseline";
+import { createStarterMcpToolManifest } from "../agents/mcp";
+import { runStarterSelfPlay } from "../agents/self-play";
+import { ${functionName} } from "../game";
+
+export const MCP_PROTOCOL_VERSION = "2025-11-25";
+
+type StarterGame = ReturnType<typeof ${functionName}>;
+type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
+type StarterEvent = ReturnType<StarterGame["ruleset"]["applyIntent"]>["events"][number];
+
+type JsonPrimitive = boolean | null | number | string;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+type JsonRpcId = null | number | string;
+
+interface JsonRpcRequest {
+  id?: JsonRpcId;
+  jsonrpc: "2.0";
+  method: string;
+  params?: JsonValue;
+}
+
+interface JsonRpcSuccessResponse {
+  id: JsonRpcId;
+  jsonrpc: "2.0";
+  result: JsonValue;
+}
+
+interface JsonRpcErrorResponse {
+  error: {
+    code: number;
+    message: string;
+  };
+  id: JsonRpcId;
+  jsonrpc: "2.0";
+}
+
+type JsonRpcResponse = JsonRpcErrorResponse | JsonRpcSuccessResponse;
+
+export interface StarterMcpEventLogEntry {
+  actionId: string | null;
+  at: number;
+  events: StarterEvent[];
+  outcome: string;
+  seat: string;
+  stateVersion: number;
+}
+
+export interface StarterMcpRuntime {
+  eventLog: StarterMcpEventLogEntry[];
+  game: StarterGame;
+  state: StarterState;
+}
+
+const serverInfo = {
+  description: "Lunch Table Games starter MCP server",
+  name: "lunchtable-starter",
+  title: "Lunch Table Games Starter",
+  version: "0.1.0",
+};
+
+const resources = [
+  {
+    description: "Starter game manifest and runtime metadata.",
+    mimeType: "application/json",
+    name: "game-manifest",
+    title: "Game Manifest",
+    uri: "lunchtable://game/manifest",
+  },
+  {
+    description: "Public rules, legal intent kinds, and render components.",
+    mimeType: "application/json",
+    name: "rules",
+    title: "Rules Summary",
+    uri: "lunchtable://game/rules",
+  },
+  {
+    description: "Current process-local authoritative starter state.",
+    mimeType: "application/json",
+    name: "runtime-state",
+    title: "Runtime State",
+    uri: "lunchtable://runtime/state",
+  },
+  {
+    description: "Applied MCP action events in this server process.",
+    mimeType: "application/json",
+    name: "event-log",
+    title: "Event Log",
+    uri: "lunchtable://runtime/events",
+  },
+] as const;
+
+export function createStarterMcpServerRuntime(): StarterMcpRuntime {
+  const game = ${functionName}();
+
+  return {
+    eventLog: [],
+    game,
+    state: game.ruleset.createInitialState(game.config),
+  };
+}
+
+export async function handleStarterMcpRequest(
+  runtime: StarterMcpRuntime,
+  request: JsonValue,
+): Promise<JsonRpcResponse | null> {
+  if (!isJsonObject(request)) {
+    return createErrorResponse(null, -32600, "MCP request must be a JSON object");
+  }
+
+  const id = getJsonRpcId(request.id);
+  const method = request.method;
+  if (request.jsonrpc !== "2.0" || typeof method !== "string") {
+    return createErrorResponse(id, -32600, "Invalid JSON-RPC request");
+  }
+
+  if (request.id === undefined && method === "notifications/initialized") {
+    return null;
+  }
+
+  try {
+    if (method === "initialize") {
+      return createSuccessResponse(id, {
+        capabilities: {
+          resources: { listChanged: false },
+          tools: { listChanged: false },
+        },
+        instructions:
+          "Use listLegalActions before submitAction. Submit only action ids returned for the same seat and stateVersion.",
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        serverInfo,
+      });
+    }
+
+    if (method === "ping") {
+      return createSuccessResponse(id, {});
+    }
+
+    if (method === "tools/list") {
+      return createSuccessResponse(id, {
+        tools: createStarterMcpToolDefinitions(),
+      });
+    }
+
+    if (method === "tools/call") {
+      return createSuccessResponse(
+        id,
+        await callStarterMcpTool(runtime, request.params),
+      );
+    }
+
+    if (method === "resources/list") {
+      return createSuccessResponse(id, {
+        resources: resources.map((resource) => ({ ...resource })),
+      });
+    }
+
+    if (method === "resources/read") {
+      return createSuccessResponse(
+        id,
+        readStarterMcpResource(runtime, request.params),
+      );
+    }
+
+    return createErrorResponse(id, -32601, \`Unsupported MCP method: \${method}\`);
+  } catch (error) {
+    if (error instanceof Error && error.message.length > 0) {
+      return createErrorResponse(id, -32603, error.message);
+    }
+    return createErrorResponse(id, -32603, "MCP request failed");
+  }
+}
+
+export async function runStarterMcpStdioServer(
+  runtime = createStarterMcpServerRuntime(),
+): Promise<void> {
+  const lines = createInterface({ input: stdin });
+
+  for await (const line of lines) {
+    if (line.trim().length === 0) {
+      continue;
+    }
+
+    let parsed: JsonValue;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      stdout.write(
+        \`\${JSON.stringify(createErrorResponse(null, -32700, "Parse error"))}\\n\`,
+      );
+      continue;
+    }
+
+    const response = await handleStarterMcpRequest(runtime, parsed);
+    if (response !== null) {
+      stdout.write(\`\${JSON.stringify(response)}\\n\`);
+    }
+  }
+}
+
+function createStarterMcpToolDefinitions(): JsonValue[] {
+  return createStarterMcpToolManifest().tools.map((tool) =>
+    toJsonValue({
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      name: tool.name,
+      title: createToolTitle(tool.name),
+    }),
+  );
+}
+
+async function callStarterMcpTool(
+  runtime: StarterMcpRuntime,
+  params: JsonValue | undefined,
+): Promise<JsonObject> {
+  if (!isJsonObject(params) || typeof params.name !== "string") {
+    return createToolError("MCP tools/call requires a string tool name");
+  }
+
+  const args = isJsonObject(params.arguments) ? params.arguments : {};
+
+  switch (params.name) {
+    case "joinGameSeat":
+      return createToolResult({
+        gameId: runtime.game.manifest.title,
+        seat: optionalString(args, "requestedSeat") ?? "seat-0",
+        transport: "mcp",
+      });
+    case "observeGame": {
+      const seat = requireString(args, "seat");
+      return createToolResult(createObservation(runtime, seat));
+    }
+    case "listLegalActions": {
+      const seat = requireString(args, "seat");
+      const frame = createDecisionFrame(runtime, seat);
+      return createToolResult({
+        legalActions: toJsonValue(frame.legalActions),
+        seat,
+        stateVersion: runtime.state.shell.version,
+      });
+    }
+    case "submitAction":
+      return submitAction(runtime, args);
+    case "passPriority": {
+      const seat = requireString(args, "seat");
+      const frame = createDecisionFrame(runtime, seat);
+      const action = frame.legalActions.find(
+        (candidate) => candidate.kind === "pass",
+      );
+      if (action === undefined) {
+        return createToolError(\`Pass is not legal for seat \${seat}\`);
+      }
+      return submitAction(runtime, {
+        actionId: action.actionId,
+        seat,
+        stateVersion: runtime.state.shell.version,
+      });
+    }
+    case "getRules":
+      return createToolResult(createRulesSummary(runtime));
+    case "getObjective":
+      return createToolResult({
+        activeSeatId: runtime.state.shell.activeSeatId,
+        phase: runtime.state.shell.phase,
+        seat: optionalString(args, "seat") ?? null,
+        status: runtime.state.shell.status,
+      });
+    case "getReplay":
+    case "subscribeEvents":
+      return createToolResult({
+        events: toJsonValue(runtime.eventLog),
+        stateVersion: runtime.state.shell.version,
+      });
+    case "runSelfPlay": {
+      const turns = optionalNumber(args, "turns") ?? 2;
+      return createToolResult(
+        toJsonValue(await runStarterSelfPlay({
+          receivedAt: 1777739000000,
+          turns,
+        })),
+      );
+    }
+    case "evaluateAgent": {
+      const result = await runStarterSelfPlay({
+        receivedAt: 1777739000000,
+        turns: 2,
+      });
+      return createToolResult({
+        ok: result.steps.every((step) => step.outcome === "submitted"),
+        steps: toJsonValue(result.steps),
+      });
+    }
+    default:
+      return createToolError(\`Unsupported MCP tool: \${params.name}\`);
+  }
+}
+
+function submitAction(
+  runtime: StarterMcpRuntime,
+  args: JsonObject,
+): JsonObject {
+  const seat = requireString(args, "seat");
+  const actionId = requireString(args, "actionId");
+  const stateVersion = requireNumber(args, "stateVersion");
+
+  if (stateVersion !== runtime.state.shell.version) {
+    return createToolError(
+      \`State version mismatch. Expected \${runtime.state.shell.version} but received \${stateVersion}\`,
+    );
+  }
+
+  const frame = createDecisionFrame(runtime, seat);
+  const action = frame.legalActions.find(
+    (candidate) => candidate.actionId === actionId,
+  );
+  if (action === undefined) {
+    return createToolError(\`Unknown or illegal actionId: \${actionId}\`);
+  }
+
+  const transition = runtime.game.ruleset.applyIntent(runtime.state, action.intent);
+  runtime.state = transition.nextState;
+  runtime.eventLog.push({
+    actionId,
+    at: Date.now(),
+    events: transition.events,
+    outcome: transition.outcome,
+    seat,
+    stateVersion: runtime.state.shell.version,
+  });
+
+  return createToolResult({
+    actionId,
+    events: toJsonValue(transition.events),
+    outcome: transition.outcome,
+    seat,
+    stateVersion: runtime.state.shell.version,
+  });
+}
+
+function createDecisionFrame(runtime: StarterMcpRuntime, seat: string) {
+  return createStarterDecisionFrame({
+    receivedAt: Date.now(),
+    seat,
+    state: runtime.state,
+    transport: "mcp",
+  });
+}
+
+function createObservation(runtime: StarterMcpRuntime, seat: string): JsonObject {
+  return {
+    seat,
+    stateVersion: runtime.state.shell.version,
+    view: toJsonValue(runtime.game.ruleset.deriveSeatView(runtime.state, seat)),
+  };
+}
+
+function createRulesSummary(runtime: StarterMcpRuntime): JsonObject {
+  return {
+    components: toJsonValue(runtime.game.components),
+    manifest: toJsonValue(runtime.game.manifest),
+    renderScene: toJsonValue(
+      runtime.game.ruleset.deriveRenderScene(runtime.state, {
+        height: 720,
+        width: 1280,
+      }),
+    ),
+    sampleLegalActions: toJsonValue(
+      createDecisionFrame(runtime, "seat-0").legalActions,
+    ),
+  };
+}
+
+function readStarterMcpResource(
+  runtime: StarterMcpRuntime,
+  params: JsonValue | undefined,
+): JsonObject {
+  if (!isJsonObject(params) || typeof params.uri !== "string") {
+    throw new Error("resources/read requires a URI");
+  }
+
+  const uri = params.uri;
+  let payload: JsonValue;
+  if (uri === "lunchtable://game/manifest") {
+    payload = toJsonValue(runtime.game.manifest);
+  } else if (uri === "lunchtable://game/rules") {
+    payload = createRulesSummary(runtime);
+  } else if (uri === "lunchtable://runtime/state") {
+    payload = toJsonValue(runtime.state);
+  } else if (uri === "lunchtable://runtime/events") {
+    payload = toJsonValue(runtime.eventLog);
+  } else {
+    throw new Error(\`Unknown MCP resource: \${uri}\`);
+  }
+
+  return {
+    contents: [
+      {
+        mimeType: "application/json",
+        text: JSON.stringify(payload, null, 2),
+        uri,
+      },
+    ],
+  };
+}
+
+function createToolResult(structuredContent: JsonValue): JsonObject {
+  return {
+    content: [
+      {
+        text: JSON.stringify(structuredContent, null, 2),
+        type: "text",
+      },
+    ],
+    isError: false,
+    structuredContent,
+  };
+}
+
+function createToolError(message: string): JsonObject {
+  return {
+    content: [{ text: message, type: "text" }],
+    isError: true,
+  };
+}
+
+function createSuccessResponse(
+  id: JsonRpcId,
+  result: JsonValue,
+): JsonRpcSuccessResponse {
+  return {
+    id,
+    jsonrpc: "2.0",
+    result,
+  };
+}
+
+function createErrorResponse(
+  id: JsonRpcId,
+  code: number,
+  message: string,
+): JsonRpcErrorResponse {
+  return {
+    error: { code, message },
+    id,
+    jsonrpc: "2.0",
+  };
+}
+
+function requireString(args: JsonObject, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(\`\${key} must be a non-empty string\`);
+  }
+  return value;
+}
+
+function optionalString(args: JsonObject, key: string): string | null {
+  const value = args[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new Error(\`\${key} must be a string\`);
+  }
+  return value;
+}
+
+function requireNumber(args: JsonObject, key: string): number {
+  const value = args[key];
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(\`\${key} must be an integer\`);
+  }
+  return value;
+}
+
+function optionalNumber(args: JsonObject, key: string): number | null {
+  const value = args[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(\`\${key} must be an integer\`);
+  }
+  return value;
+}
+
+function getJsonRpcId(value: JsonValue | undefined): JsonRpcId {
+  if (typeof value === "number" || typeof value === "string" || value === null) {
+    return value;
+  }
+  return null;
+}
+
+function isJsonObject(value: JsonValue | undefined): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toJsonValue(value: object): JsonValue {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createToolTitle(name: string): string {
+  return name.replace(/([A-Z])/g, " $1").replace(/^./, (letter) =>
+    letter.toUpperCase(),
+  );
+}
+
+if (argv[1]?.endsWith("src/mcp/server.ts")) {
+  await runStarterMcpStdioServer();
+}
+`;
+}
+
 function createPackageJson(input: ScaffoldFileInput): string {
   return `${JSON.stringify(
     {
       name: input.packageName,
       private: true,
       scripts: {
+        "mcp:stdio": "bun src/mcp/server.ts",
         test: "vitest run",
         typecheck: "tsc --noEmit",
       },
@@ -986,6 +1524,7 @@ function createPackageJson(input: ScaffoldFileInput): string {
         "@lunchtable/games-tabletop": "latest",
       },
       devDependencies: {
+        "@types/node": "^24.6.1",
         typescript: "^5.9.3",
         vitest: "^3.2.4",
       },
@@ -1005,6 +1544,7 @@ function createTsconfig(): string {
         noEmit: true,
         strict: true,
         target: "ES2022",
+        types: ["node"],
       },
       include: ["src/**/*.ts", "tests/**/*.ts"],
     },
@@ -1132,6 +1672,163 @@ describe("${templateId} agent self-play", () => {
       expect.objectContaining({ outcome: "submitted", seat: "seat-1" }),
     ]);
     expect(result.state.shell.version).toBe(2);
+  });
+});
+`;
+}
+
+function createMcpServerTestSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () => `import { describe, expect, it } from "vitest";
+
+import {
+  createStarterMcpServerRuntime,
+  handleStarterMcpRequest,
+} from "../src/mcp/server";
+
+type McpResponse = Awaited<ReturnType<typeof handleStarterMcpRequest>>;
+
+interface ToolResultContent {
+  text: string;
+  type: "text";
+}
+
+interface LegalActionsPayload {
+  legalActions: Array<{ actionId: string }>;
+  stateVersion: number;
+}
+
+function readToolJson(response: McpResponse): LegalActionsPayload {
+  if (response === null) {
+    throw new Error("MCP tool response was null");
+  }
+
+  const parsedResponse: { result: { content: ToolResultContent[] } } =
+    JSON.parse(JSON.stringify(response));
+  const text = parsedResponse.result.content[0]?.text;
+  if (text === undefined) {
+    throw new Error("MCP tool response did not include text content");
+  }
+
+  const parsed: LegalActionsPayload = JSON.parse(text);
+  return parsed;
+}
+
+describe("${templateId} MCP server", () => {
+  it("negotiates MCP capabilities and exposes tools/resources", async () => {
+    const runtime = createStarterMcpServerRuntime();
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 1,
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: {
+          capabilities: {},
+          clientInfo: { name: "test-client", version: "0.1.0" },
+          protocolVersion: "2025-11-25",
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        capabilities: {
+          resources: { listChanged: false },
+          tools: { listChanged: false },
+        },
+        protocolVersion: "2025-11-25",
+      },
+    });
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 2,
+        jsonrpc: "2.0",
+        method: "tools/list",
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        tools: expect.arrayContaining([
+          expect.objectContaining({ name: "listLegalActions" }),
+          expect.objectContaining({ name: "submitAction" }),
+        ]),
+      },
+    });
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 3,
+        jsonrpc: "2.0",
+        method: "resources/list",
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        resources: expect.arrayContaining([
+          expect.objectContaining({ uri: "lunchtable://runtime/state" }),
+        ]),
+      },
+    });
+  });
+
+  it("lists and submits legal actions through MCP tools", async () => {
+    const runtime = createStarterMcpServerRuntime();
+    const legalResponse = await handleStarterMcpRequest(runtime, {
+      id: 1,
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: {
+        arguments: { gameId: "starter", seat: "seat-0" },
+        name: "listLegalActions",
+      },
+    });
+    const legalPayload = readToolJson(legalResponse);
+    const actionId = legalPayload.legalActions[0]?.actionId;
+
+    expect(actionId).toBeTypeOf("string");
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 2,
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: {
+          arguments: {
+            actionId,
+            gameId: "starter",
+            seat: "seat-0",
+            stateVersion: legalPayload.stateVersion,
+          },
+          name: "submitAction",
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        isError: false,
+      },
+    });
+    expect(runtime.state.shell.version).toBe(1);
+  });
+
+  it("reads runtime resources for connected agent tooling", async () => {
+    const runtime = createStarterMcpServerRuntime();
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 1,
+        jsonrpc: "2.0",
+        method: "resources/read",
+        params: { uri: "lunchtable://runtime/state" },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        contents: [
+          expect.objectContaining({
+            mimeType: "application/json",
+            uri: "lunchtable://runtime/state",
+          }),
+        ],
+      },
+    });
   });
 });
 `;

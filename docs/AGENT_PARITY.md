@@ -181,6 +181,7 @@ Exports generic starter-grade primitives:
 - `runAgentTurn`, which derives the seat view, lists legal actions, accepts an
   agent decision, and calls the ruleset `applyIntent`
 - MCP tool manifest helpers for tool-based agents
+- scaffolded stdio MCP servers with tool handlers and read-only resources
 - A2A agent card helpers for discovery-oriented agents
 
 ### `lunchtable init`
@@ -190,26 +191,32 @@ Every CLI scaffold must include:
 - baseline local agent policy
 - external HTTP envelope adapter
 - MCP tool manifest
+- runnable stdio MCP server
 - A2A agent card
 - deterministic self-play runner
 - `llms.txt` and `llms-full.txt`
 - repo-local `SKILL.md` files for play, build, and evaluation workflows
-- `agent-parity` and `self-play` tests
+- `agent-parity`, `mcp-server`, and `self-play` tests
 
 This keeps generated TCG, dice, side-scroller, and 3D shooter starters aligned
 with the production rule: agents play through legal action ids and never receive
 private authority.
+
+Use `bun run --silent mcp:stdio` for local MCP client launches so stdout remains
+valid newline-delimited JSON-RPC.
 
 ## Protocol Alignment
 
 The starter surfaces follow current primary agent standards without depending on
 any single model vendor:
 
+- MCP stdio uses newline-delimited JSON-RPC over stdin/stdout:
+  <https://modelcontextprotocol.io/specification/2025-11-25/basic/transports>
 - MCP tools expose game participation as named tool calls with input schemas:
-  <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>
+  <https://modelcontextprotocol.io/specification/2025-11-25/server/tools>
 - MCP resources remain the right place for read-only rules, replay, and pack
   manifests:
-  <https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+  <https://modelcontextprotocol.io/specification/2025-11-25/server/resources>
 - A2A agent cards advertise agent capabilities and skills for discovery:
   <https://a2a-protocol.org/v0.3.0/specification/>
 - OpenAI Agents-style agents can map these tools, guardrails, and evaluations

@@ -15,13 +15,14 @@ Every `bunx lunchtable init` starter must include:
 - baseline local agent in `src/agents/baseline.ts`
 - external HTTP envelope adapter in `src/agents/external-http.ts`
 - MCP tool manifest in `src/agents/mcp.ts`
+- runnable stdio MCP server in `src/mcp/server.ts`
 - A2A agent card helper in `src/agents/a2a.ts`
 - deterministic self-play in `src/agents/self-play.ts`
 - `llms.txt` and `llms-full.txt`
 - `.agents/skills/play-lunchtable-game/SKILL.md`
 - `.agents/skills/build-lunchtable-game/SKILL.md`
 - `.agents/skills/evaluate-lunchtable-agent/SKILL.md`
-- tests for game construction, agent parity, and self-play
+- tests for game construction, agent parity, MCP server behavior, and self-play
 
 Agents submit legal action ids, never arbitrary state mutations. The runtime resolves each chosen action id against the current legal action catalog and applies the associated intent through the ruleset.
 
@@ -44,7 +45,7 @@ Generic packages must not import TCG rules, card content, Convex, React, Pixi, T
 6. The ruleset applies the intent and emits next state plus events.
 7. Projections derive views, scenes, replay frames, and agent observation frames.
 
-Renderers, MCP tools, A2A cards, external HTTP services, and advisory agents never mutate authoritative state directly.
+Renderers, MCP tools, MCP resources, A2A cards, external HTTP services, and advisory agents never mutate authoritative state directly.
 
 ## Generated-Game Rules
 
@@ -64,7 +65,7 @@ Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.
 ## CLI Admission Commands
 
 - `bunx lunchtable validate <directory>` validates portable generated pack files.
-- `bunx lunchtable eval <directory>` checks pack validity, agent tests, LLM maps, and skills.
+- `bunx lunchtable eval <directory>` checks pack validity, agent tests, MCP server files, LLM maps, and skills.
 - `--json` emits machine-readable results for both commands.
 
 ## Release And Hosted-Agent Proof
@@ -72,3 +73,4 @@ Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.
 - `scripts/proof-lunchtable-cli-package.sh` packs `lunchtable` and runs the tarball through `bunx --package`.
 - Browser pack editing starts from `apps/web/src/components/pack/PackEditorPanel.tsx` and the reusable editor model in `@lunchtable/games-tabletop`.
 - Hosted gameplay agents for elizaOS Cloud start from `packages/games-ai/src/eliza-cloud.ts`; responses must still resolve to known legal action ids.
+- Generated starters expose `bun run --silent mcp:stdio` for local MCP clients. The stdio server handles initialize, tools, and resources while keeping `submitAction` on legal action ids and state-version checks.

@@ -3,6 +3,7 @@
   "files": {
     "ignore": [
       ".convex/**",
+      ".factory/**",
       ".phase-loop/**",
       "coverage/**",
       "dist/**",

@@ -94,6 +94,8 @@ describe("lunchtable init scaffolding", () => {
         "src/game.ts",
         "tests/agent-parity.test.ts",
         "tests/game.test.ts",
+        "src/mcp/server.ts",
+        "tests/mcp-server.test.ts",
         "tests/self-play.test.ts",
         "tsconfig.json",
       ]);
@@ -117,6 +119,27 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(parityTestSource).toContain("chooses from legal actions");
+
+      const packageJson = JSON.parse(
+        await readFile(join(targetDirectory, "package.json"), "utf8"),
+      ) as { scripts: Record<string, string> };
+      expect(packageJson.scripts["mcp:stdio"]).toBe("bun src/mcp/server.ts");
+
+      const mcpServerSource = await readFile(
+        join(targetDirectory, "src/mcp/server.ts"),
+        "utf8",
+      );
+      expect(mcpServerSource).toContain('method === "tools/list"');
+      expect(mcpServerSource).toContain('method === "resources/read"');
+      expect(mcpServerSource).toContain('"2025-11-25"');
+      expect(mcpServerSource).toContain('case "submitAction"');
+
+      const mcpServerTestSource = await readFile(
+        join(targetDirectory, "tests/mcp-server.test.ts"),
+        "utf8",
+      );
+      expect(mcpServerTestSource).toContain("handleStarterMcpRequest");
+      expect(mcpServerTestSource).toContain("tools/call");
 
       const llmsText = await readFile(
         join(targetDirectory, "llms.txt"),
@@ -176,7 +199,9 @@ describe("lunchtable init scaffolding", () => {
         expect(result.files).toContain("src/agents/mcp.ts");
         expect(result.files).toContain("src/agents/a2a.ts");
         expect(result.files).toContain("src/agents/self-play.ts");
+        expect(result.files).toContain("src/mcp/server.ts");
         expect(result.files).toContain("tests/agent-parity.test.ts");
+        expect(result.files).toContain("tests/mcp-server.test.ts");
         expect(result.files).toContain("tests/self-play.test.ts");
         expect(result.templateId).toBe(template.id);
       }

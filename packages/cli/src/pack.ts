@@ -42,6 +42,7 @@ export interface PortablePackEvaluationCheck {
     | "agent-parity-test"
     | "agent-skills"
     | "llms-map"
+    | "mcp-server"
     | "pack-valid"
     | "self-play-test";
   ok: boolean;
@@ -144,6 +145,12 @@ export async function evaluatePortablePackDirectory(
     {
       name: "self-play-test",
       ok: await pathExists(join(directory, "tests", "self-play.test.ts")),
+    },
+    {
+      name: "mcp-server",
+      ok:
+        (await pathExists(join(directory, "src", "mcp", "server.ts"))) &&
+        (await pathExists(join(directory, "tests", "mcp-server.test.ts"))),
     },
     {
       name: "llms-map",
