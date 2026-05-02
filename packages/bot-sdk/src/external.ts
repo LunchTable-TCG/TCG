@@ -1,5 +1,6 @@
 import type { MatchSeatView } from "@lunchtable/shared-types";
 
+import { resolveExternalActionId } from "../../games-ai/src";
 import { listLegalBotActions } from "./legal-actions";
 import type {
   BotDecisionFrame,
@@ -106,11 +107,18 @@ export function resolveExternalDecisionResponse(input: {
     return null;
   }
 
-  const action = listLegalBotActions(input.frame).find(
-    (candidate) => candidate.actionId === parsed.actionId,
-  );
-  if (!action) {
-    throw new Error("External agent returned an unknown actionId");
+  const actions = listLegalBotActions(input.frame);
+  let action: (typeof actions)[number];
+  try {
+    action = resolveExternalActionId(actions, parsed.actionId);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "External agent returned an unrecognized actionId"
+    ) {
+      throw new Error("External agent returned an unknown actionId");
+    }
+    throw error;
   }
 
   const rawConfidence = parsed.confidence;

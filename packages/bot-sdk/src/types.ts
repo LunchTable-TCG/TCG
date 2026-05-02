@@ -1,4 +1,8 @@
 import type {
+  DecisionFrame,
+  LegalActionDescriptor,
+} from "@lunchtable/games-ai";
+import type {
   AgentMatchContextV1,
   CardCatalogEntry,
   GameplayIntentBase,
@@ -116,7 +120,8 @@ export type BotSupportedIntent =
   | BotIntentBase<"takeMulligan", { targetHandSize: number | null }>
   | BotIntentBase<"toggleAutoPass", { enabled: boolean }>;
 
-export interface BotDecisionFrame {
+export interface BotDecisionFrame
+  extends Omit<DecisionFrame<MatchSeatView, BotLegalAction>, "legalActions"> {
   availableIntentKinds: GameplayIntentKind[];
   catalog: CardCatalogEntry[];
   context: AgentMatchContextV1;
@@ -127,9 +132,11 @@ export interface BotDecisionFrame {
   view: MatchSeatView;
 }
 
-export type BotLegalAction = Omit<LegalActionDescriptorV1, "intent"> & {
-  intent: BotSupportedIntent;
-};
+export type BotLegalAction = LegalActionDescriptor<BotSupportedIntent> &
+  Omit<LegalActionDescriptorV1, "intent" | "kind"> & {
+    intent: BotSupportedIntent;
+    kind: BotSupportedIntent["kind"];
+  };
 
 export interface BotExternalDecisionAction {
   actionId: string;

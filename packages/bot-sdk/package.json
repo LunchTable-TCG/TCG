@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@lunchtable/card-content": "workspace:*",
+    "@lunchtable/games-ai": "workspace:*",
     "@lunchtable/shared-types": "workspace:*"
   }
 }

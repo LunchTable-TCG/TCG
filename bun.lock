@@ -61,6 +61,7 @@
       "name": "@lunchtable/bot-sdk",
       "dependencies": {
         "@lunchtable/card-content": "workspace:*",
+        "@lunchtable/games-ai": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
       },
     },
@@ -77,6 +78,9 @@
         "@lunchtable/games-core": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
       },
+    },
+    "packages/games-ai": {
+      "name": "@lunchtable/games-ai",
     },
     "packages/games-core": {
       "name": "@lunchtable/games-core",
@@ -248,6 +252,8 @@
     "@lunchtable/card-content": ["@lunchtable/card-content@workspace:packages/card-content"],
 
     "@lunchtable/game-core": ["@lunchtable/game-core@workspace:packages/game-core"],
+
+    "@lunchtable/games-ai": ["@lunchtable/games-ai@workspace:packages/games-ai"],
 
     "@lunchtable/games-core": ["@lunchtable/games-core@workspace:packages/games-core"],
 
