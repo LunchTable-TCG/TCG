@@ -52,6 +52,7 @@ if is_convex_running; then
   exec bash ./scripts/run-web-and-bot.sh --host 127.0.0.1 --port 4173
 fi
 
+export LUNCHTABLE_PARENT_PID="$$"
 exec bunx convex dev \
   --until-success \
   --typecheck disable \

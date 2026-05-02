@@ -25,6 +25,8 @@ done
 
 cd "$ROOT"
 
+PARENT_PID="${LUNCHTABLE_PARENT_PID:-$PPID}"
+
 if [[ -f ".env.local" ]]; then
   while IFS= read -r line; do
     if [[ -z "$line" ]] || [[ "$line" == \#* ]]; then
@@ -44,6 +46,12 @@ cleanup() {
   wait "${WEB_PID:-}" "${BOT_PID:-}" 2>/dev/null || true
 }
 
+parent_is_alive() {
+  local current_parent
+  current_parent="$(ps -o ppid= -p "$$" | tr -d '[:space:]')"
+  [[ "$current_parent" == "$PARENT_PID" ]] && kill -0 "$PARENT_PID" 2>/dev/null
+}
+
 trap cleanup EXIT INT TERM
 
 bun run dev:web -- --host "$HOST" --port "$PORT" &
@@ -53,6 +61,10 @@ bun run dev:bot &
 BOT_PID=$!
 
 while kill -0 "$WEB_PID" 2>/dev/null && kill -0 "$BOT_PID" 2>/dev/null; do
+  if ! parent_is_alive; then
+    exit 0
+  fi
+
   sleep 1
 done
 

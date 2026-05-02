@@ -25,13 +25,13 @@
     "test:rules": "vitest run packages/game-core/src",
     "test:replay": "vitest run tests/replay-contract.test.ts tests/replay-golden.test.ts tests/replay-helpers.test.ts",
     "test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts",
-    "test:e2e": "PLAYWRIGHT_E2E_ISOLATED=1 PLAYWRIGHT_E2E_RESET_LOCAL=1 playwright test",
+    "test:e2e": "env -u NO_COLOR PLAYWRIGHT_E2E_ISOLATED=1 PLAYWRIGHT_E2E_RESET_LOCAL=1 playwright test",
     "benchmark:deterministic": "bun run scripts/run-deterministic-benchmarks.ts"
   },
   "dependencies": {
     "@convex-dev/agent": "0.6.1",
     "@noble/curves": "2.0.1",
-    "convex": "1.34.1",
+    "convex": "1.37.0",
     "jose": "6.2.2",
     "viem": "2.47.6"
   },

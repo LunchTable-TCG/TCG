@@ -10,6 +10,6 @@
     "@lunchtable/bot-sdk": "workspace:*",
     "@lunchtable/game-core": "workspace:*",
     "@lunchtable/shared-types": "workspace:*",
-    "convex": "^1.34.1"
+    "convex": "1.37.0"
   }
 }
