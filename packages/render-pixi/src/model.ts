@@ -1,4 +1,9 @@
 import type {
+  RenderCue,
+  RenderCueKind,
+  RenderViewport,
+} from "@lunchtable/games-render";
+import type {
   MatchCardView,
   MatchEventSummary,
   MatchSeatView,
@@ -7,20 +12,11 @@ import type {
   ZoneKind,
 } from "@lunchtable/shared-types";
 
-export interface BoardViewport {
-  height: number;
-  width: number;
-}
+export interface BoardViewport extends RenderViewport {}
 
-export type BoardCueKind =
-  | "combat"
-  | "entry"
-  | "phase"
-  | "stack"
-  | "turn"
-  | "warning";
+export type BoardCueKind = RenderCueKind;
 
-export interface BoardCue {
+export interface BoardCue extends RenderCue {
   accentSeat: SeatId | null;
   eventSequence: number;
   kind: BoardCueKind;

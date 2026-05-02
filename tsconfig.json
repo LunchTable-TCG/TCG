@@ -17,6 +17,7 @@
       "@lunchtable/shared-types": ["packages/shared-types/src/index.ts"],
       "@lunchtable/game-core": ["packages/game-core/src/index.ts"],
       "@lunchtable/games-core": ["packages/games-core/src/index.ts"],
+      "@lunchtable/games-render": ["packages/games-render/src/index.ts"],
       "@lunchtable/games-tabletop": ["packages/games-tabletop/src/index.ts"],
       "@lunchtable/bot-sdk": ["packages/bot-sdk/src/index.ts"],
       "@lunchtable/card-content": ["packages/card-content/src/index.ts"],
