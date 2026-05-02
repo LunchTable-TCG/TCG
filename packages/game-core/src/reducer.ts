@@ -1,3 +1,4 @@
+import type { GameTransition } from "@lunchtable/games-core";
 import type {
   GameplayIntent,
   MatchEvent,
@@ -16,10 +17,8 @@ import {
   listReplacementAbilities,
 } from "./state";
 
-export interface MatchTransition {
-  events: MatchEvent[];
-  nextState: MatchState;
-  outcome: "applied" | "noop" | "rejected";
+export interface MatchTransition
+  extends GameTransition<MatchState, MatchEvent> {
   reason?: MatchTransitionReason;
 }
 

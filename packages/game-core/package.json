@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@lunchtable/games-core": "workspace:*",
     "@lunchtable/shared-types": "workspace:*"
   }
 }

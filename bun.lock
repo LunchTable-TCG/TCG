@@ -74,6 +74,7 @@
     "packages/game-core": {
       "name": "@lunchtable/game-core",
       "dependencies": {
+        "@lunchtable/games-core": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
       },
     },

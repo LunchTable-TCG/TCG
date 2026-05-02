@@ -1,3 +1,7 @@
+import {
+  type DeterministicRandomState,
+  deriveDeterministicNumber as deriveGenericDeterministicNumber,
+} from "@lunchtable/games-core";
 import type {
   CardInstanceId,
   MatchActorType,
@@ -25,10 +29,7 @@ import type {
 } from "./dsl";
 import { CONTINUOUS_LAYERS } from "./dsl";
 
-export interface MatchRandomState {
-  cursor: number;
-  seed: string;
-}
+export interface MatchRandomState extends DeterministicRandomState {}
 
 export interface MatchResourceState extends SeatResourceView {}
 
@@ -338,17 +339,7 @@ export function createMatchState(
 export function deriveDeterministicNumber(
   random: MatchRandomState,
 ): [number, MatchRandomState] {
-  const input = `${random.seed}:${random.cursor}`;
-  let hash = 2166136261;
-  for (const character of input) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  const nextRandom = {
-    cursor: random.cursor + 1,
-    seed: random.seed,
-  };
-  return [(hash >>> 0) / 4294967295, nextRandom];
+  return deriveGenericDeterministicNumber(random);
 }
 
 export function isReplacementAbility(
