@@ -10,6 +10,7 @@
   "dependencies": {
     "@lunchtable/card-content": "workspace:*",
     "@lunchtable/game-core": "workspace:*",
+    "@lunchtable/games-tabletop": "workspace:*",
     "@lunchtable/render-pixi": "workspace:*",
     "@lunchtable/shared-types": "workspace:*",
     "@pixi/react": "^8.0.3",

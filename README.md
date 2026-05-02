@@ -59,6 +59,13 @@ bunx lunchtable validate my-dice-game
 bunx lunchtable eval my-dice-game
 ```
 
+Release proof packs the CLI and runs the packed artifact through `bunx` before
+the full release gates:
+
+```bash
+bun run release:proof
+```
+
 Each scaffold is agent-native from day one: it includes a baseline local agent,
 external HTTP envelopes, MCP tool metadata, an A2A agent card, self-play, and
 agent parity tests. Agents submit legal action ids through the same ruleset path
@@ -96,6 +103,11 @@ bun run dev:bot
 The endpoint receives a validated seat-decision envelope from
 `@lunchtable/bot-sdk` and must reply with one legal `actionId` or `null`. See
 [docs/MILADY_INTEGRATION.md](docs/MILADY_INTEGRATION.md).
+
+Hosted gameplay agents should use the elizaOS Cloud adapter in
+`@lunchtable/games-ai`. It creates elizaOS Cloud agent profiles and
+OpenAI-compatible decision requests, then resolves responses against the known
+legal action catalog before a match intent can be submitted.
 
 ## Convex Local Auth
 

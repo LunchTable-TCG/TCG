@@ -33,6 +33,7 @@ import {
 import { AgentLabPanel } from "./components/agents/AgentLabPanel";
 import { LocalCinematicPreview } from "./components/match/LocalCinematicPreview";
 import { MatchShell as LiveMatchShell } from "./components/match/MatchShell";
+import { PackEditorPanel } from "./components/pack/PackEditorPanel";
 import { ReplayPlayer } from "./components/replay/ReplayPlayer";
 import {
   StatusBanner,
@@ -2789,6 +2790,7 @@ export function App() {
         <nav className="site-nav-links" aria-label="Primary">
           <a href="#enter">Enter</a>
           <a href="#arsenal">Arsenal</a>
+          <a href="#builder">Builder</a>
           <a href="#play">Play</a>
           <a href="#systems">Systems</a>
         </nav>
@@ -3057,6 +3059,10 @@ export function App() {
             pendingAction={deckAction}
           />
         </div>
+      </section>
+
+      <section className="panel panel-secondary site-section" id="builder">
+        <PackEditorPanel />
       </section>
 
       <section

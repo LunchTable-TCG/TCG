@@ -39,6 +39,14 @@ Every live match seat binds to exactly one actor. A seat never changes transport
 - current implementation path: `apps/bot-runner` `BOT_POLICY_MODE=external-http`
   with legal-action envelopes from `packages/bot-sdk`
 
+### elizaOS Cloud Hosted Agent Adapter
+
+- use `packages/games-ai/src/eliza-cloud.ts` for hosted gameplay agents
+- provision elizaOS Cloud agents with gameplay profile metadata
+- send OpenAI-compatible chat requests containing scoped views and legal action ids
+- parse JSON responses containing `actionId`
+- resolve every hosted response through the known action catalog before submission
+
 ### Convex Agent Component
 
 Use for:

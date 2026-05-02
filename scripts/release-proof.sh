@@ -39,7 +39,15 @@ bootstrap_log_requires_local_reset() {
   rg -q 'This deployment is using an older version of the Convex backend\. Upgrade now\?' "$log_path"
 }
 
-bootstrap_local_convex() {
+stop_convex_backend() {
+  if [[ -n "$CONVEX_PID" ]]; then
+    kill "$CONVEX_PID" >/dev/null 2>&1 || true
+    wait "$CONVEX_PID" >/dev/null 2>&1 || true
+    CONVEX_PID=""
+  fi
+}
+
+bootstrap_local_convex_once() {
   local bootstrap_log
   bootstrap_log="$(mktemp)"
 
@@ -69,7 +77,21 @@ bootstrap_local_convex() {
   return 1
 }
 
-start_convex_backend() {
+bootstrap_local_convex() {
+  local attempt
+
+  for attempt in 1 2 3; do
+    if bootstrap_local_convex_once; then
+      return 0
+    fi
+    echo "Convex bootstrap failed (attempt $attempt/3); retrying." >&2
+    sleep 2
+  done
+
+  return 1
+}
+
+start_convex_backend_once() {
   local startup_log
   startup_log="$(mktemp)"
 
@@ -95,6 +117,10 @@ start_convex_backend() {
         bunx convex dev --typecheck disable --tail-logs disable >"$CONVEX_LOG" 2>&1 &
         CONVEX_PID=$!
       fi
+      if ! kill -0 "$CONVEX_PID" >/dev/null 2>&1; then
+        rm -f "$startup_log"
+        return 1
+      fi
     fi
     sleep 1
   done
@@ -103,11 +129,23 @@ start_convex_backend() {
   return 1
 }
 
+start_convex_backend() {
+  local attempt
+
+  for attempt in 1 2 3; do
+    if start_convex_backend_once; then
+      return 0
+    fi
+    stop_convex_backend
+    echo "Convex backend start failed (attempt $attempt/3); retrying." >&2
+    sleep 2
+  done
+
+  return 1
+}
+
 cleanup() {
-  if [[ -n "$CONVEX_PID" ]]; then
-    kill "$CONVEX_PID" >/dev/null 2>&1 || true
-    wait "$CONVEX_PID" >/dev/null 2>&1 || true
-  fi
+  stop_convex_backend
 }
 
 trap cleanup EXIT
@@ -143,6 +181,9 @@ bunx convex codegen
 
 echo "==> Ensuring Playwright Chromium"
 ensure_playwright_chromium
+
+echo "==> Proving lunchtable CLI package"
+./scripts/proof-lunchtable-cli-package.sh
 
 echo "==> Running full gate"
 ./scripts/phase-check.sh full

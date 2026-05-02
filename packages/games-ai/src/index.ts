@@ -38,3 +38,23 @@ export {
 export type { ExternalDecisionEnvelope } from "./envelope";
 export { createExternalDecisionEnvelope } from "./envelope";
 export { resolveExternalActionId } from "./external";
+export type {
+  CreateElizaCloudHostedAgentClientInput,
+  ElizaCloudAgentProfile,
+  ElizaCloudAgentProfileInput,
+  ElizaCloudCreateAgentResponse,
+  ElizaCloudDecisionRequest,
+  ElizaCloudDecisionRequestBody,
+  ElizaCloudDecisionRequestInput,
+  ElizaCloudDecisionResponse,
+  ElizaCloudFetch,
+  ElizaCloudFetchInit,
+  ElizaCloudFetchResponse,
+  ElizaCloudChatMessage,
+} from "./eliza-cloud";
+export {
+  createElizaCloudAgentProfile,
+  createElizaCloudDecisionRequest,
+  createElizaCloudHostedAgentClient,
+  resolveElizaCloudDecisionResponse,
+} from "./eliza-cloud";

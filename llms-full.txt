@@ -29,8 +29,8 @@ Agents submit legal action ids, never arbitrary state mutations. The runtime res
 
 - `@lunchtable/games-core` owns deterministic state, ruleset contracts, replay, lifecycle, and RNG.
 - `@lunchtable/games-tabletop` owns seats, zones, tabletop components, visibility, and generated pack types.
-- `@lunchtable/games-ai` owns legal action descriptors, observation frames, external envelopes, MCP and A2A metadata helpers, policies, and agent-turn execution.
-- `@lunchtable/games-render` owns renderer-neutral scene, camera, interaction, and cue models.
+- `@lunchtable/games-ai` owns legal action descriptors, observation frames, external envelopes, MCP, A2A, elizaOS Cloud hosted-agent adapters, policies, and agent-turn execution.
+- `@lunchtable/games-render` owns renderer-neutral scene, camera, interaction, cue models, and renderer adapter descriptors.
 
 Generic packages must not import TCG rules, card content, Convex, React, Pixi, Three.js, or app code.
 
@@ -66,3 +66,9 @@ Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.
 - `bunx lunchtable validate <directory>` validates portable generated pack files.
 - `bunx lunchtable eval <directory>` checks pack validity, agent tests, LLM maps, and skills.
 - `--json` emits machine-readable results for both commands.
+
+## Release And Hosted-Agent Proof
+
+- `scripts/proof-lunchtable-cli-package.sh` packs `lunchtable` and runs the tarball through `bunx --package`.
+- Browser pack editing starts from `apps/web/src/components/pack/PackEditorPanel.tsx` and the reusable editor model in `@lunchtable/games-tabletop`.
+- Hosted gameplay agents for elizaOS Cloud start from `packages/games-ai/src/eliza-cloud.ts`; responses must still resolve to known legal action ids.

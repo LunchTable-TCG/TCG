@@ -3,19 +3,17 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "lunchtable": "./src/index.ts"
+    "lunchtable": "./dist/index.js"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
-  "dependencies": {
-    "@lunchtable/games-tabletop": "workspace:*"
-  },
-  "files": ["src", "README.md"],
+  "files": ["dist", "README.md"],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun"
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "prepack": "bun run build"
   }
 }

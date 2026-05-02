@@ -316,6 +316,7 @@ body {
 
 .site-card-grid,
 .site-mode-grid,
+.pack-editor-grid,
 .site-arena-grid,
 .site-footer-panel {
   display: grid;
@@ -381,6 +382,53 @@ body {
 .site-arena-stage {
   display: grid;
   gap: 1rem;
+}
+
+.pack-editor-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.pack-editor-header,
+.pack-editor-files {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pack-editor-status,
+.pack-editor-files span {
+  border-radius: 999px;
+  border: 1px solid rgba(68, 41, 13, 0.14);
+  padding: 0.45rem 0.7rem;
+  font-weight: 700;
+}
+
+.pack-editor-status-valid {
+  background: rgba(61, 118, 79, 0.12);
+  color: #244f32;
+}
+
+.pack-editor-status-invalid {
+  background: rgba(146, 47, 42, 0.12);
+  color: #7b231f;
+}
+
+.pack-editor-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pack-editor-grid > div {
+  display: grid;
+  gap: 0.3rem;
+  min-height: 6rem;
+  align-content: center;
+  border: 1px solid rgba(46, 28, 10, 0.12);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(255, 251, 243, 0.64);
 }
 
 .site-lobby-panel {

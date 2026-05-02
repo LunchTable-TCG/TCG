@@ -23,8 +23,9 @@ This does the following in order:
 2. boots a local Convex backend if one is not already running
 3. regenerates Convex bindings with `bunx convex codegen`
 4. ensures local Playwright Chromium is installed when browser tests are present
-5. runs `./scripts/phase-check.sh full`
-6. runs `./scripts/phase-check.sh regression`
+5. proves the packed `lunchtable` CLI through `bunx --package`
+6. runs `./scripts/phase-check.sh full`
+7. runs `./scripts/phase-check.sh regression`
 
 The script prints the validated commit hash at the end. If the working tree is
 dirty, it warns instead of silently treating that state as release-ready. If a

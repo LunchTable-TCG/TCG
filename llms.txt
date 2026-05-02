@@ -16,6 +16,7 @@
 - [packages/games-tabletop/src/index.ts](packages/games-tabletop/src/index.ts): Tabletop seats, objects, zones, packs, and visibility.
 - [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, protocol, and parity helpers.
 - [packages/games-render/src/index.ts](packages/games-render/src/index.ts): Renderer-neutral scene and camera primitives.
+- [apps/web/src/components/pack/PackEditorPanel.tsx](apps/web/src/components/pack/PackEditorPanel.tsx): Browser pack editor panel model and surface.
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts): `lunchtable init` scaffold generator.
 - [packages/cli/src/pack.ts](packages/cli/src/pack.ts): `lunchtable validate` and `lunchtable eval` portable pack checks.
 

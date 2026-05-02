@@ -1,29 +1,29 @@
 {
-  "generatedAt": 1776792021146,
+  "generatedAt": 1777749096346,
   "measurements": [
     {
-      "averageMs": 0.075,
+      "averageMs": 0.028,
       "iterations": 200,
-      "maxMs": 2.565,
-      "minMs": 0.024,
+      "maxMs": 1.839,
+      "minMs": 0.009,
       "name": "agent-context-build",
-      "totalMs": 14.977
+      "totalMs": 5.54
     },
     {
-      "averageMs": 0.056,
+      "averageMs": 0.022,
       "iterations": 200,
-      "maxMs": 0.403,
-      "minMs": 0.028,
+      "maxMs": 0.113,
+      "minMs": 0.012,
       "name": "legal-action-catalog",
-      "totalMs": 11.196
+      "totalMs": 4.309
     },
     {
-      "averageMs": 2.322,
+      "averageMs": 0.913,
       "iterations": 40,
-      "maxMs": 8.689,
-      "minMs": 1.122,
+      "maxMs": 7.975,
+      "minMs": 0.438,
       "name": "scripted-current-format-match",
-      "totalMs": 92.878
+      "totalMs": 36.522
     }
   ],
   "suite": "agent-playable-current-format",

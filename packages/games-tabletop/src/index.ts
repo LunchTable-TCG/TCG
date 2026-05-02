@@ -16,6 +16,19 @@ export type {
 } from "./components";
 export { createTabletopComponentIndex } from "./components";
 export type {
+  PortablePackEditorDraft,
+  PortablePackEditorExport,
+  PortablePackEditorInput,
+  PortablePackEditorSummary,
+  PortablePackObjectsDraft,
+  PortablePackRulesetDraft,
+} from "./editor";
+export {
+  addObjectToPortablePackDraft,
+  createPortablePackEditorDraft,
+  exportPortablePackDraft,
+} from "./editor";
+export type {
   GamePack,
   GamePackExtensionLevel,
   GamePackScenario,

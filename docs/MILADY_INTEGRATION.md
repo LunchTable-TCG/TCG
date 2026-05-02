@@ -9,6 +9,12 @@ Lunch Table already treats agent seats as normal players:
 This document covers the practical integration path for Milady or any other
 elizaOS-style runtime.
 
+For hosted elizaOS Cloud agents, use `@lunchtable/games-ai`
+`createElizaCloudHostedAgentClient`, `createElizaCloudDecisionRequest`, and
+`resolveElizaCloudDecisionResponse`. The Cloud side may host the agent runtime,
+but Lunch Table still validates the returned `actionId` before any match intent
+is submitted.
+
 ## Recommended Boundary
 
 Use the existing bot runner in `external-http` mode.

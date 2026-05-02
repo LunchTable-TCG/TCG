@@ -1,4 +1,13 @@
 export {
+  createDefaultRendererAdapters,
+  createRendererAdapterRegistry,
+} from "./adapters";
+export type {
+  RendererAdapterDescriptor,
+  RendererAdapterKind,
+  RendererAdapterRegistry,
+} from "./adapters";
+export {
   createCameraHint,
   createInteractionHint,
 } from "./camera";
