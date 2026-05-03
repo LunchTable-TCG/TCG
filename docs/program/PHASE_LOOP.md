@@ -9,7 +9,7 @@ This repo uses a repeatable execution loop for each implementation phase:
 5. Run regression checks.
 6. Create a structured checkpoint commit.
 7. Push if a remote exists.
-8. Advance `SESSION.md` to the next phase.
+8. Advance `docs/program/SESSION.md` to the next phase.
 9. Repeat.
 
 ## Program Docs
@@ -23,7 +23,7 @@ plane lives under `docs/program/`:
 - `docs/program/BENCHMARK_BUDGETS.md`
 
 Before handoff or merge of Phase 19-24 work, rerun the `project-health` skill
-against those docs and record the result in `SESSION.md`.
+against those docs and record the result in `docs/program/SESSION.md`.
 
 ## Commands
 
@@ -73,7 +73,7 @@ Run the full loop in one command:
 ## Expected Behavior
 
 - `phase-check.sh` writes logs under `.phase-loop/logs/`.
-- `checkpoint.sh` stages all changes, creates a structured commit, and then updates `SESSION.md` with the last checkpoint hash as an uncommitted change.
+- `checkpoint.sh` stages all changes, creates a structured commit, and then updates `docs/program/SESSION.md` with the last checkpoint hash as an uncommitted change.
 - `advance-phase.sh` marks the current phase complete, promotes the next pending phase to in progress, and updates the top-level session header.
 - `phase-loop.sh` runs the gates in order, checkpoints, optionally pushes, and optionally advances.
 

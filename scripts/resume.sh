@@ -3,10 +3,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SESSION_FILE="$ROOT/SESSION.md"
+SESSION_FILE="$ROOT/docs/program/SESSION.md"
 
 if [[ ! -f "$SESSION_FILE" ]]; then
-  echo "SESSION.md not found at $ROOT"
+  echo "docs/program/SESSION.md not found at $ROOT"
   exit 1
 fi
 

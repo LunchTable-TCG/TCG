@@ -26,7 +26,7 @@ stays playable as cards and workflows evolve.
 
 **Scope**
 - Create and maintain the program doc set under `docs/program/`.
-- Extend `IMPLEMENTATION_PHASES.md`, `SESSION.md`, and the phase-loop scripts so
+- Extend `docs/program/IMPLEMENTATION_PHASES.md`, `docs/program/SESSION.md`, and the phase-loop scripts so
   they point at the active program docs.
 - Add contract tests that lock doc references and gate wiring.
 
@@ -146,7 +146,7 @@ stays playable as cards and workflows evolve.
 **Required Artifacts**
 - `bun run benchmark:deterministic`
 - Regression-gate documentation and contract tests
-- Health-audit notes captured in `SESSION.md` or the active churn tracker
+- Health-audit notes captured in `docs/program/SESSION.md` or the active churn tracker
 
 **Exit Criteria**
 - Deterministic benchmark budgets are enforced locally.
@@ -156,7 +156,7 @@ stays playable as cards and workflows evolve.
 
 ## Operating Rules
 
-- Update [CHURN_TRACKER.md](./CHURN_TRACKER.md) and `SESSION.md` whenever the
+- Update [CHURN_TRACKER.md](./CHURN_TRACKER.md) and `docs/program/SESSION.md` whenever the
   active phase changes meaningfully.
 - Treat [VERIFICATION_MATRIX.md](./VERIFICATION_MATRIX.md) as the source of
   truth for merge-gating commands.
@@ -164,4 +164,4 @@ stays playable as cards and workflows evolve.
   for deterministic benchmark expectations.
 - Before handoff or merge, rerun the `project-health` skill against the active
   program docs when that skill is available. Otherwise, record an equivalent
-  health audit in `SESSION.md`.
+  health audit in `docs/program/SESSION.md`.

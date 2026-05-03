@@ -5,12 +5,18 @@ import { describe, expect, it } from "vitest";
 
 const rootDir = process.cwd();
 const readmePath = join(rootDir, "README.md");
-const implementationPhasesPath = join(rootDir, "IMPLEMENTATION_PHASES.md");
-const sessionPath = join(rootDir, "SESSION.md");
-const phaseLoopDocPath = join(rootDir, "docs", "PHASE_LOOP.md");
+const implementationPhasesPath = join(
+  rootDir,
+  "docs",
+  "program",
+  "IMPLEMENTATION_PHASES.md",
+);
+const sessionPath = join(rootDir, "docs", "program", "SESSION.md");
+const phaseLoopDocPath = join(rootDir, "docs", "program", "PHASE_LOOP.md");
 const generatedAuthoringDocPath = join(
   rootDir,
   "docs",
+  "platform",
   "GENERATED_GAME_AUTHORING.md",
 );
 const resumeScriptPath = join(rootDir, "scripts", "resume.sh");
@@ -101,7 +107,9 @@ describe("program docs contract", () => {
     ).toBe(true);
 
     expect(readFile(llmsTxtPath)).toContain("# Lunch Table Games");
-    expect(readFile(llmsTxtPath)).toContain("docs/GENERATED_GAME_AUTHORING.md");
+    expect(readFile(llmsTxtPath)).toContain(
+      "docs/platform/GENERATED_GAME_AUTHORING.md",
+    );
     expect(readFile(llmsFullTxtPath)).toContain(
       "## Agent-Native Starter Contract",
     );
@@ -117,7 +125,7 @@ describe("program docs contract", () => {
     const readme = readFile(readmePath);
     const generatedAuthoringDoc = readFile(generatedAuthoringDocPath);
 
-    expect(readme).toContain("docs/GENERATED_GAME_AUTHORING.md");
+    expect(readme).toContain("docs/platform/GENERATED_GAME_AUTHORING.md");
     expect(generatedAuthoringDoc).toContain("Generated Game Authoring");
     expect(generatedAuthoringDoc).toContain(
       "examples/generated-game-authoring.ts",

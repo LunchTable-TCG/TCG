@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const rootDir = process.cwd();
 const packageJsonPath = join(rootDir, "package.json");
 const readmePath = join(rootDir, "README.md");
-const releaseDocPath = join(rootDir, "docs", "RELEASE.md");
+const releaseDocPath = join(rootDir, "docs", "platform", "RELEASE.md");
 const releaseScriptPath = join(rootDir, "scripts", "release-proof.sh");
 const releaseWorkflowPath = join(
   rootDir,

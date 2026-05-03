@@ -327,7 +327,7 @@
 ## Phase 19: Program Control Plane and Source of Truth
 **Type**: Planning
 **Estimated**: 4 hours
-**Files**: `docs/program/*`, `README.md`, `IMPLEMENTATION_PHASES.md`, `SESSION.md`, `scripts/*.sh`, `tests/program-docs-contract.test.ts`
+**Files**: `docs/program/*`, `README.md`, `docs/program/IMPLEMENTATION_PHASES.md`, `docs/program/SESSION.md`, `scripts/*.sh`, `tests/program-docs-contract.test.ts`
 
 **Tasks**:
 - [ ] Create the program source-of-truth docs under `docs/program/`
@@ -338,7 +338,7 @@
 **Verification Criteria**:
 - [ ] `resume.sh` points directly at the active program docs
 - [ ] Workflow contract tests cover the program-doc references
-- [ ] `SESSION.md` and `docs/program/CHURN_TRACKER.md` agree on the active phase
+- [ ] `docs/program/SESSION.md` and `docs/program/CHURN_TRACKER.md` agree on the active phase
 
 **Exit Criteria**: The repo can resume, track, and hand off the Phase 19-24 program without manual explanation.
 

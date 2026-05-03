@@ -22,7 +22,11 @@ function readFile(path: string) {
 describe("GitHub platform setup", () => {
   it("frames the repository as the Lunch Table Games library", () => {
     const readme = readFile(join(rootDir, "README.md"));
-    const githubSetup = readFile(join(rootDir, "docs", "GITHUB_SETUP.md"));
+    const docsReadme = readFile(join(rootDir, "docs", "README.md"));
+    const packagesReadme = readFile(join(rootDir, "packages", "README.md"));
+    const githubSetup = readFile(
+      join(rootDir, "docs", "platform", "GITHUB_SETUP.md"),
+    );
 
     expect(readme).toContain("# Lunch Table Games");
     expect(readme).toContain("Browser-first game library");
@@ -30,14 +34,24 @@ describe("GitHub platform setup", () => {
     expect(readme).not.toContain(
       "Web-first trading card game platform built with",
     );
+    expect(readme).toContain("packages/README.md");
+    expect(readme).toContain("docs/README.md");
+    expect(docsReadme).toContain("docs/platform/");
+    expect(docsReadme).toContain("docs/product/");
+    expect(docsReadme).toContain("docs/program/");
+    expect(packagesReadme).toContain("## Public Packages");
+    expect(packagesReadme).toContain("## Proof And Support Packages");
+    expect(packagesReadme).toContain("Generic `@lunchtable/games-*` packages");
     expect(githubSetup).toContain("Lunch Table Games library home");
     expect(githubSetup).toContain("not only the original trading card game");
   });
 
   it("documents every public package in GitHub and release setup", () => {
     const readme = readFile(join(rootDir, "README.md"));
-    const release = readFile(join(rootDir, "docs", "RELEASE.md"));
-    const githubSetup = readFile(join(rootDir, "docs", "GITHUB_SETUP.md"));
+    const release = readFile(join(rootDir, "docs", "platform", "RELEASE.md"));
+    const githubSetup = readFile(
+      join(rootDir, "docs", "platform", "GITHUB_SETUP.md"),
+    );
 
     for (const packageName of publicPackages) {
       expect(readme).toContain(packageName);
@@ -75,7 +89,9 @@ describe("GitHub platform setup", () => {
   });
 
   it("documents required GitHub protections and package automation", () => {
-    const githubSetup = readFile(join(rootDir, "docs", "GITHUB_SETUP.md"));
+    const githubSetup = readFile(
+      join(rootDir, "docs", "platform", "GITHUB_SETUP.md"),
+    );
     const phaseGates = readFile(
       join(rootDir, ".github", "workflows", "phase-gates.yml"),
     );

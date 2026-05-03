@@ -1,4 +1,4 @@
-# Lunchtable Architecture Spec
+# Lunch Table Games Architecture Spec
 
 **Last updated**: 2026-04-03
 **Scope**: Web-first trading card game platform with realtime online play, deterministic rules, replay support, and AI seats with human parity.
@@ -57,13 +57,24 @@ convex/
   agents.ts
   internal/
 packages/
-  game-core/              Pure deterministic rules engine
-  card-content/           Typed card definitions, formats, sets, keywords
-  render-pixi/            Board, hand, stack, particles, shaders, animations
-  shared-types/           Commands, DTOs, telemetry event names
-  bot-sdk/                Seat view adapters, intent helpers, evaluation harness
+  games-core/             Deterministic state, RNG, intents, events, replay
+  games-tabletop/         Seats, zones, objects, decks, dice, visibility
+  games-ai/               Legal actions, agent envelopes, SSE/A2A helpers
+  games-api/              Agent-facing HTTP, SSE, A2A, and MCP API adapters
+  games-assets/           Sprite, tilemap, timeline, atlas, and asset bundles
+  games-render/           Renderer-neutral scenes, cameras, cues, interactions
+  games-side-scroller/    Two-seat deterministic side-scroller ruleset
+  cli/                    bunx lunchtable init, validation, and eval
+  game-core/              Current TCG rules engine proof surface
+  card-content/           Typed TCG card definitions, formats, decks
+  render-pixi/            Browser proof renderer
+  shared-types/           Convex and app DTO contracts
+  bot-sdk/                TCG seat adapters and evaluation harness
 docs/
-  *.md
+  platform/               Reusable library architecture and operations
+  product/                Browser proof product specs
+  program/                Implementation phases, status, and verification
+  superpowers/            Local methodology docs
 ```
 
 ## Core Boundaries

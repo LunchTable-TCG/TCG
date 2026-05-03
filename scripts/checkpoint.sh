@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SESSION_FILE="$ROOT/SESSION.md"
+SESSION_FILE="$ROOT/docs/program/SESSION.md"
 
 STATUS=""
 STAGE=""
@@ -19,7 +19,7 @@ Options:
   --status "<status>"   Required. Commit status, for example "Complete" or "In Progress"
   --stage "<stage>"     Optional. SESSION current stage
   --summary "<text>"    Required. Session summary for the checkpoint commit
-  --next "<text>"       Optional. Next action to store in SESSION.md
+  --next "<text>"       Optional. Next action to store in docs/program/SESSION.md
   --push                Optional. Push after commit if a remote exists
 EOF
   exit 1
@@ -143,4 +143,4 @@ if [[ $PUSH -eq 1 ]]; then
 fi
 
 echo "Checkpoint commit created: ${COMMIT_HASH}"
-echo "SESSION.md updated with the checkpoint hash as an uncommitted change."
+echo "docs/program/SESSION.md updated with the checkpoint hash as an uncommitted change."

@@ -7,7 +7,7 @@ candidate branch.
 
 - local dependencies installed with `bun install`
 - local Convex auth variables available through `.env.local`
-- no uncommitted code changes except the intentional local `SESSION.md` handoff
+- no uncommitted code changes except the intentional local `docs/program/SESSION.md` handoff
 
 ## Release Proof
 

@@ -32,8 +32,16 @@ packages/
   render-pixi/
 convex/
 docs/
+  platform/
+  product/
+  program/
+  superpowers/
 scripts/
 ```
+
+The package map is documented in
+[packages/README.md](packages/README.md). The docs map is documented in
+[docs/README.md](docs/README.md).
 
 ## Core Scripts
 
@@ -72,7 +80,7 @@ bunx lunchtable eval my-dice-game
 
 Generated-game authoring now has an executable workflow for browser editors,
 CLIs, renderers, and hosted agents. See
-[docs/GENERATED_GAME_AUTHORING.md](docs/GENERATED_GAME_AUTHORING.md) and
+[docs/platform/GENERATED_GAME_AUTHORING.md](docs/platform/GENERATED_GAME_AUTHORING.md) and
 [examples/generated-game-authoring.ts](examples/generated-game-authoring.ts).
 
 Release proof packs the CLI and runs the packed artifact through `bunx` before
@@ -129,7 +137,7 @@ bun run dev:bot
 
 The endpoint receives a validated seat-decision envelope from
 `@lunchtable/bot-sdk` and must reply with one legal `actionId` or `null`. See
-[docs/MILADY_INTEGRATION.md](docs/MILADY_INTEGRATION.md).
+[docs/platform/MILADY_INTEGRATION.md](docs/platform/MILADY_INTEGRATION.md).
 
 Hosted gameplay agents should use the elizaOS Cloud adapter in
 `@lunchtable/games-ai`. It creates elizaOS Cloud agent profiles and
@@ -157,7 +165,7 @@ locally by default. Set `VITE_ASSET_CDN_BASE_URL` to override that root with a
 CDN. When the selected asset root includes `cards/<card-id>/summon.glb`, the
 summon portal upgrades from the procedural glyph to that model and uses an
 optional `cards/<card-id>/poster.*` backdrop when present. Asset sources and
-licenses are listed in [docs/CINEMATIC_ASSETS.md](docs/CINEMATIC_ASSETS.md).
+licenses are listed in [docs/product/CINEMATIC_ASSETS.md](docs/product/CINEMATIC_ASSETS.md).
 
 ## Phase 16 Agent Lab
 
@@ -174,7 +182,7 @@ works locally without any external model credentials.
 
 ## Session Loop
 
-Use the phase loop scripts to work through `IMPLEMENTATION_PHASES.md`:
+Use the phase loop scripts to work through `docs/program/IMPLEMENTATION_PHASES.md`:
 
 ```bash
 ./scripts/resume.sh
@@ -205,7 +213,7 @@ Run the release-ready gate sequence and local Convex bootstrap in one command:
 bun run release:proof
 ```
 
-The full release handoff is documented in [docs/RELEASE.md](docs/RELEASE.md).
+The full release handoff is documented in [docs/platform/RELEASE.md](docs/platform/RELEASE.md).
 
 Generate release notes or cut an annotated tag locally:
 
@@ -226,7 +234,7 @@ same packages to npm trusted publishing after their package records exist.
 
 The GitHub repo is configured as the Lunch Table Games library home, not only
 as a TCG app repo. The expected repo health setup is documented in
-[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) and covered by workflow contract
+[docs/platform/GITHUB_SETUP.md](docs/platform/GITHUB_SETUP.md) and covered by workflow contract
 tests. It includes Phase Gates for every push/PR, tag-based release publishing,
 library-wide issue/PR templates, Dependabot for Actions and npm manifests, repo
 topics, and branch protection for `main`.

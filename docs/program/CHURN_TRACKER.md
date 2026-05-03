@@ -1,7 +1,7 @@
 # Agent-Playable Current-Format Churn Tracker
 
 This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
-`SESSION.md`.
+`docs/program/SESSION.md`.
 
 ## Current Churn
 
@@ -26,7 +26,7 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 
 - [x] Create program docs under `docs/program/`
 - [x] Extend the repo phase model to cover Phases 19-24
-- [x] Point `README.md`, `SESSION.md`, and `docs/PHASE_LOOP.md` at the program docs
+- [x] Point `README.md`, `docs/program/SESSION.md`, and `docs/program/PHASE_LOOP.md` at the program docs
 - [x] Rerun workflow contract tests after the doc contract lands
 
 ## Phase 20 Checklist
@@ -75,4 +75,4 @@ This tracker mirrors the active Phase 19-24 program state. Keep it aligned with
 - **Recorded At**: 2026-04-21
 - **Release Proof**: `bun run release:proof`
 - **Regression Gate**: `./scripts/phase-check.sh regression`
-- **Health Audit**: recorded in `SESSION.md`
+- **Health Audit**: recorded in `docs/program/SESSION.md`

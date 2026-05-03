@@ -70,7 +70,7 @@ embedding a private copy of runner physics. New generated runner packs should
 start from `sideScrollerStarterConfig`, `createSideScrollerRuleset`, and
 `createSideScrollerComponents`.
 
-See `docs/GENERATED_GAME_AUTHORING.md` and `examples/generated-game-authoring.ts` before extending generated-game authoring behavior.
+See `docs/platform/GENERATED_GAME_AUTHORING.md` and `examples/generated-game-authoring.ts` before extending generated-game authoring behavior.
 
 ## Verification Commands
 

@@ -9,7 +9,7 @@ Use when an agent needs to join a seat, inspect a scoped view, choose a legal ac
 
 ## Workflow
 
-1. Read `llms.txt`, `llms-full.txt`, and `docs/AGENT_PARITY.md`.
+1. Read `llms.txt`, `llms-full.txt`, and `docs/platform/AGENT_PARITY.md`.
 2. Build or obtain the scoped seat view for the active seat.
 3. Use the current legal action catalog; choose one `actionId`, or choose `null`.
 4. Resolve external choices through the legal-action resolver before submission.

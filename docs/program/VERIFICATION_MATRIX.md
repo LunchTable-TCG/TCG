@@ -60,4 +60,4 @@ Before handoff or merge of Phase 19-24 work:
 - rerun the `project-health` skill against `docs/program/EXECUTION_PLAN.md`
   when that skill is available, otherwise perform an equivalent manual health
   audit
-- record the health-audit outcome in `SESSION.md`
+- record the health-audit outcome in `docs/program/SESSION.md`
