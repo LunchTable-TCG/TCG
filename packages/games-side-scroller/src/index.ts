@@ -15,6 +15,13 @@ export type {
   SideScrollerSeatId,
   SideScrollerState,
 } from "./engine";
+export type {
+  SideScrollerSelfPlayInput,
+  SideScrollerSelfPlayResult,
+  SideScrollerSelfPlayStep,
+  SideScrollerStudioFrame,
+  SideScrollerStudioSeat,
+} from "./studio";
 export type { SideScrollerAssetBundle } from "@lunchtable/games-assets";
 export {
   applySideScrollerIntent,
@@ -26,3 +33,7 @@ export {
   sideScrollerStarterConfig,
   stepSideScrollerWorld,
 } from "./engine";
+export {
+  createSideScrollerStudioFrame,
+  runSideScrollerSelfPlay,
+} from "./studio";

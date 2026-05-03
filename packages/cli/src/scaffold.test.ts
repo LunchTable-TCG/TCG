@@ -273,6 +273,8 @@ describe("lunchtable init scaffolding", () => {
       expect(gameSource).toContain("@lunchtable/games-side-scroller");
       expect(gameSource).toContain("createSideScrollerComponents");
       expect(gameSource).toContain("createSideScrollerRuleset");
+      expect(gameSource).toContain("createSideScrollerStudioPreview");
+      expect(gameSource).toContain("runSideScrollerSelfPlay");
       expect(gameSource).toContain("sideScrollerStarterConfig");
 
       const gameTestSource = await readFile(
@@ -281,6 +283,9 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(gameTestSource).toContain(
         "advances both runners through legal side-scroller actions",
+      );
+      expect(gameTestSource).toContain(
+        "provides a studio preview for humans and agents",
       );
       expect(gameTestSource).toContain(
         "renders runners, hazards, collectibles, and the goal",
@@ -345,6 +350,8 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(apiServerSource).toContain("/api/assets/atlas");
       expect(apiServerSource).toContain("/api/assets/generation-request");
+      expect(apiServerSource).toContain("/api/studio/preview");
+      expect(apiServerSource).toContain("createSideScrollerStudioPreview");
       expect(apiServerSource).toContain("requestImageGeneration");
     } finally {
       await rm(root, { force: true, recursive: true });

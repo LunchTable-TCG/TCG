@@ -1,0 +1,210 @@
+import { validateAssetBundle } from "@lunchtable/games-assets";
+import type { Viewport } from "@lunchtable/games-core";
+import type { RenderSceneModel } from "@lunchtable/games-render";
+
+import {
+  type SideScrollerEngineConfig,
+  type SideScrollerEvent,
+  type SideScrollerIntent,
+  type SideScrollerSeatId,
+  type SideScrollerState,
+  applySideScrollerIntent,
+  createSideScrollerInitialState,
+  deriveSideScrollerRenderScene,
+  listSideScrollerLegalIntents,
+} from "./engine";
+
+export interface SideScrollerStudioFrame {
+  assets: {
+    boundObjectCount: number;
+    boundObjectIds: string[];
+    missingBindingObjectIds: string[];
+    ready: boolean;
+    spriteCount: number;
+  };
+  level: {
+    collectibleCount: number;
+    goalCount: number;
+    hazardCount: number;
+    height: number;
+    id: string;
+    name: string;
+    platformCount: number;
+    runnerCount: number;
+    width: number;
+  };
+  scene: {
+    cameraTarget: RenderSceneModel["camera"] extends null | undefined
+      ? null
+      : { x: number; y: number; z: number } | null;
+    interactiveObjectIds: string[];
+    objectCount: number;
+  };
+  seats: SideScrollerStudioSeat[];
+}
+
+export interface SideScrollerStudioSeat {
+  agentReady: boolean;
+  health: number;
+  legalIntentKinds: Array<SideScrollerIntent["kind"]>;
+  score: number;
+  seatId: SideScrollerSeatId;
+  x: number;
+  y: number;
+}
+
+export interface SideScrollerSelfPlayInput {
+  maxTurns: number;
+  state?: SideScrollerState;
+}
+
+export interface SideScrollerSelfPlayStep {
+  action: SideScrollerIntent;
+  events: SideScrollerEvent[];
+  seatId: SideScrollerSeatId;
+  stateVersion: number;
+  tick: number;
+}
+
+export interface SideScrollerSelfPlayResult {
+  completed: boolean;
+  finalState: SideScrollerState;
+  steps: SideScrollerSelfPlayStep[];
+  winnerSeatId: SideScrollerSeatId | null;
+}
+
+export function createSideScrollerStudioFrame(
+  config: SideScrollerEngineConfig,
+  viewport: Viewport,
+  state = createSideScrollerInitialState(config),
+): SideScrollerStudioFrame {
+  const scene = deriveSideScrollerRenderScene(config, state, viewport);
+  const boundObjectIds = scene.objects
+    .filter((object) => object.asset !== undefined)
+    .map((object) => object.id);
+  const missingBindingObjectIds = scene.objects
+    .filter((object) => object.asset === undefined)
+    .map((object) => object.id);
+  const assetValidation =
+    config.assets === undefined ? null : validateAssetBundle(config.assets);
+
+  return {
+    assets: {
+      boundObjectCount: boundObjectIds.length,
+      boundObjectIds,
+      missingBindingObjectIds,
+      ready: assetValidation?.ok ?? false,
+      spriteCount: config.assets?.sprites.length ?? 0,
+    },
+    level: {
+      collectibleCount: config.level.collectibles.length,
+      goalCount: config.level.goals.length,
+      hazardCount: config.level.hazards.length,
+      height: config.level.height,
+      id: config.level.id,
+      name: config.level.name,
+      platformCount: config.level.platforms.length,
+      runnerCount: config.level.runners.length,
+      width: config.level.width,
+    },
+    scene: {
+      cameraTarget: scene.camera?.target ?? null,
+      interactiveObjectIds: scene.objects
+        .filter((object) => object.interactive)
+        .map((object) => object.id),
+      objectCount: scene.objects.length,
+    },
+    seats: Object.values(state.runners).map((runner) => {
+      const legalIntentKinds = listSideScrollerLegalIntents(
+        config,
+        state,
+        runner.id,
+      ).map((intent) => intent.kind);
+
+      return {
+        agentReady: legalIntentKinds.length > 0,
+        health: runner.health,
+        legalIntentKinds,
+        score: runner.score,
+        seatId: runner.id,
+        x: runner.x,
+        y: runner.y,
+      };
+    }),
+  };
+}
+
+export function runSideScrollerSelfPlay(
+  config: SideScrollerEngineConfig,
+  input: SideScrollerSelfPlayInput,
+): SideScrollerSelfPlayResult {
+  let state = input.state ?? createSideScrollerInitialState(config);
+  const steps: SideScrollerSelfPlayStep[] = [];
+
+  for (let index = 0; index < input.maxTurns; index += 1) {
+    if (state.shell.status !== "playing") {
+      break;
+    }
+
+    const seatId = state.shell.activeSeatId ?? getFirstSeatId(state);
+    const action = chooseStudioAction(
+      listSideScrollerLegalIntents(config, state, seatId),
+    );
+    if (action === null) {
+      break;
+    }
+
+    const transition = applySideScrollerIntent(config, state, action);
+    state = transition.nextState;
+    steps.push({
+      action,
+      events: transition.events,
+      seatId,
+      stateVersion: state.shell.version,
+      tick: state.tick,
+    });
+  }
+
+  return {
+    completed: state.shell.status === "complete",
+    finalState: state,
+    steps,
+    winnerSeatId: findWinnerSeatId(state),
+  };
+}
+
+function chooseStudioAction(
+  legalIntents: SideScrollerIntent[],
+): SideScrollerIntent | null {
+  for (const kind of [
+    "attack",
+    "moveRight",
+    "dash",
+    "jump",
+    "wait",
+    "moveLeft",
+  ] as const) {
+    const intent = legalIntents.find((candidate) => candidate.kind === kind);
+    if (intent !== undefined) {
+      return intent;
+    }
+  }
+
+  return null;
+}
+
+function findWinnerSeatId(state: SideScrollerState): SideScrollerSeatId | null {
+  const winner = Object.values(state.runners).find(
+    (runner) =>
+      state.shell.status === "complete" && runner.x >= state.goals[0].x,
+  );
+  return winner?.id ?? null;
+}
+
+function getFirstSeatId(state: SideScrollerState): SideScrollerSeatId {
+  const seatId = Object.keys(state.runners)[0];
+  if (seatId === undefined) {
+    throw new Error("Side-scroller self-play requires at least one runner");
+  }
+  return seatId;
+}

@@ -1469,7 +1469,7 @@ import {
 import { runStarterSelfPlay } from "../agents/self-play";
 ${createApiAssetImports(templateId)}
 ${createApiAssetSourceImport(templateId)}
-import { ${functionName} } from "../game";
+import { ${functionName}${templateId === "side-scroller" ? ", createSideScrollerStudioPreview" : ""} } from "../game";
 
 type StarterGame = ReturnType<typeof ${functionName}>;
 type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
@@ -1498,6 +1498,7 @@ ${createApiAssetConstants(templateId)}
 const apiRoutes: AgentApiRoute[] = [
   ...createDefaultAgentApiRoutes(),
   ${createApiAssetRouteDefinitions(templateId)}
+  ${createApiStudioRouteDefinitions(templateId)}
 ];
 
 export function createStarterApiRuntime(): StarterApiRuntime {
@@ -1613,6 +1614,7 @@ export async function handleStarterApiRequest(
     }
 
     ${createApiAssetRouteCases(templateId)}
+    ${createApiStudioRouteCases(templateId)}
 
     return jsonResponse({ error: \`Unsupported API route: \${route}\` }, 404);
   } catch (error) {
@@ -1814,6 +1816,26 @@ function createApiAssetRouteCases(templateId: ScaffoldTemplateId): string {
         "requestImageGeneration",
         await readJsonBody(request),
       );
+    }`;
+}
+
+function createApiStudioRouteDefinitions(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `{ method: "GET", path: "/api/studio/preview", toolName: "previewStudio" },`;
+}
+
+function createApiStudioRouteCases(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `if (route === "GET /api/studio/preview") {
+      return jsonResponse(toJsonValue(createSideScrollerStudioPreview()));
     }`;
 }
 
@@ -2601,7 +2623,7 @@ function createGameTestSource(
   if (templateId === "side-scroller") {
     return () => `import { describe, expect, it } from "vitest";
 
-import { ${functionName} } from "../src/game";
+import { ${functionName}, createSideScrollerStudioPreview } from "../src/game";
 
 describe("${templateId} scaffold", () => {
   it("creates a valid Lunch Table Games starter", () => {
@@ -2658,6 +2680,17 @@ describe("${templateId} scaffold", () => {
     expect(objectIds).toContain("token:hazard-1");
     expect(objectIds).toContain("token:collectible-1");
     expect(objectIds).toContain("token:goal");
+  });
+
+  it("provides a studio preview for humans and agents", () => {
+    const preview = createSideScrollerStudioPreview();
+
+    expect(preview.frame.seats.every((seat) => seat.agentReady)).toBe(true);
+    expect(preview.frame.scene.objectCount).toBeGreaterThan(0);
+    expect(preview.selfPlay.steps.length).toBeGreaterThan(0);
+    expect(
+      preview.selfPlay.steps[0]?.action.kind,
+    ).toBe("moveRight");
   });
 });
 `;
@@ -2816,6 +2849,9 @@ function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
         }),
       ),
     );
+    const studioPreview = await readJson(
+      await handleStarterApiRequest(runtime, createRequest("/api/studio/preview")),
+    );
 
     expect(validate).toMatchObject({
       ok: true,
@@ -2827,6 +2863,8 @@ function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
       ok: true,
       serverAction: "assets.generateSideScrollerAsset",
     });
+    expect(JSON.stringify(studioPreview)).toContain("selfPlay");
+    expect(JSON.stringify(studioPreview)).toContain("moveRight");
   });
 `;
 }
@@ -3510,6 +3548,8 @@ function createSideScrollerGameSource(): string {
   return `import {
   createSideScrollerComponents,
   createSideScrollerRuleset,
+  createSideScrollerStudioFrame,
+  runSideScrollerSelfPlay,
   sideScrollerStarterConfig,
 } from "@lunchtable/games-side-scroller";
 
@@ -3531,6 +3571,18 @@ export function createSideScrollerGame() {
       version: sideScrollerConfig.version,
     },
     ruleset: createSideScrollerRuleset(sideScrollerConfig),
+  };
+}
+
+export function createSideScrollerStudioPreview() {
+  return {
+    frame: createSideScrollerStudioFrame(sideScrollerConfig, {
+      height: 720,
+      width: 1280,
+    }),
+    selfPlay: runSideScrollerSelfPlay(sideScrollerConfig, {
+      maxTurns: 16,
+    }),
   };
 }
 `;

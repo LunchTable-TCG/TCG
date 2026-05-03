@@ -10,7 +10,9 @@
   "dependencies": {
     "@lunchtable/card-content": "workspace:*",
     "@lunchtable/game-core": "workspace:*",
+    "@lunchtable/games-assets": "workspace:*",
     "@lunchtable/games-render": "workspace:*",
+    "@lunchtable/games-side-scroller": "workspace:*",
     "@lunchtable/games-tabletop": "workspace:*",
     "@lunchtable/render-pixi": "workspace:*",
     "@lunchtable/shared-types": "workspace:*",
