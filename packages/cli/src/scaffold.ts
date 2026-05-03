@@ -343,6 +343,10 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "src/agents/mcp.ts",
     },
     {
+      content: createSseAgentSource(templateId),
+      path: "src/agents/sse.ts",
+    },
+    {
       content: createSelfPlaySource,
       path: "src/agents/self-play.ts",
     },
@@ -365,6 +369,10 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
     {
       content: createMcpServerTestSource(templateId),
       path: "tests/mcp-server.test.ts",
+    },
+    {
+      content: createSseTestSource(templateId),
+      path: "tests/sse.test.ts",
     },
     {
       content: createSelfPlayTestSource(templateId),
@@ -662,6 +670,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [src/agents/baseline.ts](src/agents/baseline.ts): Local baseline agent and observation-frame helpers.
 - [src/agents/external-http.ts](src/agents/external-http.ts): External agent envelope and response resolver.
 - [src/agents/mcp.ts](src/agents/mcp.ts): MCP tool manifest for gameplay agents.
+- [src/agents/sse.ts](src/agents/sse.ts): Server-Sent Events context stream helpers for browser and hosted agents.
 - [src/agents/a2a.ts](src/agents/a2a.ts): A2A agent card helper.
 - [src/agents/self-play.ts](src/agents/self-play.ts): Deterministic self-play runner.
 - [src/mcp/server.ts](src/mcp/server.ts): Runnable stdio MCP server for local clients and agent tooling.
@@ -677,6 +686,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [tests/game.test.ts](tests/game.test.ts): Starter construction smoke test.
 - [tests/agent-parity.test.ts](tests/agent-parity.test.ts): Agent legal-action parity and protocol-surface checks.
 - [tests/mcp-server.test.ts](tests/mcp-server.test.ts): MCP initialize, resource, and legal-action tool checks.
+- [tests/sse.test.ts](tests/sse.test.ts): SSE context envelope and stream encoding checks.
 - [tests/self-play.test.ts](tests/self-play.test.ts): Agent-vs-agent deterministic smoke test.
 `;
 }
@@ -712,6 +722,8 @@ Rules:
 - \`createExternalAgentRequest\` builds a hosted-agent envelope.
 - \`resolveExternalAgentResponse\` rejects invented action ids.
 - \`createStarterMcpToolManifest\` exposes tool metadata.
+- \`createStarterAgentContext\` builds a scoped SSE-ready context envelope.
+- \`createStarterAgentSseSnapshot\` encodes a browser-ready context event.
 - \`runStarterMcpStdioServer\` exposes a connectable MCP stdio server.
 - \`createStarterA2aAgentCard\` exposes discovery metadata.
 - \`runStarterSelfPlay\` proves two agent seats can participate immediately.
@@ -840,7 +852,7 @@ export type StarterAction = LegalActionDescriptor<StarterIntent>;
 export const baselineAgentManifest = createAgentCapabilityManifest({
   agentId: "baseline-agent",
   displayName: "Baseline Agent",
-  supportedTransports: ["local", "external-http", "mcp", "a2a"],
+  supportedTransports: ["local", "external-http", "mcp", "a2a", "sse"],
 });
 
 export function createStarterInitialState(): StarterState {
@@ -962,6 +974,78 @@ import { baselineAgentManifest } from "./baseline";
 
 export function createStarterMcpToolManifest() {
   return createMcpToolManifest(baselineAgentManifest);
+}
+`;
+}
+
+function createSseAgentSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  const functionName = getFactoryName(templateId);
+
+  return () => `import {
+  createAgentContextEnvelope,
+  createAgentSseEvent,
+  createAgentSseHeaders,
+  encodeAgentSseEvent,
+} from "@lunchtable/games-ai";
+
+import { createStarterDecisionFrame } from "./baseline";
+import { ${functionName} } from "../game";
+
+type StarterGame = ReturnType<typeof ${functionName}>;
+type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
+
+export const STARTER_AGENT_SSE_CONTENT_TYPE = "text/event-stream; charset=utf-8";
+
+export function createStarterAgentContext(input: {
+  eventSequence: number;
+  receivedAt: number;
+  seat: string;
+  state: StarterState;
+}) {
+  const game = ${functionName}();
+  const frame = createStarterDecisionFrame({
+    receivedAt: input.receivedAt,
+    seat: input.seat,
+    state: input.state,
+    transport: "sse",
+  });
+
+  return createAgentContextEnvelope({
+    createdAt: input.receivedAt,
+    eventCursor: {
+      eventSequence: input.eventSequence,
+      stateVersion: input.state.shell.version,
+    },
+    frame,
+    rulesSummary: {
+      legalActionKinds: frame.legalActions.map((action) => String(action.kind)),
+      objective: game.manifest.title,
+      phase: String(input.state.shell.phase),
+    },
+  });
+}
+
+export function createStarterAgentSseHeaders() {
+  return createAgentSseHeaders();
+}
+
+export function createStarterAgentSseSnapshot(input: {
+  eventSequence: number;
+  receivedAt: number;
+  seat: string;
+  state: StarterState;
+}) {
+  const context = createStarterAgentContext(input);
+
+  return encodeAgentSseEvent(
+    createAgentSseEvent({
+      data: context,
+      event: "context",
+      id: context.contextId,
+    }),
+  );
 }
 `;
 }
@@ -1938,6 +2022,52 @@ describe("${templateId} MCP server", () => {
           }),
         ],
       },
+    });
+  });
+});
+`;
+}
+
+function createSseTestSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () => `import { describe, expect, it } from "vitest";
+
+import { createStarterInitialState } from "../src/agents/baseline";
+import {
+  createStarterAgentContext,
+  createStarterAgentSseHeaders,
+  createStarterAgentSseSnapshot,
+} from "../src/agents/sse";
+
+describe("${templateId} agent SSE context", () => {
+  it("encodes a scoped context snapshot for streaming agents", () => {
+    const state = createStarterInitialState();
+    const context = createStarterAgentContext({
+      eventSequence: 0,
+      receivedAt: 1777739000000,
+      seat: "seat-0",
+      state,
+    });
+    const snapshot = createStarterAgentSseSnapshot({
+      eventSequence: 0,
+      receivedAt: 1777739000000,
+      seat: "seat-0",
+      state,
+    });
+
+    expect(context.seat).toBe("seat-0");
+    expect(context.transport).toBe("sse");
+    expect(context.legalActions.length).toBeGreaterThan(0);
+    expect(context.eventCursor.stateVersion).toBe(state.shell.version);
+    expect(snapshot).toContain("event: context");
+    expect(snapshot).toContain("data: ");
+  });
+
+  it("provides browser-ready SSE headers", () => {
+    expect(createStarterAgentSseHeaders()).toMatchObject({
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
     });
   });
 });

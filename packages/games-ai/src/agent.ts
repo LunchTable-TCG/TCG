@@ -1,7 +1,12 @@
 import type { LegalActionDescriptor } from "./actions";
 import { resolveExternalActionId } from "./external";
 
-export type AgentTransportKind = "a2a" | "external-http" | "local" | "mcp";
+export type AgentTransportKind =
+  | "a2a"
+  | "external-http"
+  | "local"
+  | "mcp"
+  | "sse";
 
 export type AgentToolAuthority = "intent-submit" | "read" | "simulation";
 

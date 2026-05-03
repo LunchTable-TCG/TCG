@@ -15,6 +15,7 @@ Every `bunx lunchtable init` starter must include:
 - baseline local agent in `src/agents/baseline.ts`
 - external HTTP envelope adapter in `src/agents/external-http.ts`
 - MCP tool manifest in `src/agents/mcp.ts`
+- SSE context helper in `src/agents/sse.ts`
 - runnable stdio MCP server in `src/mcp/server.ts`
 - A2A agent card helper in `src/agents/a2a.ts`
 - deterministic self-play in `src/agents/self-play.ts`
@@ -22,7 +23,8 @@ Every `bunx lunchtable init` starter must include:
 - `.agents/skills/play-lunchtable-game/SKILL.md`
 - `.agents/skills/build-lunchtable-game/SKILL.md`
 - `.agents/skills/evaluate-lunchtable-agent/SKILL.md`
-- tests for game construction, agent parity, MCP server behavior, and self-play
+- tests for game construction, agent parity, MCP server behavior, SSE context,
+  and self-play
 
 Agents submit legal action ids, never arbitrary state mutations. The runtime resolves each chosen action id against the current legal action catalog and applies the associated intent through the ruleset.
 
@@ -30,7 +32,7 @@ Agents submit legal action ids, never arbitrary state mutations. The runtime res
 
 - `@lunchtable/games-core` owns deterministic state, ruleset contracts, replay, lifecycle, and RNG.
 - `@lunchtable/games-tabletop` owns seats, zones, tabletop components, visibility, and generated pack types.
-- `@lunchtable/games-ai` owns legal action descriptors, observation frames, external envelopes, MCP, A2A, elizaOS Cloud hosted-agent adapters, policies, and agent-turn execution.
+- `@lunchtable/games-ai` owns legal action descriptors, observation frames, scoped context envelopes, SSE event helpers, external envelopes, MCP, A2A, elizaOS Cloud hosted-agent adapters, policies, and agent-turn execution.
 - `@lunchtable/games-render` owns renderer-neutral scene, camera, interaction, cue models, and renderer adapter descriptors.
 - `@lunchtable/games-side-scroller` owns deterministic runner state, movement, dash, jump, attack, gravity, platform collision, hazards, collectibles, goals, side-scroller scene output, and the reusable side-scroller ruleset adapter.
 
@@ -57,6 +59,11 @@ Generated games enter through validated packs and starter scaffolds. They must b
 `@lunchtable/games-render` exposes `createRendererAdapterPlan` so generated games choose renderer adapters from scene models without importing DOM, Pixi, Three.js, or game-specific code. Side-scrollers and isometric scenes prefer Pixi, 3D and first-person scenes prefer Three.js, and DOM remains the accessible fallback path.
 
 `@lunchtable/games-ai` exposes `createElizaCloudHostedGameplayOrchestration` for hosted Eliza agents. The orchestration uses elizaOS Cloud chat completions, requires `ELIZA_CLOUD_API_KEY`, exposes MCP tools for legal actions, seat views, and action submission, and keeps all responses on known legal action ids.
+
+`@lunchtable/games-ai` also exposes `createAgentContextEnvelope`,
+`createAgentSseEvent`, `encodeAgentSseEvent`, `decodeAgentSseStream`, and
+`createAgentSseHeaders` so browser clients and hosted agents can subscribe to
+seat-scoped context without bypassing ruleset authority.
 
 The side-scroller scaffold imports `@lunchtable/games-side-scroller` instead of
 embedding a private copy of runner physics. New generated runner packs should
@@ -88,3 +95,6 @@ Run scaffold smoke checks after changing `packages/cli/src/scaffold.ts`.
 - Browser pack editing starts from `apps/web/src/components/pack/PackEditorPanel.tsx` and the reusable editor model in `@lunchtable/games-tabletop`.
 - Hosted gameplay agents for elizaOS Cloud start from `packages/games-ai/src/eliza-cloud.ts`; responses must still resolve to known legal action ids.
 - Generated starters expose `bun run --silent mcp:stdio` for local MCP clients. The stdio server handles initialize, tools, and resources while keeping `submitAction` on legal action ids and state-version checks.
+- Generated starters expose `src/agents/sse.ts` for `text/event-stream`
+  context snapshots that include scoped views, legal actions, rules summaries,
+  and event cursors.

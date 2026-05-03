@@ -73,9 +73,9 @@ bun run release:proof
 ```
 
 Each scaffold is agent-native from day one: it includes a baseline local agent,
-external HTTP envelopes, a runnable stdio MCP server, MCP tool metadata, an A2A
-agent card, self-play, and agent parity tests. Agents submit legal action ids
-through the same ruleset path as human seats.
+external HTTP envelopes, SSE context snapshots, a runnable stdio MCP server,
+MCP tool metadata, an A2A agent card, self-play, and agent parity tests. Agents
+submit legal action ids through the same ruleset path as human seats.
 
 The side-scroller scaffold uses `@lunchtable/games-side-scroller`, a reusable
 deterministic runner engine with two equal seats, movement, dash, jump, attack,

@@ -35,6 +35,26 @@ export {
   createMcpToolManifest,
   runAgentTurn,
 } from "./agent";
+export type {
+  AgentContextEnvelope,
+  AgentContextEventCursor,
+  AgentContextRulesSummary,
+  AgentSseEvent,
+  AgentSseEventData,
+  AgentSseJsonArray,
+  AgentSseJsonObject,
+  AgentSseJsonPrimitive,
+  AgentSseJsonValue,
+  AgentSseEventName,
+  CreateAgentContextEnvelopeInput,
+} from "./context";
+export {
+  createAgentContextEnvelope,
+  createAgentSseEvent,
+  createAgentSseHeaders,
+  decodeAgentSseStream,
+  encodeAgentSseEvent,
+} from "./context";
 export type { ExternalDecisionEnvelope } from "./envelope";
 export { createExternalDecisionEnvelope } from "./envelope";
 export { resolveExternalActionId } from "./external";

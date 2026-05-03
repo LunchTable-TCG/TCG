@@ -190,13 +190,14 @@ Every CLI scaffold must include:
 
 - baseline local agent policy
 - external HTTP envelope adapter
+- SSE context snapshot helper
 - MCP tool manifest
 - runnable stdio MCP server
 - A2A agent card
 - deterministic self-play runner
 - `llms.txt` and `llms-full.txt`
 - repo-local `SKILL.md` files for play, build, and evaluation workflows
-- `agent-parity`, `mcp-server`, and `self-play` tests
+- `agent-parity`, `mcp-server`, `sse`, and `self-play` tests
 
 This keeps generated TCG, dice, side-scroller, and 3D shooter starters aligned
 with the production rule: agents play through legal action ids and never receive
@@ -204,6 +205,10 @@ private authority.
 
 Use `bun run --silent mcp:stdio` for local MCP client launches so stdout remains
 valid newline-delimited JSON-RPC.
+
+Use `src/agents/sse.ts` when browser or hosted agents need a Server-Sent Events
+context snapshot. The SSE payload must contain only scoped views, legal action
+ids, public rules summaries, and event cursors.
 
 ## Protocol Alignment
 
@@ -217,6 +222,8 @@ any single model vendor:
 - MCP resources remain the right place for read-only rules, replay, and pack
   manifests:
   <https://modelcontextprotocol.io/specification/2025-11-25/server/resources>
+- SSE provides browser-native `text/event-stream` delivery for scoped context
+  snapshots and event cursors; it is a transport surface, not a mutation path.
 - A2A agent cards advertise agent capabilities and skills for discovery:
   <https://a2a-protocol.org/v0.3.0/specification/>
 - OpenAI Agents-style agents can map these tools, guardrails, and evaluations

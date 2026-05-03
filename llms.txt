@@ -15,7 +15,7 @@
 
 - [packages/games-core/src/index.ts](packages/games-core/src/index.ts): Deterministic runtime primitives.
 - [packages/games-tabletop/src/index.ts](packages/games-tabletop/src/index.ts): Tabletop seats, objects, zones, packs, and visibility.
-- [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, protocol, and parity helpers.
+- [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, scoped context, SSE, protocol, and parity helpers.
 - [packages/games-render/src/index.ts](packages/games-render/src/index.ts): Renderer-neutral scene and camera primitives.
 - [packages/games-side-scroller/src/index.ts](packages/games-side-scroller/src/index.ts): Deterministic two-seat side-scroller engine.
 - [examples/generated-game-authoring.ts](examples/generated-game-authoring.ts): Checked side-scroller authoring example across tabletop, render, and AI packages.

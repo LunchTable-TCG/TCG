@@ -90,12 +90,14 @@ describe("lunchtable init scaffolding", () => {
         "src/agents/baseline.ts",
         "src/agents/external-http.ts",
         "src/agents/mcp.ts",
+        "src/agents/sse.ts",
         "src/agents/self-play.ts",
         "src/game.ts",
         "tests/agent-parity.test.ts",
         "tests/game.test.ts",
         "src/mcp/server.ts",
         "tests/mcp-server.test.ts",
+        "tests/sse.test.ts",
         "tests/self-play.test.ts",
         "tsconfig.json",
       ]);
@@ -140,6 +142,20 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(mcpServerTestSource).toContain("handleStarterMcpRequest");
       expect(mcpServerTestSource).toContain("tools/call");
+
+      const sseSource = await readFile(
+        join(targetDirectory, "src/agents/sse.ts"),
+        "utf8",
+      );
+      expect(sseSource).toContain("createStarterAgentContext");
+      expect(sseSource).toContain("createStarterAgentSseSnapshot");
+      expect(sseSource).toContain("text/event-stream");
+
+      const sseTestSource = await readFile(
+        join(targetDirectory, "tests/sse.test.ts"),
+        "utf8",
+      );
+      expect(sseTestSource).toContain("encodes a scoped context snapshot");
 
       const llmsText = await readFile(
         join(targetDirectory, "llms.txt"),
@@ -197,11 +213,13 @@ describe("lunchtable init scaffolding", () => {
         expect(result.files).toContain("src/agents/baseline.ts");
         expect(result.files).toContain("src/agents/external-http.ts");
         expect(result.files).toContain("src/agents/mcp.ts");
+        expect(result.files).toContain("src/agents/sse.ts");
         expect(result.files).toContain("src/agents/a2a.ts");
         expect(result.files).toContain("src/agents/self-play.ts");
         expect(result.files).toContain("src/mcp/server.ts");
         expect(result.files).toContain("tests/agent-parity.test.ts");
         expect(result.files).toContain("tests/mcp-server.test.ts");
+        expect(result.files).toContain("tests/sse.test.ts");
         expect(result.files).toContain("tests/self-play.test.ts");
         expect(result.templateId).toBe(template.id);
       }

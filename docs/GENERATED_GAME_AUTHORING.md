@@ -12,7 +12,8 @@ models, agent-readable docs, and MCP tools before it becomes a playable starter.
 4. Simulate deterministic self-play and write a replay golden.
 5. Prove agent parity through legal action ids and scoped views.
 6. Plan renderer adapters from the renderer-neutral scene model.
-7. Ship `llms.txt`, `llms-full.txt`, MCP tests, and agent skills.
+7. Ship `llms.txt`, `llms-full.txt`, MCP tests, SSE context tests, and agent
+   skills.
 
 The `@lunchtable/games-tabletop` authoring helpers return the required files,
 stages, gates, and publish readiness state for browser editors and CLIs.
@@ -34,6 +35,10 @@ Hosted Eliza agents use the same legal action contract as local agents. The
 elizaOS Cloud orchestration helper points gameplay agents at the OpenAI-compatible
 chat completions endpoint, requires `ELIZA_CLOUD_API_KEY`, and keeps MCP tools
 limited to `listLegalActions`, `getSeatView`, and `submitAction`.
+
+Browser and hosted agents can use scaffolded SSE context helpers for
+`text/event-stream` snapshots. These snapshots include scoped seat views, legal
+action ids, public rules summaries, and event cursors only.
 
 References:
 

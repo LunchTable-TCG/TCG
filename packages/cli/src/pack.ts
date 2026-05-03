@@ -44,7 +44,8 @@ export interface PortablePackEvaluationCheck {
     | "llms-map"
     | "mcp-server"
     | "pack-valid"
-    | "self-play-test";
+    | "self-play-test"
+    | "sse-context";
   ok: boolean;
 }
 
@@ -145,6 +146,12 @@ export async function evaluatePortablePackDirectory(
     {
       name: "self-play-test",
       ok: await pathExists(join(directory, "tests", "self-play.test.ts")),
+    },
+    {
+      name: "sse-context",
+      ok:
+        (await pathExists(join(directory, "src", "agents", "sse.ts"))) &&
+        (await pathExists(join(directory, "tests", "sse.test.ts"))),
     },
     {
       name: "mcp-server",
