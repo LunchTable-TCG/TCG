@@ -26,6 +26,7 @@ describe("phase gates workflow contract", () => {
 
     expect(workflow).toContain("permissions:");
     expect(workflow).toContain("contents: read");
+    expect(workflow).toContain("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true");
     expect(workflow).toContain("concurrency:");
     expect(workflow).toContain("cancel-in-progress: true");
     expect(workflow).toContain("timeout-minutes: 25");

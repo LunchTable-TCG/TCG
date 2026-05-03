@@ -95,6 +95,9 @@ describe("release proof contract", () => {
       '"release:packages:publish": "bun run scripts/release-public-packages.ts --publish"',
     );
     expect(releaseWorkflow).toContain("id-token: write");
+    expect(releaseWorkflow).toContain(
+      "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true",
+    );
     expect(releaseWorkflow).toContain("release_ref");
     expect(releaseWorkflow).toContain("RELEASE_REF");
     expect(releaseWorkflow).toContain("ref: ${{ env.RELEASE_REF }}");

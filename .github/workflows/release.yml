@@ -15,6 +15,9 @@ permissions:
   contents: write
   id-token: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
