@@ -390,7 +390,8 @@ body {
 }
 
 .pack-editor-header,
-.pack-editor-files {
+.pack-editor-files,
+.pack-editor-gates {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -399,11 +400,16 @@ body {
 }
 
 .pack-editor-status,
-.pack-editor-files span {
+.pack-editor-files span,
+.pack-editor-gates span {
   border-radius: 999px;
   border: 1px solid rgba(68, 41, 13, 0.14);
   padding: 0.45rem 0.7rem;
   font-weight: 700;
+}
+
+.pack-editor-gates {
+  justify-content: flex-start;
 }
 
 .pack-editor-status-valid {

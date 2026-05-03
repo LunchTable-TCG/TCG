@@ -7,6 +7,7 @@
 - [README.md](README.md): Workspace, CLI, development, and release commands.
 - [llms-full.txt](llms-full.txt): Full LLM context for the monorepo and scaffold contract.
 - [docs/AGENT_PARITY.md](docs/AGENT_PARITY.md): Gameplay-agent authority, visibility, and protocol rules.
+- [docs/GENERATED_GAME_AUTHORING.md](docs/GENERATED_GAME_AUTHORING.md): Generated-game authoring workflow, renderer planning, and hosted Eliza orchestration.
 - [docs/superpowers/specs/2026-05-02-lunch-table-games-design.md](docs/superpowers/specs/2026-05-02-lunch-table-games-design.md): Approved Lunch Table Games design.
 - [docs/program/AGENT_GAMEPLAY_CONTRACT.md](docs/program/AGENT_GAMEPLAY_CONTRACT.md): Production gameplay-agent contract.
 
@@ -16,6 +17,7 @@
 - [packages/games-tabletop/src/index.ts](packages/games-tabletop/src/index.ts): Tabletop seats, objects, zones, packs, and visibility.
 - [packages/games-ai/src/index.ts](packages/games-ai/src/index.ts): Agent observation, legal action, protocol, and parity helpers.
 - [packages/games-render/src/index.ts](packages/games-render/src/index.ts): Renderer-neutral scene and camera primitives.
+- [examples/generated-game-authoring.ts](examples/generated-game-authoring.ts): Checked side-scroller authoring example across tabletop, render, and AI packages.
 - [apps/web/src/components/pack/PackEditorPanel.tsx](apps/web/src/components/pack/PackEditorPanel.tsx): Browser pack editor panel model and surface.
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts): `lunchtable init` scaffold generator.
 - [packages/cli/src/pack.ts](packages/cli/src/pack.ts): `lunchtable validate` and `lunchtable eval` portable pack checks.

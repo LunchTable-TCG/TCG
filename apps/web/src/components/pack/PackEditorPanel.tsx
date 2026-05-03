@@ -1,12 +1,25 @@
-import { createPortablePackEditorDraft } from "@lunchtable/games-tabletop";
+import {
+  createDefaultRendererAdapters,
+  createRendererAdapterPlan,
+  createRendererAdapterRegistry,
+} from "@lunchtable/games-render";
+import {
+  createGeneratedGameAuthoringWorkflow,
+  createPortablePackEditorDraft,
+  evaluateGeneratedGameReadiness,
+} from "@lunchtable/games-tabletop";
 
 const packEditorFiles = ["game.json", "objects.json", "ruleset.json"] as const;
 
 export interface PackEditorPanelModel {
+  blockingGateCount: number;
   files: typeof packEditorFiles;
+  gates: string[];
   issueCount: number;
   legalIntentCount: number;
   objectCount: number;
+  primaryRenderer: string;
+  publishStatus: "blocked" | "publishable";
   status: "invalid" | "valid";
   title: string;
 }
@@ -77,12 +90,58 @@ export function createPackEditorPanelModel(): PackEditorPanelModel {
       victory: { kind: "score-limit" },
     },
   });
+  const workflow = createGeneratedGameAuthoringWorkflow({
+    brief: {
+      genre: "dice-tabletop",
+      playerCount: 2,
+      title: draft.game.name,
+      viewMode: "isometric-2.5d",
+      winCondition: "Reach the score limit.",
+    },
+    packId: draft.game.id,
+  });
+  const readiness = evaluateGeneratedGameReadiness({
+    agentParity: "passed",
+    docsContext: "passed",
+    mcpConnectivity: "passed",
+    packValidation: draft.validation.ok ? "passed" : "failed",
+    rendererScene: "passed",
+    simulation: "passed",
+  });
+  const rendererPlan = createRendererAdapterPlan(
+    {
+      camera: {
+        mode: "isometric-2.5d",
+        target: { x: 0, y: 0, z: 0 },
+        zoom: 1,
+      },
+      cue: null,
+      interactions: draft.objects.objects.map((object) => ({
+        affordance: "inspect",
+        objectId: object.id,
+        seatId: object.ownerSeat,
+      })),
+      objects: draft.objects.objects.map((object, index) => ({
+        id: object.id,
+        interactive: true,
+        label: object.name,
+        position: { x: index * 140, y: 0, z: 0 },
+        size: { height: 96, width: 72 },
+      })),
+      viewport: { height: 720, width: 1280 },
+    },
+    createRendererAdapterRegistry(createDefaultRendererAdapters()),
+  );
 
   return {
+    blockingGateCount: readiness.blockingGateIds.length,
     files: packEditorFiles,
+    gates: workflow.gates.map((gate) => gate.id),
     issueCount: draft.validation.issues.length,
     legalIntentCount: draft.summary.legalIntentCount,
     objectCount: draft.summary.objectCount,
+    primaryRenderer: rendererPlan.primaryAdapter.id,
+    publishStatus: readiness.status,
     status: draft.validation.ok ? "valid" : "invalid",
     title: draft.game.name,
   };
@@ -121,6 +180,11 @@ export function PackEditorPanel() {
       <div className="pack-editor-files">
         {model.files.map((file) => (
           <span key={file}>{file}</span>
+        ))}
+      </div>
+      <div className="pack-editor-gates">
+        {model.gates.map((gate) => (
+          <span key={gate}>{gate}</span>
         ))}
       </div>
     </section>

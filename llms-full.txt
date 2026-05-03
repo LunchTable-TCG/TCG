@@ -51,6 +51,14 @@ Renderers, MCP tools, MCP resources, A2A cards, external HTTP services, and advi
 
 Generated games enter through validated packs and starter scaffolds. They must be deterministic, testable, and replayable before becoming publishable. Data-only content is preferred; custom ruleset plugins are only for behavior that cannot be represented in data.
 
+`@lunchtable/games-tabletop` exposes `createGeneratedGameAuthoringWorkflow` and `evaluateGeneratedGameReadiness` so browser editors, CLIs, and agents can share the same authoring stages, required files, and publish gates. A publishable generated game must pass schema validation, deterministic simulation, agent parity, renderer-scene, MCP connectivity, and docs-context gates.
+
+`@lunchtable/games-render` exposes `createRendererAdapterPlan` so generated games choose renderer adapters from scene models without importing DOM, Pixi, Three.js, or game-specific code. Side-scrollers and isometric scenes prefer Pixi, 3D and first-person scenes prefer Three.js, and DOM remains the accessible fallback path.
+
+`@lunchtable/games-ai` exposes `createElizaCloudHostedGameplayOrchestration` for hosted Eliza agents. The orchestration uses elizaOS Cloud chat completions, requires `ELIZA_CLOUD_API_KEY`, exposes MCP tools for legal actions, seat views, and action submission, and keeps all responses on known legal action ids.
+
+See `docs/GENERATED_GAME_AUTHORING.md` and `examples/generated-game-authoring.ts` before extending generated-game authoring behavior.
+
 ## Verification Commands
 
 - `bun install --frozen-lockfile`

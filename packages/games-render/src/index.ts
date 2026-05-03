@@ -1,11 +1,15 @@
 export {
+  createRendererAdapterPlan,
   createDefaultRendererAdapters,
   createRendererAdapterRegistry,
 } from "./adapters";
 export type {
+  RendererAdapterPlan,
   RendererAdapterDescriptor,
   RendererAdapterKind,
   RendererAdapterRegistry,
+  RendererLayerKind,
+  RendererPerformanceBudget,
 } from "./adapters";
 export {
   createCameraHint,

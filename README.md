@@ -59,6 +59,11 @@ bunx lunchtable validate my-dice-game
 bunx lunchtable eval my-dice-game
 ```
 
+Generated-game authoring now has an executable workflow for browser editors,
+CLIs, renderers, and hosted agents. See
+[docs/GENERATED_GAME_AUTHORING.md](docs/GENERATED_GAME_AUTHORING.md) and
+[examples/generated-game-authoring.ts](examples/generated-game-authoring.ts).
+
 Release proof packs the CLI and runs the packed artifact through `bunx` before
 the full release gates:
 

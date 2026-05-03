@@ -8,6 +8,11 @@ const readmePath = join(rootDir, "README.md");
 const implementationPhasesPath = join(rootDir, "IMPLEMENTATION_PHASES.md");
 const sessionPath = join(rootDir, "SESSION.md");
 const phaseLoopDocPath = join(rootDir, "docs", "PHASE_LOOP.md");
+const generatedAuthoringDocPath = join(
+  rootDir,
+  "docs",
+  "GENERATED_GAME_AUTHORING.md",
+);
 const resumeScriptPath = join(rootDir, "scripts", "resume.sh");
 const packageJsonPath = join(rootDir, "package.json");
 const programDir = join(rootDir, "docs", "program");
@@ -76,7 +81,7 @@ describe("program docs contract", () => {
     const packageJson = readFile(packageJsonPath);
 
     expect(packageJson).toContain(
-      '"test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts tests/npm-publishing-contract.test.ts"',
+      '"test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts tests/npm-publishing-contract.test.ts tests/vitest-alias-contract.test.ts"',
     );
   });
 
@@ -96,11 +101,27 @@ describe("program docs contract", () => {
     ).toBe(true);
 
     expect(readFile(llmsTxtPath)).toContain("# Lunch Table Games");
+    expect(readFile(llmsTxtPath)).toContain("docs/GENERATED_GAME_AUTHORING.md");
     expect(readFile(llmsFullTxtPath)).toContain(
       "## Agent-Native Starter Contract",
+    );
+    expect(readFile(llmsFullTxtPath)).toContain(
+      "createGeneratedGameAuthoringWorkflow",
     );
     expect(
       readFile(join(agentsSkillsDir, "play-lunchtable-game", "SKILL.md")),
     ).toContain("name: play-lunchtable-game");
+  });
+
+  it("documents generated-game authoring as an executable product workflow", () => {
+    const readme = readFile(readmePath);
+    const generatedAuthoringDoc = readFile(generatedAuthoringDocPath);
+
+    expect(readme).toContain("docs/GENERATED_GAME_AUTHORING.md");
+    expect(generatedAuthoringDoc).toContain("Generated Game Authoring");
+    expect(generatedAuthoringDoc).toContain(
+      "examples/generated-game-authoring.ts",
+    );
+    expect(generatedAuthoringDoc).toContain("ELIZA_CLOUD_API_KEY");
   });
 });

@@ -5,6 +5,7 @@ import {
   createElizaCloudAgentProfile,
   createElizaCloudDecisionRequest,
   createElizaCloudHostedAgentClient,
+  createElizaCloudHostedGameplayOrchestration,
   resolveElizaCloudDecisionResponse,
 } from "./eliza-cloud";
 
@@ -130,5 +131,35 @@ describe("elizaOS Cloud hosted gameplay agents", () => {
         url: "https://elizacloud.ai/api/v1/app/agents",
       },
     ]);
+  });
+
+  it("builds a hosted gameplay orchestration plan around OpenAI-compatible chat", () => {
+    const orchestration = createElizaCloudHostedGameplayOrchestration({
+      apiBaseUrl: "https://elizacloud.ai",
+      agentId: "agent-1",
+      gameId: "game-1",
+      mcpServerCommand: "bun run --silent mcp:stdio",
+      seat: "seat-1",
+    });
+
+    expect(orchestration).toEqual({
+      agentId: "agent-1",
+      apiBaseUrl: "https://elizacloud.ai",
+      decisionEndpoint: "https://elizacloud.ai/api/v1/chat/completions",
+      gameId: "game-1",
+      guardrails: [
+        "only-submit-listed-legal-action-ids",
+        "only-use-scoped-seat-view",
+        "submit-through-authoritative-runtime",
+        "return-json-object",
+      ],
+      mcp: {
+        serverCommand: "bun run --silent mcp:stdio",
+        tools: ["listLegalActions", "getSeatView", "submitAction"],
+      },
+      requiredEnv: ["ELIZA_CLOUD_API_KEY"],
+      seat: "seat-1",
+      transport: "eliza-cloud-chat-completions",
+    });
   });
 });

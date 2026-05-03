@@ -9,4 +9,5 @@ import { createLegalActionDescriptors } from "@lunchtable/games-ai";
 ```
 
 Agents choose known legal action ids and never mutate authoritative game state
-directly.
+directly. Hosted Eliza orchestration uses elizaOS Cloud chat completions plus
+MCP tools while preserving the same legal-action-only authority path.

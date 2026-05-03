@@ -85,6 +85,35 @@ export interface CreateElizaCloudHostedAgentClientInput {
   fetch: ElizaCloudFetch;
 }
 
+export type ElizaCloudGameplayGuardrail =
+  | "only-submit-listed-legal-action-ids"
+  | "only-use-scoped-seat-view"
+  | "return-json-object"
+  | "submit-through-authoritative-runtime";
+
+export interface ElizaCloudHostedGameplayOrchestrationInput {
+  agentId: string;
+  apiBaseUrl?: string;
+  gameId: string;
+  mcpServerCommand: string;
+  seat: string;
+}
+
+export interface ElizaCloudHostedGameplayOrchestration {
+  agentId: string;
+  apiBaseUrl: string;
+  decisionEndpoint: string;
+  gameId: string;
+  guardrails: ElizaCloudGameplayGuardrail[];
+  mcp: {
+    serverCommand: string;
+    tools: ["listLegalActions", "getSeatView", "submitAction"];
+  };
+  requiredEnv: ["ELIZA_CLOUD_API_KEY"];
+  seat: string;
+  transport: "eliza-cloud-chat-completions";
+}
+
 export interface ElizaCloudCreateAgentResponse {
   agent: {
     id: string;
@@ -213,6 +242,32 @@ export function createElizaCloudHostedAgentClient(
 
       return parseCreateAgentResponse(await response.json());
     },
+  };
+}
+
+export function createElizaCloudHostedGameplayOrchestration(
+  input: ElizaCloudHostedGameplayOrchestrationInput,
+): ElizaCloudHostedGameplayOrchestration {
+  const apiBaseUrl = input.apiBaseUrl ?? defaultElizaCloudApiUrl;
+
+  return {
+    agentId: input.agentId,
+    apiBaseUrl,
+    decisionEndpoint: `${apiBaseUrl}/api/v1/chat/completions`,
+    gameId: input.gameId,
+    guardrails: [
+      "only-submit-listed-legal-action-ids",
+      "only-use-scoped-seat-view",
+      "submit-through-authoritative-runtime",
+      "return-json-object",
+    ],
+    mcp: {
+      serverCommand: input.mcpServerCommand,
+      tools: ["listLegalActions", "getSeatView", "submitAction"],
+    },
+    requiredEnv: ["ELIZA_CLOUD_API_KEY"],
+    seat: input.seat,
+    transport: "eliza-cloud-chat-completions",
   };
 }
 

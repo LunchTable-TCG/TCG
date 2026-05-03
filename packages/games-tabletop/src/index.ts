@@ -1,4 +1,22 @@
 export type {
+  CreateGeneratedGameAuthoringWorkflowInput,
+  GeneratedGameAuthoringFile,
+  GeneratedGameAuthoringStage,
+  GeneratedGameAuthoringStageId,
+  GeneratedGameAuthoringWorkflow,
+  GeneratedGameBrief,
+  GeneratedGameGate,
+  GeneratedGameGateId,
+  GeneratedGameGateStatus,
+  GeneratedGameReadiness,
+  GeneratedGameReadinessInput,
+  GeneratedGameViewMode,
+} from "./authoring";
+export {
+  createGeneratedGameAuthoringWorkflow,
+  evaluateGeneratedGameReadiness,
+} from "./authoring";
+export type {
   TabletopAssetKind,
   TabletopAssetRef,
   TabletopAttachmentComponent,

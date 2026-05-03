@@ -51,10 +51,14 @@ export type {
   ElizaCloudFetchInit,
   ElizaCloudFetchResponse,
   ElizaCloudChatMessage,
+  ElizaCloudGameplayGuardrail,
+  ElizaCloudHostedGameplayOrchestration,
+  ElizaCloudHostedGameplayOrchestrationInput,
 } from "./eliza-cloud";
 export {
   createElizaCloudAgentProfile,
   createElizaCloudDecisionRequest,
+  createElizaCloudHostedGameplayOrchestration,
   createElizaCloudHostedAgentClient,
   resolveElizaCloudDecisionResponse,
 } from "./eliza-cloud";

@@ -8,4 +8,5 @@ import type { RenderSceneModel } from "@lunchtable/games-render";
 ```
 
 Render adapters consume these models; rulesets remain authoritative for gameplay
-state.
+state. Adapter planning chooses primary and fallback browser renderers, scene
+layers, and production budgets without importing renderer runtimes.

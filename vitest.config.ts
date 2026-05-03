@@ -13,6 +13,22 @@ export default defineConfig({
         __dirname,
         "packages/game-core/src/index.ts",
       ),
+      "@lunchtable/games-ai": path.resolve(
+        __dirname,
+        "packages/games-ai/src/index.ts",
+      ),
+      "@lunchtable/games-core": path.resolve(
+        __dirname,
+        "packages/games-core/src/index.ts",
+      ),
+      "@lunchtable/games-render": path.resolve(
+        __dirname,
+        "packages/games-render/src/index.ts",
+      ),
+      "@lunchtable/games-tabletop": path.resolve(
+        __dirname,
+        "packages/games-tabletop/src/index.ts",
+      ),
       "@lunchtable/card-content": path.resolve(
         __dirname,
         "packages/card-content/src/index.ts",
