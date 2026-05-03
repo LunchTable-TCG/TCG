@@ -8,6 +8,7 @@ const publicPackages = [
   ["@lunchtable/games-core", "packages/games-core"],
   ["@lunchtable/games-render", "packages/games-render"],
   ["@lunchtable/games-ai", "packages/games-ai"],
+  ["@lunchtable/games-assets", "packages/games-assets"],
   ["@lunchtable/games-tabletop", "packages/games-tabletop"],
   ["@lunchtable/games-side-scroller", "packages/games-side-scroller"],
   ["lunchtable", "packages/cli"],

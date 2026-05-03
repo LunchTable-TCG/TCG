@@ -1,5 +1,5 @@
 {
-  "name": "@lunchtable/games-side-scroller",
+  "name": "@lunchtable/games-assets",
   "version": "0.1.1",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -14,13 +14,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LunchTable-TCG/TCG.git",
-    "directory": "packages/games-side-scroller"
-  },
-  "dependencies": {
-    "@lunchtable/games-assets": "workspace:*",
-    "@lunchtable/games-core": "workspace:*",
-    "@lunchtable/games-render": "workspace:*",
-    "@lunchtable/games-tabletop": "workspace:*"
+    "directory": "packages/games-assets"
   },
   "publishConfig": {
     "access": "public"

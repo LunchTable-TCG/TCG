@@ -18,6 +18,7 @@
         "@lunchtable/card-content": "workspace:*",
         "@lunchtable/game-core": "workspace:*",
         "@lunchtable/games-ai": "workspace:*",
+        "@lunchtable/games-assets": "workspace:*",
         "@lunchtable/games-core": "workspace:*",
         "@lunchtable/games-render": "workspace:*",
         "@lunchtable/games-side-scroller": "workspace:*",
@@ -98,6 +99,10 @@
       "name": "@lunchtable/games-ai",
       "version": "0.1.1",
     },
+    "packages/games-assets": {
+      "name": "@lunchtable/games-assets",
+      "version": "0.1.1",
+    },
     "packages/games-core": {
       "name": "@lunchtable/games-core",
       "version": "0.1.1",
@@ -110,6 +115,7 @@
       "name": "@lunchtable/games-side-scroller",
       "version": "0.1.1",
       "dependencies": {
+        "@lunchtable/games-assets": "workspace:*",
         "@lunchtable/games-core": "workspace:*",
         "@lunchtable/games-render": "workspace:*",
         "@lunchtable/games-tabletop": "workspace:*",
@@ -282,6 +288,8 @@
     "@lunchtable/game-core": ["@lunchtable/game-core@workspace:packages/game-core"],
 
     "@lunchtable/games-ai": ["@lunchtable/games-ai@workspace:packages/games-ai"],
+
+    "@lunchtable/games-assets": ["@lunchtable/games-assets@workspace:packages/games-assets"],
 
     "@lunchtable/games-core": ["@lunchtable/games-core@workspace:packages/games-core"],
 

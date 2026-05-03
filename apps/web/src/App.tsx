@@ -31,6 +31,7 @@ import {
   storeAuthToken,
 } from "./auth";
 import { AgentLabPanel } from "./components/agents/AgentLabPanel";
+import { AssetStudioPanel } from "./components/assets/AssetStudioPanel";
 import { LocalCinematicPreview } from "./components/match/LocalCinematicPreview";
 import { MatchShell as LiveMatchShell } from "./components/match/MatchShell";
 import { PackEditorPanel } from "./components/pack/PackEditorPanel";
@@ -3062,7 +3063,10 @@ export function App() {
       </section>
 
       <section className="panel panel-secondary site-section" id="builder">
-        <PackEditorPanel />
+        <div className="builder-panel-grid">
+          <PackEditorPanel />
+          <AssetStudioPanel />
+        </div>
       </section>
 
       <section

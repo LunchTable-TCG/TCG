@@ -1,6 +1,8 @@
+import type { SideScrollerAssetBundle } from "@lunchtable/games-assets";
 import type { GameRuleset, GameShell, Viewport } from "@lunchtable/games-core";
 import type {
   RenderCameraHint,
+  RenderObjectModel,
   RenderSceneModel,
 } from "@lunchtable/games-render";
 import type { TabletopComponent } from "@lunchtable/games-tabletop";
@@ -90,6 +92,7 @@ export interface SideScrollerLevelConfig {
 }
 
 export interface SideScrollerEngineConfig {
+  assets?: SideScrollerAssetBundle;
   level: SideScrollerLevelConfig;
   physics: SideScrollerPhysicsConfig;
   rulesetId: string;
@@ -345,48 +348,58 @@ export function deriveSideScrollerRenderScene(
       seatId,
     })),
     objects: [
-      {
+      withSideScrollerAsset(config, {
         id: `board:${config.level.id}`,
         interactive: false,
         label: config.level.name,
         position: { x: config.level.width / 2, y: -24, z: 0 },
         size: { height: config.level.height, width: config.level.width },
-      },
-      ...state.platforms.map((platform) => ({
-        id: platform.id,
-        interactive: false,
-        label: platform.id,
-        position: { x: platform.x, y: platform.y, z: 1 },
-        size: { height: platform.height, width: platform.width },
-      })),
-      ...Object.values(state.runners).map((runner) => ({
-        id: `piece:runner-${runner.id}`,
-        interactive: true,
-        label: runner.id,
-        position: { x: runner.x, y: runner.y, z: 2 },
-        size: { height: 72, width: 36 },
-      })),
-      ...state.hazards.map((hazard) => ({
-        id: hazard.id,
-        interactive: !hazard.defeated,
-        label: hazard.defeated ? "Defeated Hazard" : "Hazard",
-        position: { x: hazard.x, y: hazard.y, z: 2 },
-        size: { height: 48, width: 48 },
-      })),
-      ...state.collectibles.map((collectible) => ({
-        id: collectible.id,
-        interactive: collectible.collectedBy === null,
-        label: collectible.collectedBy === null ? "Collectible" : "Collected",
-        position: { x: collectible.x, y: collectible.y, z: 2 },
-        size: { height: 28, width: 28 },
-      })),
-      ...state.goals.map((goal) => ({
-        id: goal.id,
-        interactive: false,
-        label: "Goal",
-        position: { x: goal.x, y: goal.y, z: 2 },
-        size: { height: 120, width: 24 },
-      })),
+      }),
+      ...state.platforms.map((platform) =>
+        withSideScrollerAsset(config, {
+          id: platform.id,
+          interactive: false,
+          label: platform.id,
+          position: { x: platform.x, y: platform.y, z: 1 },
+          size: { height: platform.height, width: platform.width },
+        }),
+      ),
+      ...Object.values(state.runners).map((runner) =>
+        withSideScrollerAsset(config, {
+          id: `piece:runner-${runner.id}`,
+          interactive: true,
+          label: runner.id,
+          position: { x: runner.x, y: runner.y, z: 2 },
+          size: { height: 72, width: 36 },
+        }),
+      ),
+      ...state.hazards.map((hazard) =>
+        withSideScrollerAsset(config, {
+          id: hazard.id,
+          interactive: !hazard.defeated,
+          label: hazard.defeated ? "Defeated Hazard" : "Hazard",
+          position: { x: hazard.x, y: hazard.y, z: 2 },
+          size: { height: 48, width: 48 },
+        }),
+      ),
+      ...state.collectibles.map((collectible) =>
+        withSideScrollerAsset(config, {
+          id: collectible.id,
+          interactive: collectible.collectedBy === null,
+          label: collectible.collectedBy === null ? "Collectible" : "Collected",
+          position: { x: collectible.x, y: collectible.y, z: 2 },
+          size: { height: 28, width: 28 },
+        }),
+      ),
+      ...state.goals.map((goal) =>
+        withSideScrollerAsset(config, {
+          id: goal.id,
+          interactive: false,
+          label: "Goal",
+          position: { x: goal.x, y: goal.y, z: 2 },
+          size: { height: 120, width: 24 },
+        }),
+      ),
     ],
     viewport: { ...viewport },
   };
@@ -487,6 +500,28 @@ export function createSideScrollerComponents(
       }),
     ),
   ];
+}
+
+function withSideScrollerAsset(
+  config: SideScrollerEngineConfig,
+  object: RenderObjectModel,
+): RenderObjectModel {
+  const binding = config.assets?.sideScroller.bindings.find(
+    (candidate) => candidate.objectId === object.id,
+  );
+  if (binding === undefined) {
+    return object;
+  }
+
+  return {
+    ...object,
+    asset: {
+      assetId: binding.assetId,
+      ...(binding.clip === undefined ? {} : { clip: binding.clip }),
+      ...(binding.frame === undefined ? {} : { frame: binding.frame }),
+      ...(binding.variant === undefined ? {} : { variant: binding.variant }),
+    },
+  };
 }
 
 function createRunnerState(

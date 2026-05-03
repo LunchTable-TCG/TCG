@@ -281,7 +281,7 @@ function createPackageName(targetDirectory: string): string {
 }
 
 function createTemplateFiles(templateId: ScaffoldTemplateId) {
-  return [
+  const files = [
     {
       content: () => "node_modules\ndist\n.env.local\n",
       path: ".gitignore",
@@ -326,6 +326,18 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       content: createRulesetJson(templateId),
       path: "ruleset.json",
     },
+    ...(templateId === "side-scroller"
+      ? [
+          {
+            content: createSideScrollerAssetManifestFile,
+            path: "assets/manifest.json",
+          },
+          {
+            content: createSideScrollerAssetSource,
+            path: "src/assets.ts",
+          },
+        ]
+      : []),
     {
       content: createA2aAgentSource,
       path: "src/agents/a2a.ts",
@@ -362,6 +374,14 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       content: createGameTestSource(templateId),
       path: "tests/game.test.ts",
     },
+    ...(templateId === "side-scroller"
+      ? [
+          {
+            content: createAssetTestSource,
+            path: "tests/assets.test.ts",
+          },
+        ]
+      : []),
     {
       content: createMcpServerSource(templateId),
       path: "src/mcp/server.ts",
@@ -383,6 +403,8 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "tsconfig.json",
     },
   ];
+
+  return files;
 }
 
 function createReadme(input: ScaffoldFileInput): string {
@@ -475,6 +497,259 @@ function createRulesetJson(
       null,
       2,
     )}\n`;
+}
+
+function createSideScrollerAssetManifestFile(): string {
+  return `${JSON.stringify(createSideScrollerAssetManifest(), null, 2)}\n`;
+}
+
+function createSideScrollerAssetManifest() {
+  return {
+    bindings: [
+      {
+        assetId: "sprite:runner",
+        clip: "clip:runner:run",
+        objectId: "piece:runner-seat-0",
+      },
+      {
+        assetId: "sprite:runner",
+        clip: "clip:runner:run",
+        objectId: "piece:runner-seat-1",
+        variant: "blue",
+      },
+      {
+        assetId: "sprite:hazard",
+        frame: 0,
+        objectId: "token:hazard-1",
+      },
+      {
+        assetId: "sprite:collectible",
+        clip: "clip:collectible:spin",
+        objectId: "token:collectible-1",
+      },
+      {
+        assetId: "sprite:goal",
+        frame: 0,
+        objectId: "token:goal",
+      },
+    ],
+    clips: [
+      {
+        assetId: "sprite:runner",
+        fps: 12,
+        fromFrame: 0,
+        id: "clip:runner:run",
+        loop: true,
+        name: "Runner Run",
+        playback: "forward",
+        toFrame: 7,
+      },
+      {
+        assetId: "sprite:collectible",
+        fps: 8,
+        fromFrame: 0,
+        id: "clip:collectible:spin",
+        loop: true,
+        name: "Collectible Spin",
+        playback: "forward",
+        toFrame: 3,
+      },
+    ],
+    collisionTilemapId: "tilemap:level-1",
+    hitboxes: [
+      {
+        assetId: "sprite:runner",
+        boxes: [
+          {
+            frame: 0,
+            height: 60,
+            kind: "hurt",
+            width: 28,
+            x: 4,
+            y: 10,
+          },
+          {
+            frame: 4,
+            height: 36,
+            kind: "attack",
+            width: 44,
+            x: 34,
+            y: 20,
+          },
+        ],
+        id: "hitbox:runner",
+      },
+      {
+        assetId: "sprite:hazard",
+        boxes: [
+          {
+            frame: 0,
+            height: 42,
+            kind: "collision",
+            width: 42,
+            x: 3,
+            y: 6,
+          },
+        ],
+        id: "hitbox:hazard",
+      },
+    ],
+    id: "assets:side-scroller-starter",
+    name: "Side-Scroller Starter Assets",
+    sprites: [
+      {
+        frame: {
+          columns: 4,
+          height: 72,
+          rows: 2,
+          totalFrames: 8,
+          width: 36,
+        },
+        id: "sprite:runner",
+        image: {
+          height: 144,
+          mediaType: "image/png",
+          url: "assets/runner.png",
+          width: 144,
+        },
+        kind: "sprite-sheet",
+        name: "Runner Sprite Sheet",
+        pivot: { x: 0.5, y: 1 },
+      },
+      {
+        frame: {
+          columns: 1,
+          height: 48,
+          rows: 1,
+          totalFrames: 1,
+          width: 48,
+        },
+        id: "sprite:hazard",
+        image: {
+          height: 48,
+          mediaType: "image/png",
+          url: "assets/hazard.png",
+          width: 48,
+        },
+        kind: "sprite-sheet",
+        name: "Hazard Sprite",
+        pivot: { x: 0.5, y: 1 },
+      },
+      {
+        frame: {
+          columns: 4,
+          height: 28,
+          rows: 1,
+          totalFrames: 4,
+          width: 28,
+        },
+        id: "sprite:collectible",
+        image: {
+          height: 28,
+          mediaType: "image/png",
+          url: "assets/collectible.png",
+          width: 112,
+        },
+        kind: "sprite-sheet",
+        name: "Collectible Sprite",
+        pivot: { x: 0.5, y: 0.5 },
+      },
+      {
+        frame: {
+          columns: 1,
+          height: 120,
+          rows: 1,
+          totalFrames: 1,
+          width: 24,
+        },
+        id: "sprite:goal",
+        image: {
+          height: 120,
+          mediaType: "image/png",
+          url: "assets/goal.png",
+          width: 24,
+        },
+        kind: "sprite-sheet",
+        name: "Goal Sprite",
+        pivot: { x: 0.5, y: 1 },
+      },
+      {
+        frame: {
+          columns: 4,
+          height: 32,
+          rows: 1,
+          totalFrames: 4,
+          width: 32,
+        },
+        id: "sprite:tiles",
+        image: {
+          height: 32,
+          mediaType: "image/png",
+          url: "assets/tiles.png",
+          width: 128,
+        },
+        kind: "sprite-sheet",
+        name: "Level Tiles",
+        pivot: { x: 0, y: 0 },
+      },
+    ],
+    tilemaps: [
+      {
+        cellSize: 32,
+        columns: 12,
+        id: "tilemap:level-1",
+        layers: [
+          {
+            data: [
+              [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+              [-1, -1, -1, -1, 1, 1, 1, -1, -1, -1, -1, -1],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            id: "layer:collision",
+            kind: "collision",
+            name: "Collision",
+            visible: false,
+          },
+          {
+            data: [
+              [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+              [-1, -1, -1, -1, 2, 2, 2, -1, -1, -1, -1, -1],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            id: "layer:visual",
+            kind: "visual",
+            name: "Visual",
+            visible: true,
+          },
+        ],
+        name: "Level 1 Tilemap",
+        rows: 3,
+        tilesetAssetId: "sprite:tiles",
+      },
+    ],
+    timelines: [
+      {
+        id: "timeline:runner",
+        name: "Runner Scene Timeline",
+        scenes: [
+          {
+            clipId: "clip:runner:run",
+            id: "scene:intro",
+            loopCount: 1,
+            name: "Intro",
+            order: 1,
+          },
+          {
+            clipId: "clip:runner:run",
+            id: "scene:run",
+            loopCount: "infinite",
+            name: "Run",
+            order: 2,
+          },
+        ],
+      },
+    ],
+  };
 }
 
 function getPackGenre(templateId: ScaffoldTemplateId): string {
@@ -674,6 +949,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [src/agents/a2a.ts](src/agents/a2a.ts): A2A agent card helper.
 - [src/agents/self-play.ts](src/agents/self-play.ts): Deterministic self-play runner.
 - [src/mcp/server.ts](src/mcp/server.ts): Runnable stdio MCP server for local clients and agent tooling.
+${createAssetLlmsEntries(input.template.id)}
 
 ## Agent Skills
 
@@ -688,6 +964,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [tests/mcp-server.test.ts](tests/mcp-server.test.ts): MCP initialize, resource, and legal-action tool checks.
 - [tests/sse.test.ts](tests/sse.test.ts): SSE context envelope and stream encoding checks.
 - [tests/self-play.test.ts](tests/self-play.test.ts): Agent-vs-agent deterministic smoke test.
+${createAssetVerificationEntries(input.template.id)}
 `;
 }
 
@@ -727,6 +1004,7 @@ Rules:
 - \`runStarterMcpStdioServer\` exposes a connectable MCP stdio server.
 - \`createStarterA2aAgentCard\` exposes discovery metadata.
 - \`runStarterSelfPlay\` proves two agent seats can participate immediately.
+${createAssetEntrypointEntries(input.template.id)}
 
 ## Skills
 
@@ -738,7 +1016,46 @@ Use \`.agents/skills/play-lunchtable-game/SKILL.md\` when playing the game, \`.a
 - \`${input.packageManager} run test\` passes.
 - Agents only choose from legal action ids.
 - Hidden or private state is exposed only through scoped seat views.
+${createAssetDoneCriteriaEntries(input.template.id)}
 `;
+}
+
+function createAssetLlmsEntries(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `- [assets/manifest.json](assets/manifest.json): Pack-ready sprite, clip, hitbox, tilemap, and timeline manifest.
+- [src/assets.ts](src/assets.ts): Typed asset bundle used by the side-scroller ruleset and render scene.
+`;
+}
+
+function createAssetVerificationEntries(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return "- [tests/assets.test.ts](tests/assets.test.ts): Side-scroller asset bundle validation and renderer hint checks.\n";
+}
+
+function createAssetEntrypointEntries(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return "- `sideScrollerAssets` validates sprite sheets, clips, hitboxes, tilemaps, and scene timelines before renderers consume asset hints.";
+}
+
+function createAssetDoneCriteriaEntries(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return "- `assets/manifest.json` validates through `@lunchtable/games-assets` and MCP `listAssets` returns the same pack-ready metadata.";
 }
 
 function createPlayGameSkill(): string {
@@ -1178,6 +1495,8 @@ const serverInfo = {
   version: "0.1.0",
 };
 
+const assetManifest = ${templateId === "side-scroller" ? JSON.stringify(createSideScrollerAssetManifest(), null, 2) : "null"};
+
 const resources = [
   {
     description: "Starter game manifest and runtime metadata.",
@@ -1207,6 +1526,17 @@ const resources = [
     title: "Event Log",
     uri: "lunchtable://runtime/events",
   },
+  ...(assetManifest === null
+    ? []
+    : [
+        {
+          description: "Pack-ready asset metadata from assets/manifest.json.",
+          mimeType: "application/json",
+          name: "asset-manifest",
+          title: "Asset Manifest",
+          uri: "lunchtable://assets/manifest",
+        },
+      ]),
 ] as const;
 
 export function createStarterMcpServerRuntime(): StarterMcpRuntime {
@@ -1318,7 +1648,7 @@ export async function runStarterMcpStdioServer(
 }
 
 function createStarterMcpToolDefinitions(): JsonValue[] {
-  return createStarterMcpToolManifest().tools.map((tool) =>
+  const tools = createStarterMcpToolManifest().tools.map((tool) =>
     toJsonValue({
       description: tool.description,
       inputSchema: tool.inputSchema,
@@ -1326,6 +1656,23 @@ function createStarterMcpToolDefinitions(): JsonValue[] {
       title: createToolTitle(tool.name),
     }),
   );
+  if (assetManifest !== null) {
+    tools.push(
+      toJsonValue({
+        description:
+          "List pack-ready sprites, clips, hitboxes, tilemaps, and timelines from assets/manifest.json.",
+        inputSchema: {
+          additionalProperties: false,
+          properties: {},
+          type: "object",
+        },
+        name: "listAssets",
+        title: "List Assets",
+      }),
+    );
+  }
+
+  return tools;
 }
 
 async function callStarterMcpTool(
@@ -1389,6 +1736,14 @@ async function callStarterMcpTool(
       return createToolResult({
         events: toJsonValue(runtime.eventLog),
         stateVersion: runtime.state.shell.version,
+      });
+    case "listAssets":
+      if (assetManifest === null) {
+        return createToolError("This starter does not include assets/manifest.json");
+      }
+      return createToolResult({
+        manifestPath: "assets/manifest.json",
+        manifest: toJsonValue(assetManifest),
       });
     case "runSelfPlay": {
       const turns = optionalNumber(args, "turns") ?? 2;
@@ -1507,6 +1862,8 @@ function readStarterMcpResource(
     payload = toJsonValue(runtime.state);
   } else if (uri === "lunchtable://runtime/events") {
     payload = toJsonValue(runtime.eventLog);
+  } else if (uri === "lunchtable://assets/manifest" && assetManifest !== null) {
+    payload = toJsonValue(assetManifest);
   } else {
     throw new Error(\`Unknown MCP resource: \${uri}\`);
   }
@@ -1638,6 +1995,7 @@ function createPackageJson(input: ScaffoldFileInput): string {
     "@lunchtable/games-tabletop": "latest",
   };
   if (input.template.id === "side-scroller") {
+    dependencies["@lunchtable/games-assets"] = "latest";
     dependencies["@lunchtable/games-side-scroller"] = "latest";
   }
 
@@ -1696,6 +2054,23 @@ function createGameSource(templateId: ScaffoldTemplateId): ScaffoldFileFactory {
   }
 
   return createShooterGameSource;
+}
+
+function createSideScrollerAssetSource(): string {
+  return `import { createSideScrollerAssetBundle } from "@lunchtable/games-assets";
+
+type SideScrollerAssetInput = Parameters<typeof createSideScrollerAssetBundle>[0];
+
+export const sideScrollerAssetManifest: SideScrollerAssetInput = ${JSON.stringify(
+    createSideScrollerAssetManifest(),
+    null,
+    2,
+  )};
+
+export const sideScrollerAssets = createSideScrollerAssetBundle(
+  sideScrollerAssetManifest,
+);
+`;
 }
 
 function createGameTestSource(
@@ -1778,6 +2153,52 @@ describe("${templateId} scaffold", () => {
     expect(game.manifest.runtime).toBe("lunchtable");
     expect(game.components.length).toBeGreaterThan(0);
     expect(game.ruleset.createInitialState(game.config).shell.status).toBe("playing");
+  });
+});
+`;
+}
+
+function createAssetTestSource(): string {
+  return `import {
+  createSideScrollerAssetBundle,
+  validateAssetBundle,
+} from "@lunchtable/games-assets";
+import { describe, expect, it } from "vitest";
+
+import { createSideScrollerGame } from "../src/game";
+import { sideScrollerAssetManifest } from "../src/assets";
+
+describe("side-scroller scaffold assets", () => {
+  it("validates the pack-ready asset manifest", () => {
+    const bundle = createSideScrollerAssetBundle(sideScrollerAssetManifest);
+
+    expect(validateAssetBundle(bundle)).toMatchObject({
+      issues: [],
+      ok: true,
+    });
+  });
+
+  it("feeds sprite hints into the renderer-neutral scene", () => {
+    const game = createSideScrollerGame();
+    const state = game.ruleset.createInitialState(game.config);
+    const scene = game.ruleset.deriveRenderScene(state, {
+      height: 720,
+      width: 1280,
+    });
+
+    expect(
+      scene.objects.find((object) => object.id === "piece:runner-seat-0")
+        ?.asset,
+    ).toMatchObject({
+      assetId: "sprite:runner",
+      clip: "clip:runner:run",
+    });
+    expect(
+      scene.objects.find((object) => object.id === "token:hazard-1")?.asset,
+    ).toMatchObject({
+      assetId: "sprite:hazard",
+      frame: 0,
+    });
   });
 });
 `;
@@ -2387,17 +2808,24 @@ function createSideScrollerGameSource(): string {
   sideScrollerStarterConfig,
 } from "@lunchtable/games-side-scroller";
 
+import { sideScrollerAssets } from "./assets";
+
+const sideScrollerConfig = {
+  ...sideScrollerStarterConfig,
+  assets: sideScrollerAssets,
+};
+
 export function createSideScrollerGame() {
   return {
-    components: createSideScrollerComponents(sideScrollerStarterConfig),
+    components: createSideScrollerComponents(sideScrollerConfig),
     config: { seed: "seed:side-scroller" },
     manifest: {
       genre: "side-scroller",
       runtime: "lunchtable",
-      title: sideScrollerStarterConfig.title,
-      version: sideScrollerStarterConfig.version,
+      title: sideScrollerConfig.title,
+      version: sideScrollerConfig.version,
     },
-    ruleset: createSideScrollerRuleset(sideScrollerStarterConfig),
+    ruleset: createSideScrollerRuleset(sideScrollerConfig),
   };
 }
 `;

@@ -41,6 +41,7 @@ export interface PortablePackEvaluationCheck {
   name:
     | "agent-parity-test"
     | "agent-skills"
+    | "asset-pipeline"
     | "llms-map"
     | "mcp-server"
     | "pack-valid"
@@ -137,6 +138,9 @@ export async function evaluatePortablePackDirectory(
   directory: string,
 ): Promise<PortablePackEvaluationResult> {
   const validation = await validatePortablePackDirectory(directory);
+  const gameJson = await readOptionalJsonFile(join(directory, "game.json"));
+  const requiresAssetPipeline =
+    isJsonObject(gameJson) && gameJson.genre === "side-scroller";
   const checks: PortablePackEvaluationCheck[] = [
     { name: "pack-valid", ok: validation.ok },
     {
@@ -152,6 +156,13 @@ export async function evaluatePortablePackDirectory(
       ok:
         (await pathExists(join(directory, "src", "agents", "sse.ts"))) &&
         (await pathExists(join(directory, "tests", "sse.test.ts"))),
+    },
+    {
+      name: "asset-pipeline",
+      ok:
+        !requiresAssetPipeline ||
+        ((await pathExists(join(directory, "assets", "manifest.json"))) &&
+          (await pathExists(join(directory, "tests", "assets.test.ts")))),
     },
     {
       name: "mcp-server",
@@ -247,6 +258,14 @@ async function pathExists(path: string): Promise<boolean> {
 async function readJsonFile(path: string): Promise<JsonValue> {
   const content = await readFile(path, "utf8");
   return JSON.parse(content) as JsonValue;
+}
+
+async function readOptionalJsonFile(path: string): Promise<JsonValue | null> {
+  if (!(await pathExists(path))) {
+    return null;
+  }
+
+  return readJsonFile(path);
 }
 
 function validateGameManifest(value: JsonValue): PortablePackValidationIssue[] {

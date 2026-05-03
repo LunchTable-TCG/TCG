@@ -28,4 +28,11 @@ export default defineConfig({
   },
   envDir: fileURLToPath(new URL("../..", import.meta.url)),
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@lunchtable/games-assets": fileURLToPath(
+        new URL("../../packages/games-assets/src/index.ts", import.meta.url),
+      ),
+    },
+  },
 });

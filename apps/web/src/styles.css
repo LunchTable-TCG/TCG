@@ -384,6 +384,13 @@ body {
   gap: 1rem;
 }
 
+.builder-panel-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.asset-studio-panel,
 .pack-editor-panel {
   display: grid;
   gap: 1rem;
@@ -1652,6 +1659,10 @@ h3 {
   .site-shell {
     padding-top: 0.75rem;
     gap: 1rem;
+  }
+
+  .builder-panel-grid {
+    grid-template-columns: 1fr;
   }
 
   .site-nav {

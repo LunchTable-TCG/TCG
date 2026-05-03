@@ -15,6 +15,7 @@ export type {
   SideScrollerSeatId,
   SideScrollerState,
 } from "./engine";
+export type { SideScrollerAssetBundle } from "@lunchtable/games-assets";
 export {
   applySideScrollerIntent,
   createSideScrollerComponents,

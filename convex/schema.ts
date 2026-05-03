@@ -85,6 +85,25 @@ export default defineSchema({
     .index("by_matchId", ["matchId"])
     .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
+  gameAssets: defineTable({
+    createdAt: v.number(),
+    mediaType: v.string(),
+    metadataJson: v.string(),
+    name: v.string(),
+    ownerUserId: v.id("users"),
+    prompt: v.optional(v.string()),
+    source: v.union(v.literal("generated"), v.literal("imported")),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    storageId: v.id("_storage"),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerUserId_and_updatedAt", ["ownerUserId", "updatedAt"])
+    .index("by_ownerUserId_and_status_and_updatedAt", [
+      "ownerUserId",
+      "status",
+      "updatedAt",
+    ]),
+
   collectionEntries: defineTable({
     cardId: v.string(),
     formatId: v.string(),

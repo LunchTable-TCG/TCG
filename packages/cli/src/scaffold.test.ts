@@ -279,6 +279,35 @@ describe("lunchtable init scaffolding", () => {
       expect(objectsJson).toContain("Goal");
       expect(objectsJson).toContain("Hazard");
       expect(objectsJson).toContain("Collectible");
+
+      const packageJson = JSON.parse(
+        await readFile(join(targetDirectory, "package.json"), "utf8"),
+      ) as { dependencies: Record<string, string> };
+      expect(packageJson.dependencies["@lunchtable/games-assets"]).toBe(
+        "latest",
+      );
+
+      const assetManifest = await readFile(
+        join(targetDirectory, "assets/manifest.json"),
+        "utf8",
+      );
+      expect(assetManifest).toContain("sprite:runner");
+      expect(assetManifest).toContain("clip:runner:run");
+      expect(assetManifest).toContain("tilemap:level-1");
+
+      const assetTestSource = await readFile(
+        join(targetDirectory, "tests/assets.test.ts"),
+        "utf8",
+      );
+      expect(assetTestSource).toContain("validateAssetBundle");
+      expect(assetTestSource).toContain("createSideScrollerAssetBundle");
+
+      const mcpServerSource = await readFile(
+        join(targetDirectory, "src/mcp/server.ts"),
+        "utf8",
+      );
+      expect(mcpServerSource).toContain("listAssets");
+      expect(mcpServerSource).toContain("assets/manifest.json");
     } finally {
       await rm(root, { force: true, recursive: true });
     }

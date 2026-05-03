@@ -126,6 +126,7 @@ describe("portable game pack CLI helpers", () => {
           { name: "agent-parity-test", ok: true },
           { name: "self-play-test", ok: true },
           { name: "sse-context", ok: true },
+          { name: "asset-pipeline", ok: true },
           { name: "mcp-server", ok: true },
           { name: "llms-map", ok: true },
           { name: "agent-skills", ok: true },

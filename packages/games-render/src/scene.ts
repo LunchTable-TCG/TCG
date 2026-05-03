@@ -21,6 +21,12 @@ export interface RenderCue {
 }
 
 export interface RenderObjectModel {
+  asset?: {
+    assetId: string;
+    clip?: string;
+    frame?: number;
+    variant?: string;
+  };
   id: string;
   interactive: boolean;
   label: string;
