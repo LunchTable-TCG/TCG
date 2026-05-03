@@ -1425,6 +1425,74 @@ export async function runStarterSelfPlay(input: {
 `;
 }
 
+function createMcpAssetImports(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `import {
+  createAssetStudioToolDefinitions,
+  runAssetStudioTool,
+} from "@lunchtable/games-assets";
+`;
+}
+
+function createMcpAssetSourceImport(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `import {
+  sideScrollerAssetManifest,
+  sideScrollerAssets,
+} from "../assets";
+`;
+}
+
+function createMcpAssetToolDefinitionsBlock(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `if (assetBundle !== null) {
+    for (const tool of createAssetStudioToolDefinitions()) {
+      tools.push(
+        toJsonValue({
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          name: tool.name,
+          title: tool.title,
+        }),
+      );
+    }
+  }`;
+}
+
+function createMcpAssetToolCases(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `case "listAssets":
+    case "validateAssets":
+    case "exportAssetBundle":
+    case "exportSpriteAtlas":
+    case "requestImageGeneration":
+      if (assetBundle === null) {
+        return createToolError("This starter does not include assets/manifest.json");
+      }
+      const assetToolResult = runAssetStudioTool(assetBundle, {
+        arguments: toToolArguments(args),
+        name: params.name,
+      });
+      return createToolResult(
+        assetToolResult.structuredContent,
+        assetToolResult.isError,
+      );`;
+}
+
 function createMcpServerSource(
   templateId: ScaffoldTemplateId,
 ): ScaffoldFileFactory {
@@ -1432,10 +1500,12 @@ function createMcpServerSource(
 
   return () => `import { argv, stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
+${createMcpAssetImports(templateId)}
 
 import { createStarterDecisionFrame } from "../agents/baseline";
 import { createStarterMcpToolManifest } from "../agents/mcp";
 import { runStarterSelfPlay } from "../agents/self-play";
+${createMcpAssetSourceImport(templateId)}
 import { ${functionName} } from "../game";
 
 export const MCP_PROTOCOL_VERSION = "2025-11-25";
@@ -1495,7 +1565,8 @@ const serverInfo = {
   version: "0.1.0",
 };
 
-const assetManifest = ${templateId === "side-scroller" ? JSON.stringify(createSideScrollerAssetManifest(), null, 2) : "null"};
+const assetManifest = ${templateId === "side-scroller" ? "sideScrollerAssetManifest" : "null"};
+const assetBundle = ${templateId === "side-scroller" ? "sideScrollerAssets" : "null"};
 
 const resources = [
   {
@@ -1656,21 +1727,7 @@ function createStarterMcpToolDefinitions(): JsonValue[] {
       title: createToolTitle(tool.name),
     }),
   );
-  if (assetManifest !== null) {
-    tools.push(
-      toJsonValue({
-        description:
-          "List pack-ready sprites, clips, hitboxes, tilemaps, and timelines from assets/manifest.json.",
-        inputSchema: {
-          additionalProperties: false,
-          properties: {},
-          type: "object",
-        },
-        name: "listAssets",
-        title: "List Assets",
-      }),
-    );
-  }
+  ${createMcpAssetToolDefinitionsBlock(templateId)}
 
   return tools;
 }
@@ -1737,14 +1794,7 @@ async function callStarterMcpTool(
         events: toJsonValue(runtime.eventLog),
         stateVersion: runtime.state.shell.version,
       });
-    case "listAssets":
-      if (assetManifest === null) {
-        return createToolError("This starter does not include assets/manifest.json");
-      }
-      return createToolResult({
-        manifestPath: "assets/manifest.json",
-        manifest: toJsonValue(assetManifest),
-      });
+    ${createMcpAssetToolCases(templateId)}
     case "runSelfPlay": {
       const turns = optionalNumber(args, "turns") ?? 2;
       return createToolResult(
@@ -1879,7 +1929,10 @@ function readStarterMcpResource(
   };
 }
 
-function createToolResult(structuredContent: JsonValue): JsonObject {
+function createToolResult(
+  structuredContent: JsonValue,
+  isError = false,
+): JsonObject {
   return {
     content: [
       {
@@ -1887,7 +1940,7 @@ function createToolResult(structuredContent: JsonValue): JsonObject {
         type: "text",
       },
     ],
-    isError: false,
+    isError,
     structuredContent,
   };
 }
@@ -1958,6 +2011,28 @@ function optionalNumber(args: JsonObject, key: string): number | null {
     throw new Error(\`\${key} must be an integer\`);
   }
   return value;
+}
+
+function toToolArguments(
+  args: JsonObject,
+): Record<string, boolean | null | number | string> {
+  const result: Record<string, boolean | null | number | string> = {};
+
+  for (const [key, value] of Object.entries(args)) {
+    if (
+      typeof value === "boolean" ||
+      typeof value === "number" ||
+      typeof value === "string" ||
+      value === null
+    ) {
+      result[key] = value;
+      continue;
+    }
+
+    throw new Error(\`\${key} must be a primitive tool argument\`);
+  }
+
+  return result;
 }
 
 function getJsonRpcId(value: JsonValue | undefined): JsonRpcId {
@@ -2310,6 +2385,7 @@ interface ToolResultContent {
 }
 
 interface LegalActionsPayload {
+  atlasJson?: string;
   legalActions: Array<{ actionId: string }>;
   stateVersion: number;
 }
@@ -2366,6 +2442,7 @@ describe("${templateId} MCP server", () => {
         tools: expect.arrayContaining([
           expect.objectContaining({ name: "listLegalActions" }),
           expect.objectContaining({ name: "submitAction" }),
+          ${createAssetMcpToolExpectations(templateId)}
         ]),
       },
     });
@@ -2445,7 +2522,83 @@ describe("${templateId} MCP server", () => {
       },
     });
   });
+
+${createAssetMcpServerTestCase(templateId)}
 });
+`;
+}
+
+function createAssetMcpToolExpectations(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `expect.objectContaining({ name: "validateAssets" }),
+          expect.objectContaining({ name: "exportSpriteAtlas" }),
+          expect.objectContaining({ name: "requestImageGeneration" }),`;
+}
+
+function createAssetMcpServerTestCase(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `  it("lets agents inspect and export side-scroller assets through MCP", async () => {
+    const runtime = createStarterMcpServerRuntime();
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 1,
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: {
+          arguments: {},
+          name: "validateAssets",
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        isError: false,
+      },
+    });
+
+    const atlasResponse = await handleStarterMcpRequest(runtime, {
+      id: 2,
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: {
+        arguments: { spriteId: "sprite:runner" },
+        name: "exportSpriteAtlas",
+      },
+    });
+    const atlasPayload = readToolJson(atlasResponse);
+
+    expect(atlasPayload.atlasJson).toContain("sprite:runner");
+
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 3,
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: {
+          arguments: {
+            name: "Runner",
+            prompt: "new transparent runner sprite sheet",
+          },
+          name: "requestImageGeneration",
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          directApiKeyExposed: false,
+          serverAction: "assets.generateSideScrollerAsset",
+        },
+      },
+    });
+  });
 `;
 }
 

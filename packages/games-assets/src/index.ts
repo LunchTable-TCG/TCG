@@ -220,6 +220,84 @@ export interface ElizaImageGenerationResponseBody {
   images?: ElizaImageGenerationResponseImage[];
 }
 
+export type AssetStudioToolAuthority = "export" | "generate-request" | "read";
+
+export type AssetStudioToolName =
+  | "exportAssetBundle"
+  | "exportSpriteAtlas"
+  | "listAssets"
+  | "requestImageGeneration"
+  | "validateAssets";
+
+export type AssetStudioToolSchemaValueType =
+  | "array"
+  | "boolean"
+  | "integer"
+  | "number"
+  | "object"
+  | "string";
+
+export interface AssetStudioToolSchemaProperty {
+  description: string;
+  type: AssetStudioToolSchemaValueType;
+}
+
+export interface AssetStudioToolSchema {
+  additionalProperties: boolean;
+  properties: Record<string, AssetStudioToolSchemaProperty>;
+  required: string[];
+  type: "object";
+}
+
+export interface AssetStudioToolDefinition {
+  authority: AssetStudioToolAuthority;
+  description: string;
+  inputSchema: AssetStudioToolSchema;
+  name: AssetStudioToolName;
+  title: string;
+}
+
+export type AssetStudioToolArgumentValue = boolean | null | number | string;
+
+export interface AssetStudioToolCall {
+  arguments: Record<string, AssetStudioToolArgumentValue>;
+  name: AssetStudioToolName;
+}
+
+export type AssetStudioJsonValue =
+  | AssetStudioJsonValue[]
+  | boolean
+  | null
+  | number
+  | string
+  | { [key: string]: AssetStudioJsonValue };
+
+export type AssetStudioJsonObject = { [key: string]: AssetStudioJsonValue };
+
+export interface AssetStudioToolResult {
+  content: Array<{
+    text: string;
+    type: "text";
+  }>;
+  isError: boolean;
+  structuredContent: AssetStudioJsonObject;
+}
+
+export interface AssetStudioFrame {
+  assets: {
+    clips: AnimationClip[];
+    hitboxes: HitboxSet[];
+    sprites: SpriteSheetAsset[];
+    tilemaps: TilemapAsset[];
+    timelines: SceneTimeline[];
+  };
+  bundleId: string;
+  bundleName: string;
+  summary: AssetBundleValidationSummary;
+  tools: AssetStudioToolDefinition[];
+  validation: AssetBundleValidationResult;
+}
+
 export function createSpriteSheetAsset(
   input: Omit<SpriteSheetAsset, "kind">,
 ): SpriteSheetAsset {
@@ -424,6 +502,215 @@ export function parseElizaImageGenerationResponse(
       url: image.url ?? null,
     })),
   };
+}
+
+export function createAssetStudioToolDefinitions(): AssetStudioToolDefinition[] {
+  return [
+    createAssetStudioTool(
+      "listAssets",
+      "List sprite sheets, clips, hitboxes, tilemaps, timelines, and validation summary.",
+      "read",
+      {},
+      [],
+    ),
+    createAssetStudioTool(
+      "validateAssets",
+      "Validate the asset bundle for pack readiness.",
+      "read",
+      {},
+      [],
+    ),
+    createAssetStudioTool(
+      "exportAssetBundle",
+      "Export the current asset bundle as pack-ready JSON.",
+      "export",
+      {},
+      [],
+    ),
+    createAssetStudioTool(
+      "exportSpriteAtlas",
+      "Export one sprite sheet atlas JSON with clip metadata.",
+      "export",
+      {
+        spriteId: {
+          description: "Sprite sheet asset id to export.",
+          type: "string",
+        },
+      },
+      ["spriteId"],
+    ),
+    createAssetStudioTool(
+      "requestImageGeneration",
+      "Create a server-routable elizaOS Cloud image generation request envelope.",
+      "generate-request",
+      {
+        name: {
+          description: "Generated asset display name.",
+          type: "string",
+        },
+        prompt: {
+          description: "Generation prompt for the side-scroller asset.",
+          type: "string",
+        },
+      },
+      ["name", "prompt"],
+    ),
+  ];
+}
+
+export function createAssetStudioFrame(
+  bundle: AssetBundle | SideScrollerAssetBundle,
+): AssetStudioFrame {
+  const validation = validateAssetBundle(bundle);
+
+  return {
+    assets: {
+      clips: bundle.clips.map(createAnimationClip),
+      hitboxes: bundle.hitboxes.map(createHitboxSet),
+      sprites: bundle.sprites.map((sprite) =>
+        createSpriteSheetAsset({
+          frame: sprite.frame,
+          id: sprite.id,
+          image: sprite.image,
+          name: sprite.name,
+          pivot: sprite.pivot,
+        }),
+      ),
+      tilemaps: bundle.tilemaps.map(createTilemapAsset),
+      timelines: bundle.timelines.map(createSceneTimeline),
+    },
+    bundleId: bundle.id,
+    bundleName: bundle.name,
+    summary: validation.summary,
+    tools: createAssetStudioToolDefinitions(),
+    validation,
+  };
+}
+
+export function runAssetStudioTool(
+  bundle: AssetBundle | SideScrollerAssetBundle,
+  call: AssetStudioToolCall,
+): AssetStudioToolResult {
+  try {
+    if (call.name === "listAssets") {
+      return createAssetStudioToolResult({
+        frame: toAssetStudioJsonValue(createAssetStudioFrame(bundle)),
+      });
+    }
+
+    if (call.name === "validateAssets") {
+      return createAssetStudioToolResult({
+        validation: toAssetStudioJsonValue(validateAssetBundle(bundle)),
+      });
+    }
+
+    if (call.name === "exportAssetBundle") {
+      return createAssetStudioToolResult({
+        bundleJson: `${JSON.stringify(bundle, null, 2)}\n`,
+      });
+    }
+
+    if (call.name === "exportSpriteAtlas") {
+      const spriteId = requireToolString(call.arguments, "spriteId");
+      const sprite = bundle.sprites.find(
+        (candidate) => candidate.id === spriteId,
+      );
+      if (sprite === undefined) {
+        return createAssetStudioToolError(`Unknown sprite asset: ${spriteId}`);
+      }
+
+      return createAssetStudioToolResult({
+        atlasJson: exportSpriteAtlasJson(sprite, bundle.clips),
+        spriteId,
+      });
+    }
+
+    const name = requireToolString(call.arguments, "name");
+    const prompt = requireToolString(call.arguments, "prompt");
+    return createAssetStudioToolResult({
+      directApiKeyExposed: false,
+      provider: "elizaOS Cloud",
+      requiredSecretEnv: "ELIZA_CLOUD_API_KEY",
+      request: {
+        name,
+        prompt,
+      },
+      serverAction: "assets.generateSideScrollerAsset",
+      suggested: {
+        aspectRatio: "1:1",
+        model: "google/gemini-2.5-flash-image",
+        stylePreset: "digital-art",
+      },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.length > 0) {
+      return createAssetStudioToolError(error.message);
+    }
+    return createAssetStudioToolError("Asset studio tool failed");
+  }
+}
+
+function createAssetStudioTool(
+  name: AssetStudioToolName,
+  description: string,
+  authority: AssetStudioToolAuthority,
+  properties: Record<string, AssetStudioToolSchemaProperty>,
+  required: string[],
+): AssetStudioToolDefinition {
+  return {
+    authority,
+    description,
+    inputSchema: {
+      additionalProperties: false,
+      properties,
+      required: [...required],
+      type: "object",
+    },
+    name,
+    title: name
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (letter) => letter.toUpperCase()),
+  };
+}
+
+function requireToolString(
+  args: Record<string, AssetStudioToolArgumentValue>,
+  key: string,
+): string {
+  const value = args[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${key} must be a non-empty string`);
+  }
+  return value;
+}
+
+function createAssetStudioToolResult(
+  structuredContent: AssetStudioJsonObject,
+): AssetStudioToolResult {
+  return {
+    content: [
+      {
+        text: JSON.stringify(structuredContent, null, 2),
+        type: "text",
+      },
+    ],
+    isError: false,
+    structuredContent,
+  };
+}
+
+function createAssetStudioToolError(message: string): AssetStudioToolResult {
+  return {
+    content: [{ text: message, type: "text" }],
+    isError: true,
+    structuredContent: {
+      error: message,
+    },
+  };
+}
+
+function toAssetStudioJsonValue(value: object): AssetStudioJsonValue {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function clampPivot(pivot: PivotPoint): PivotPoint {

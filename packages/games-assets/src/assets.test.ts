@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createAnimationClip,
+  createAssetStudioFrame,
+  createAssetStudioToolDefinitions,
   createElizaImageGenerationRequest,
   createHitboxSet,
   createSceneTimeline,
@@ -10,6 +12,7 @@ import {
   createTilemapAsset,
   exportSpriteAtlasJson,
   parseElizaImageGenerationResponse,
+  runAssetStudioTool,
   validateAssetBundle,
 } from "./index";
 
@@ -136,6 +139,122 @@ describe("Lunch Table Games asset primitives", () => {
         tilemapCount: 1,
         timelineCount: 1,
       },
+    });
+  });
+
+  it("creates an agent tool surface for asset studio parity", () => {
+    const runner = createSpriteSheetAsset({
+      frame: { columns: 4, height: 32, rows: 2, totalFrames: 8, width: 32 },
+      id: "sprite:runner",
+      image: {
+        height: 64,
+        mediaType: "image/png",
+        storageId: "storage-runner",
+        width: 128,
+      },
+      name: "Runner",
+      pivot: { x: 0.5, y: 1 },
+    });
+    const run = createAnimationClip({
+      assetId: runner.id,
+      fps: 12,
+      fromFrame: 0,
+      id: "clip:runner:run",
+      loop: true,
+      name: "Run",
+      playback: "forward",
+      toFrame: 7,
+    });
+    const bundle = createSideScrollerAssetBundle({
+      bindings: [
+        {
+          assetId: runner.id,
+          clip: run.id,
+          objectId: "piece:runner-seat-0",
+        },
+      ],
+      clips: [run],
+      hitboxes: [],
+      id: "assets:side-runner",
+      name: "Side Runner Assets",
+      sprites: [runner],
+      tilemaps: [],
+      timelines: [],
+    });
+
+    expect(createAssetStudioToolDefinitions().map((tool) => tool.name)).toEqual(
+      [
+        "listAssets",
+        "validateAssets",
+        "exportAssetBundle",
+        "exportSpriteAtlas",
+        "requestImageGeneration",
+      ],
+    );
+    expect(createAssetStudioFrame(bundle)).toMatchObject({
+      bundleId: "assets:side-runner",
+      summary: {
+        animationClipCount: 1,
+        hitboxSetCount: 0,
+        spriteCount: 1,
+        tilemapCount: 0,
+        timelineCount: 0,
+      },
+      validation: {
+        ok: true,
+      },
+    });
+    expect(
+      runAssetStudioTool(bundle, {
+        arguments: {},
+        name: "validateAssets",
+      }),
+    ).toMatchObject({
+      isError: false,
+      structuredContent: {
+        validation: {
+          ok: true,
+        },
+      },
+    });
+    expect(
+      JSON.parse(
+        String(
+          runAssetStudioTool(bundle, {
+            arguments: { spriteId: "sprite:runner" },
+            name: "exportSpriteAtlas",
+          }).structuredContent.atlasJson,
+        ),
+      ),
+    ).toMatchObject({
+      meta: {
+        assetId: "sprite:runner",
+      },
+    });
+    expect(
+      runAssetStudioTool(bundle, {
+        arguments: {
+          name: "Runner",
+          prompt: "new transparent runner sprite sheet",
+        },
+        name: "requestImageGeneration",
+      }),
+    ).toMatchObject({
+      isError: false,
+      structuredContent: {
+        directApiKeyExposed: false,
+        provider: "elizaOS Cloud",
+        requiredSecretEnv: "ELIZA_CLOUD_API_KEY",
+        serverAction: "assets.generateSideScrollerAsset",
+      },
+    });
+    expect(
+      runAssetStudioTool(bundle, {
+        arguments: { spriteId: "sprite:missing" },
+        name: "exportSpriteAtlas",
+      }),
+    ).toMatchObject({
+      isError: true,
     });
   });
 

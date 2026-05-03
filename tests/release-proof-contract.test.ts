@@ -81,6 +81,9 @@ describe("release proof contract", () => {
       "lunchtable-games-assets-0.1.1.tgz",
     );
     expect(cliPackageProofScript).toContain('"listAssets"');
+    expect(cliPackageProofScript).toContain('"validateAssets"');
+    expect(cliPackageProofScript).toContain('"exportSpriteAtlas"');
+    expect(cliPackageProofScript).toContain('"requestImageGeneration"');
     expect(cliPackageProofScript).toContain("bun run --silent mcp:stdio");
   });
 

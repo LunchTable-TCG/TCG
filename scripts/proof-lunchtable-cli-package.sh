@@ -53,6 +53,9 @@ bunx vitest run --root "$SIDE_TARGET"
     bun run --silent mcp:stdio)"
   rg '"protocolVersion":"2025-11-25"' <<<"$MCP_OUTPUT" >/dev/null
   rg '"listAssets"' <<<"$MCP_OUTPUT" >/dev/null
+  rg '"validateAssets"' <<<"$MCP_OUTPUT" >/dev/null
+  rg '"exportSpriteAtlas"' <<<"$MCP_OUTPUT" >/dev/null
+  rg '"requestImageGeneration"' <<<"$MCP_OUTPUT" >/dev/null
   rg '"submitAction"' <<<"$MCP_OUTPUT" >/dev/null
 )
 

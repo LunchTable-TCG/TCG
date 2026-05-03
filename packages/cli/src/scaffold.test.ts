@@ -307,6 +307,9 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(mcpServerSource).toContain("listAssets");
+      expect(mcpServerSource).toContain("validateAssets");
+      expect(mcpServerSource).toContain("exportSpriteAtlas");
+      expect(mcpServerSource).toContain("requestImageGeneration");
       expect(mcpServerSource).toContain("assets/manifest.json");
     } finally {
       await rm(root, { force: true, recursive: true });
