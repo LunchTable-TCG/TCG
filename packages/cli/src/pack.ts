@@ -41,6 +41,7 @@ export interface PortablePackEvaluationCheck {
   name:
     | "agent-parity-test"
     | "agent-skills"
+    | "api-server"
     | "asset-pipeline"
     | "llms-map"
     | "mcp-server"
@@ -156,6 +157,12 @@ export async function evaluatePortablePackDirectory(
       ok:
         (await pathExists(join(directory, "src", "agents", "sse.ts"))) &&
         (await pathExists(join(directory, "tests", "sse.test.ts"))),
+    },
+    {
+      name: "api-server",
+      ok:
+        (await pathExists(join(directory, "src", "api", "server.ts"))) &&
+        (await pathExists(join(directory, "tests", "api-server.test.ts"))),
     },
     {
       name: "asset-pipeline",

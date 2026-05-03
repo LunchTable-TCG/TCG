@@ -363,8 +363,16 @@ function createTemplateFiles(templateId: ScaffoldTemplateId) {
       path: "src/agents/self-play.ts",
     },
     {
+      content: createApiServerSource(templateId),
+      path: "src/api/server.ts",
+    },
+    {
       content: createGameSource(templateId),
       path: "src/game.ts",
+    },
+    {
+      content: createApiServerTestSource(templateId),
+      path: "tests/api-server.test.ts",
     },
     {
       content: createAgentParityTestSource(templateId),
@@ -422,6 +430,9 @@ ${input.packageManager} install
 ${input.packageManager} run test
 bun run --silent mcp:stdio
 \`\`\`
+
+Agent integrations can import \`handleStarterApiRequest\` from
+\`src/api/server.ts\` and expose it through any Web-standard HTTP host.
 `;
 }
 
@@ -948,6 +959,7 @@ function createLlmsTxt(input: ScaffoldFileInput): string {
 - [src/agents/sse.ts](src/agents/sse.ts): Server-Sent Events context stream helpers for browser and hosted agents.
 - [src/agents/a2a.ts](src/agents/a2a.ts): A2A agent card helper.
 - [src/agents/self-play.ts](src/agents/self-play.ts): Deterministic self-play runner.
+- [src/api/server.ts](src/api/server.ts): Web-standard HTTP API handler for agents and hosts.
 - [src/mcp/server.ts](src/mcp/server.ts): Runnable stdio MCP server for local clients and agent tooling.
 ${createAssetLlmsEntries(input.template.id)}
 
@@ -960,6 +972,7 @@ ${createAssetLlmsEntries(input.template.id)}
 ## Verification
 
 - [tests/game.test.ts](tests/game.test.ts): Starter construction smoke test.
+- [tests/api-server.test.ts](tests/api-server.test.ts): HTTP API manifest, legal-action, submit, and asset endpoint checks.
 - [tests/agent-parity.test.ts](tests/agent-parity.test.ts): Agent legal-action parity and protocol-surface checks.
 - [tests/mcp-server.test.ts](tests/mcp-server.test.ts): MCP initialize, resource, and legal-action tool checks.
 - [tests/sse.test.ts](tests/sse.test.ts): SSE context envelope and stream encoding checks.
@@ -1001,6 +1014,7 @@ Rules:
 - \`createStarterMcpToolManifest\` exposes tool metadata.
 - \`createStarterAgentContext\` builds a scoped SSE-ready context envelope.
 - \`createStarterAgentSseSnapshot\` encodes a browser-ready context event.
+- \`handleStarterApiRequest\` exposes the same scoped game and asset controls through Web-standard HTTP requests.
 - \`runStarterMcpStdioServer\` exposes a connectable MCP stdio server.
 - \`createStarterA2aAgentCard\` exposes discovery metadata.
 - \`runStarterSelfPlay\` proves two agent seats can participate immediately.
@@ -1104,7 +1118,8 @@ Use this skill when changing the ruleset, state shape, tabletop components, rend
 3. Keep all authoritative changes in the ruleset contract.
 4. Keep agents on legal action ids and scoped views.
 5. Keep \`src/mcp/server.ts\` wired through the same legal-action runtime.
-6. Run \`bun run typecheck\` and \`bun run test\`.
+6. Keep \`src/api/server.ts\` wired through the same legal-action runtime.
+7. Run \`bun run typecheck\` and \`bun run test\`.
 
 ## Rules
 
@@ -1129,10 +1144,11 @@ Use this skill when validating that an agent can play fairly and deterministical
 
 1. Run \`bun run test -- tests/agent-parity.test.ts\`.
 2. Run \`bun run test -- tests/mcp-server.test.ts\`.
-3. Run \`bun run test -- tests/self-play.test.ts\`.
-4. Check that every selected \`actionId\` exists in the current legal action catalog.
-5. Check that state version increases only after applied transitions.
-6. Compare self-play results after rules or policy changes.
+3. Run \`bun run test -- tests/api-server.test.ts\`.
+4. Run \`bun run test -- tests/self-play.test.ts\`.
+5. Check that every selected \`actionId\` exists in the current legal action catalog.
+6. Check that state version increases only after applied transitions.
+7. Compare self-play results after rules or policy changes.
 
 ## Rules
 
@@ -1423,6 +1439,450 @@ export async function runStarterSelfPlay(input: {
   };
 }
 `;
+}
+
+function createApiServerSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  const functionName = getFactoryName(templateId);
+
+  return () => `import { createStarterDecisionFrame } from "../agents/baseline";
+import { createStarterMcpToolManifest } from "../agents/mcp";
+import { runStarterSelfPlay } from "../agents/self-play";
+${createApiAssetImports(templateId)}
+${createApiAssetSourceImport(templateId)}
+import { ${functionName} } from "../game";
+
+type StarterGame = ReturnType<typeof ${functionName}>;
+type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
+type StarterEvent = ReturnType<StarterGame["ruleset"]["applyIntent"]>["events"][number];
+
+type JsonPrimitive = boolean | null | number | string;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+
+export interface StarterApiEventLogEntry {
+  actionId: string | null;
+  at: number;
+  events: StarterEvent[];
+  outcome: string;
+  seat: string;
+  stateVersion: number;
+}
+
+export interface StarterApiRuntime {
+  eventLog: StarterApiEventLogEntry[];
+  game: StarterGame;
+  state: StarterState;
+}
+
+${createApiAssetConstants(templateId)}
+
+const apiRoutes = [
+  { method: "GET", path: "/api/agent/manifest" },
+  { method: "POST", path: "/api/seats/join" },
+  { method: "POST", path: "/api/observe" },
+  { method: "POST", path: "/api/legal-actions" },
+  { method: "POST", path: "/api/actions/submit" },
+  { method: "POST", path: "/api/priority/pass" },
+  { method: "GET", path: "/api/rules" },
+  { method: "POST", path: "/api/objective" },
+  { method: "GET", path: "/api/replay" },
+  { method: "POST", path: "/api/self-play" },
+  ${createApiAssetRouteDefinitions(templateId)}
+] as const;
+
+export function createStarterApiRuntime(): StarterApiRuntime {
+  const game = ${functionName}();
+
+  return {
+    eventLog: [],
+    game,
+    state: game.ruleset.createInitialState(game.config),
+  };
+}
+
+export async function handleStarterApiRequest(
+  runtime: StarterApiRuntime,
+  request: Request,
+): Promise<Response> {
+  const url = new URL(request.url);
+  const route = \`\${request.method.toUpperCase()} \${url.pathname}\`;
+
+  try {
+    if (route === "GET /api/agent/manifest") {
+      return jsonResponse({
+        manifest: toJsonValue(runtime.game.manifest),
+        routes: toJsonValue(apiRoutes),
+        tools: toJsonValue(createStarterMcpToolManifest().tools),
+      });
+    }
+
+    if (route === "POST /api/seats/join") {
+      const body = await readJsonBody(request);
+      return jsonResponse({
+        gameId: runtime.game.manifest.title,
+        seat: optionalString(body, "requestedSeat") ?? "seat-0",
+        transport: "external-http",
+      });
+    }
+
+    if (route === "POST /api/observe") {
+      const body = await readJsonBody(request);
+      return jsonResponse(createObservation(runtime, requireString(body, "seat")));
+    }
+
+    if (route === "POST /api/legal-actions") {
+      const body = await readJsonBody(request);
+      const seat = requireString(body, "seat");
+      const frame = createDecisionFrame(runtime, seat);
+      return jsonResponse({
+        legalActions: toJsonValue(frame.legalActions),
+        seat,
+        stateVersion: runtime.state.shell.version,
+      });
+    }
+
+    if (route === "POST /api/actions/submit") {
+      return jsonResponse(submitAction(runtime, await readJsonBody(request)));
+    }
+
+    if (route === "POST /api/priority/pass") {
+      const body = await readJsonBody(request);
+      const seat = requireString(body, "seat");
+      const frame = createDecisionFrame(runtime, seat);
+      const action = frame.legalActions.find(
+        (candidate) => String(candidate.kind) === "pass",
+      );
+      if (action === undefined) {
+        return jsonResponse({ error: \`Pass is not legal for seat \${seat}\` }, 400);
+      }
+      return jsonResponse(
+        submitAction(runtime, {
+          actionId: action.actionId,
+          seat,
+          stateVersion: runtime.state.shell.version,
+        }),
+      );
+    }
+
+    if (route === "GET /api/rules") {
+      return jsonResponse(createRulesSummary(runtime));
+    }
+
+    if (route === "POST /api/objective") {
+      const body = await readJsonBody(request);
+      return jsonResponse({
+        activeSeatId: runtime.state.shell.activeSeatId,
+        phase: runtime.state.shell.phase,
+        seat: optionalString(body, "seat") ?? null,
+        status: runtime.state.shell.status,
+      });
+    }
+
+    if (route === "GET /api/replay") {
+      return jsonResponse({
+        events: toJsonValue(runtime.eventLog),
+        stateVersion: runtime.state.shell.version,
+      });
+    }
+
+    if (route === "POST /api/self-play") {
+      const body = await readJsonBody(request);
+      return jsonResponse(
+        toJsonValue(await runStarterSelfPlay({
+          receivedAt: 1777739000000,
+          turns: optionalNumber(body, "turns") ?? 2,
+        })),
+      );
+    }
+
+    ${createApiAssetRouteCases(templateId)}
+
+    return jsonResponse({ error: \`Unsupported API route: \${route}\` }, 404);
+  } catch (error) {
+    if (error instanceof Error && error.message.length > 0) {
+      return jsonResponse({ error: error.message }, 400);
+    }
+    return jsonResponse({ error: "API request failed" }, 400);
+  }
+}
+
+function submitAction(
+  runtime: StarterApiRuntime,
+  args: JsonObject,
+): JsonObject {
+  const seat = requireString(args, "seat");
+  const actionId = requireString(args, "actionId");
+  const stateVersion = requireNumber(args, "stateVersion");
+
+  if (stateVersion !== runtime.state.shell.version) {
+    return {
+      error: \`State version mismatch. Expected \${runtime.state.shell.version} but received \${stateVersion}\`,
+      ok: false,
+    };
+  }
+
+  const frame = createDecisionFrame(runtime, seat);
+  const action = frame.legalActions.find(
+    (candidate) => candidate.actionId === actionId,
+  );
+  if (action === undefined) {
+    return {
+      error: \`Unknown or illegal actionId: \${actionId}\`,
+      ok: false,
+    };
+  }
+
+  const transition = runtime.game.ruleset.applyIntent(runtime.state, action.intent);
+  runtime.state = transition.nextState;
+  runtime.eventLog.push({
+    actionId,
+    at: Date.now(),
+    events: transition.events,
+    outcome: transition.outcome,
+    seat,
+    stateVersion: runtime.state.shell.version,
+  });
+
+  return {
+    actionId,
+    events: toJsonValue(transition.events),
+    ok: true,
+    outcome: transition.outcome,
+    seat,
+    stateVersion: runtime.state.shell.version,
+  };
+}
+
+function createDecisionFrame(runtime: StarterApiRuntime, seat: string) {
+  return createStarterDecisionFrame({
+    receivedAt: Date.now(),
+    seat,
+    state: runtime.state,
+    transport: "external-http",
+  });
+}
+
+function createObservation(runtime: StarterApiRuntime, seat: string): JsonObject {
+  return {
+    seat,
+    stateVersion: runtime.state.shell.version,
+    view: toJsonValue(runtime.game.ruleset.deriveSeatView(runtime.state, seat)),
+  };
+}
+
+function createRulesSummary(runtime: StarterApiRuntime): JsonObject {
+  return {
+    components: toJsonValue(runtime.game.components),
+    manifest: toJsonValue(runtime.game.manifest),
+    renderScene: toJsonValue(
+      runtime.game.ruleset.deriveRenderScene(runtime.state, {
+        height: 720,
+        width: 1280,
+      }),
+    ),
+    sampleLegalActions: toJsonValue(
+      createDecisionFrame(runtime, "seat-0").legalActions,
+    ),
+  };
+}
+
+async function readJsonBody(request: Request): Promise<JsonObject> {
+  const content = await request.text();
+  if (content.trim().length === 0) {
+    return {};
+  }
+
+  const parsed: JsonValue = JSON.parse(content);
+  if (!isJsonObject(parsed)) {
+    throw new Error("API request body must be a JSON object");
+  }
+  return parsed;
+}
+
+function jsonResponse(value: JsonValue, status = 200): Response {
+  return new Response(JSON.stringify(value, null, 2), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    status,
+  });
+}
+
+function requireString(args: JsonObject, key: string): string {
+  const value = args[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(\`\${key} must be a non-empty string\`);
+  }
+  return value;
+}
+
+function optionalString(args: JsonObject, key: string): string | null {
+  const value = args[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new Error(\`\${key} must be a string\`);
+  }
+  return value;
+}
+
+function requireNumber(args: JsonObject, key: string): number {
+  const value = args[key];
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(\`\${key} must be an integer\`);
+  }
+  return value;
+}
+
+function optionalNumber(args: JsonObject, key: string): number | null {
+  const value = args[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(\`\${key} must be an integer\`);
+  }
+  return value;
+}
+
+function isJsonObject(value: JsonValue | undefined): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toJsonValue(value: object): JsonValue {
+  return JSON.parse(JSON.stringify(value));
+}
+
+${createApiAssetHelperFunctions(templateId)}
+`;
+}
+
+function createApiAssetImports(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `import {
+  runAssetStudioTool,
+  type AssetStudioToolName,
+} from "@lunchtable/games-assets";`;
+}
+
+function createApiAssetSourceImport(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `import { sideScrollerAssetManifest, sideScrollerAssets } from "../assets";`;
+}
+
+function createApiAssetConstants(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return `const assetManifest = null;
+const assetBundle = null;`;
+  }
+
+  return `const assetManifest = sideScrollerAssetManifest;
+const assetBundle = sideScrollerAssets;`;
+}
+
+function createApiAssetRouteDefinitions(
+  templateId: ScaffoldTemplateId,
+): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `{ method: "GET", path: "/api/assets" },
+  { method: "GET", path: "/api/assets/validate" },
+  { method: "GET", path: "/api/assets/export" },
+  { method: "POST", path: "/api/assets/atlas" },
+  { method: "POST", path: "/api/assets/generation-request" },`;
+}
+
+function createApiAssetRouteCases(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `if (route === "GET /api/assets") {
+      return handleAssetApiTool("listAssets", {});
+    }
+
+    if (route === "GET /api/assets/validate") {
+      return handleAssetApiTool("validateAssets", {});
+    }
+
+    if (route === "GET /api/assets/export") {
+      return handleAssetApiTool("exportAssetBundle", {});
+    }
+
+    if (route === "POST /api/assets/atlas") {
+      return handleAssetApiTool("exportSpriteAtlas", await readJsonBody(request));
+    }
+
+    if (route === "POST /api/assets/generation-request") {
+      return handleAssetApiTool(
+        "requestImageGeneration",
+        await readJsonBody(request),
+      );
+    }`;
+}
+
+function createApiAssetHelperFunctions(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `function handleAssetApiTool(
+  name: AssetStudioToolName,
+  args: JsonObject,
+): Response {
+  if (assetBundle === null || assetManifest === null) {
+    return jsonResponse(
+      { error: "This starter does not include assets/manifest.json" },
+      404,
+    );
+  }
+
+  const result = runAssetStudioTool(assetBundle, {
+    arguments: toToolArguments(args),
+    name,
+  });
+
+  return jsonResponse(
+    {
+      ok: !result.isError,
+      ...result.structuredContent,
+    },
+    result.isError ? 400 : 200,
+  );
+}
+
+function toToolArguments(
+  args: JsonObject,
+): Record<string, boolean | null | number | string> {
+  const result: Record<string, boolean | null | number | string> = {};
+
+  for (const [key, value] of Object.entries(args)) {
+    if (
+      typeof value === "boolean" ||
+      typeof value === "number" ||
+      typeof value === "string" ||
+      value === null
+    ) {
+      result[key] = value;
+      continue;
+    }
+
+    throw new Error(\`\${key} must be a primitive API argument\`);
+  }
+
+  return result;
+}`;
 }
 
 function createMcpAssetImports(templateId: ScaffoldTemplateId): string {
@@ -2276,6 +2736,112 @@ describe("side-scroller scaffold assets", () => {
     });
   });
 });
+`;
+}
+
+function createApiServerTestSource(
+  templateId: ScaffoldTemplateId,
+): ScaffoldFileFactory {
+  return () => `import { describe, expect, it } from "vitest";
+
+import {
+  createStarterApiRuntime,
+  handleStarterApiRequest,
+} from "../src/api/server";
+
+type ApiJson = Record<string, unknown>;
+
+async function readJson(response: Response): Promise<ApiJson> {
+  return JSON.parse(await response.text()) as ApiJson;
+}
+
+function createRequest(path: string, body?: ApiJson): Request {
+  return new Request(\`https://agents.example.test\${path}\`, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    method: body === undefined ? "GET" : "POST",
+  });
+}
+
+describe("${templateId} HTTP API server", () => {
+  it("exposes manifest, legal actions, and authoritative submit endpoints", async () => {
+    const runtime = createStarterApiRuntime();
+    const manifest = await readJson(
+      await handleStarterApiRequest(runtime, createRequest("/api/agent/manifest")),
+    );
+    const legal = await readJson(
+      await handleStarterApiRequest(
+        runtime,
+        createRequest("/api/legal-actions", { seat: "seat-0" }),
+      ),
+    );
+    const legalActions = legal.legalActions as Array<{ actionId: string }>;
+    const stateVersion = legal.stateVersion as number;
+    const actionId = legalActions[0]?.actionId;
+
+    expect(JSON.stringify(manifest.routes)).toContain("/api/legal-actions");
+    expect(actionId).toBeTypeOf("string");
+
+    const submitted = await readJson(
+      await handleStarterApiRequest(
+        runtime,
+        createRequest("/api/actions/submit", {
+          actionId,
+          seat: "seat-0",
+          stateVersion,
+        }),
+      ),
+    );
+
+    expect(submitted).toMatchObject({
+      ok: true,
+      seat: "seat-0",
+    });
+    expect(runtime.state.shell.version).toBe(1);
+  });
+
+${createApiAssetServerTestCase(templateId)}
+});
+`;
+}
+
+function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
+  if (templateId !== "side-scroller") {
+    return "";
+  }
+
+  return `  it("exposes side-scroller asset studio endpoints for agents", async () => {
+    const runtime = createStarterApiRuntime();
+    const validate = await readJson(
+      await handleStarterApiRequest(runtime, createRequest("/api/assets/validate")),
+    );
+    const atlas = await readJson(
+      await handleStarterApiRequest(
+        runtime,
+        createRequest("/api/assets/atlas", { spriteId: "sprite:runner" }),
+      ),
+    );
+    const generationRequest = await readJson(
+      await handleStarterApiRequest(
+        runtime,
+        createRequest("/api/assets/generation-request", {
+          name: "Runner",
+          prompt: "transparent runner sprite sheet",
+        }),
+      ),
+    );
+
+    expect(validate).toMatchObject({
+      ok: true,
+      validation: { ok: true },
+    });
+    expect(String(atlas.atlasJson)).toContain("sprite:runner");
+    expect(generationRequest).toMatchObject({
+      directApiKeyExposed: false,
+      ok: true,
+      serverAction: "assets.generateSideScrollerAsset",
+    });
+  });
 `;
 }
 

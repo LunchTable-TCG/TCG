@@ -92,7 +92,9 @@ describe("lunchtable init scaffolding", () => {
         "src/agents/mcp.ts",
         "src/agents/sse.ts",
         "src/agents/self-play.ts",
+        "src/api/server.ts",
         "src/game.ts",
+        "tests/api-server.test.ts",
         "tests/agent-parity.test.ts",
         "tests/game.test.ts",
         "src/mcp/server.ts",
@@ -121,6 +123,21 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(parityTestSource).toContain("chooses from legal actions");
+
+      const apiServerSource = await readFile(
+        join(targetDirectory, "src/api/server.ts"),
+        "utf8",
+      );
+      expect(apiServerSource).toContain("handleStarterApiRequest");
+      expect(apiServerSource).toContain("/api/legal-actions");
+      expect(apiServerSource).toContain("/api/actions/submit");
+
+      const apiServerTestSource = await readFile(
+        join(targetDirectory, "tests/api-server.test.ts"),
+        "utf8",
+      );
+      expect(apiServerTestSource).toContain("handleStarterApiRequest");
+      expect(apiServerTestSource).toContain("/api/agent/manifest");
 
       const packageJson = JSON.parse(
         await readFile(join(targetDirectory, "package.json"), "utf8"),
@@ -216,7 +233,9 @@ describe("lunchtable init scaffolding", () => {
         expect(result.files).toContain("src/agents/sse.ts");
         expect(result.files).toContain("src/agents/a2a.ts");
         expect(result.files).toContain("src/agents/self-play.ts");
+        expect(result.files).toContain("src/api/server.ts");
         expect(result.files).toContain("src/mcp/server.ts");
+        expect(result.files).toContain("tests/api-server.test.ts");
         expect(result.files).toContain("tests/agent-parity.test.ts");
         expect(result.files).toContain("tests/mcp-server.test.ts");
         expect(result.files).toContain("tests/sse.test.ts");
@@ -311,6 +330,14 @@ describe("lunchtable init scaffolding", () => {
       expect(mcpServerSource).toContain("exportSpriteAtlas");
       expect(mcpServerSource).toContain("requestImageGeneration");
       expect(mcpServerSource).toContain("assets/manifest.json");
+
+      const apiServerSource = await readFile(
+        join(targetDirectory, "src/api/server.ts"),
+        "utf8",
+      );
+      expect(apiServerSource).toContain("/api/assets/atlas");
+      expect(apiServerSource).toContain("/api/assets/generation-request");
+      expect(apiServerSource).toContain("requestImageGeneration");
     } finally {
       await rm(root, { force: true, recursive: true });
     }
