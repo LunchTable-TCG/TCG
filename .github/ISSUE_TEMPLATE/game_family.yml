@@ -1,0 +1,38 @@
+name: Game Family
+description: Propose or track a generated-game family such as dice, side-scroller, tabletop, or 3D arena.
+title: "[Game Family]: "
+labels: ["game-family"]
+body:
+  - type: input
+    id: family
+    attributes:
+      label: Family name
+      placeholder: "side-scroller, dice, 3d-shooter, tabletop-duel"
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Rules and authority model
+      description: Describe deterministic state, legal intents, win conditions, prompts, and replay needs.
+    validations:
+      required: true
+  - type: textarea
+    id: render
+    attributes:
+      label: Renderer and assets
+      description: Describe required scene objects, cameras, asset bundles, timelines, or adapters.
+    validations:
+      required: true
+  - type: textarea
+    id: agents
+    attributes:
+      label: Agent participation
+      description: Describe legal action descriptors, scoped views, MCP/SSE/API needs, and self-play expectations.
+    validations:
+      required: true
+  - type: textarea
+    id: scaffolding
+    attributes:
+      label: Scaffold requirements
+      description: List files, tests, llms context, skills, and examples the CLI should generate.

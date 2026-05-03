@@ -56,6 +56,17 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
 5. publishes a GitHub release for the tag
 6. publishes the public npm packages
 
+The public npm package set is:
+
+- `@lunchtable/games-core`
+- `@lunchtable/games-render`
+- `@lunchtable/games-ai`
+- `@lunchtable/games-api`
+- `@lunchtable/games-assets`
+- `@lunchtable/games-tabletop`
+- `@lunchtable/games-side-scroller`
+- `lunchtable`
+
 The first `v0.1.1` npm publish uses the repository `NPM_TOKEN` secret because
 new npm packages cannot use trusted publishing until the package records exist.
 After `lunchtable` and the scoped `@lunchtable/*` packages exist, configure npm

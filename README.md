@@ -1,6 +1,14 @@
-# Lunch-Table
+# Lunch Table Games
 
-Web-first trading card game platform built with Bun, TypeScript, React, PixiJS, Convex, and self-custodied BSC wallet auth.
+Browser-first game library for generated games, tabletop games, side-scrollers,
+agent-playable game packs, renderer-neutral scenes, and the current
+rules-authoritative trading card game proof app.
+
+Lunch Table Games is the umbrella platform in this repository. The TCG remains
+the first full proof surface, while the public `@lunchtable/games-*` packages
+and `lunchtable` CLI provide reusable primitives, scaffolds, APIs, asset
+tooling, MCP/SSE/A2A agent surfaces, and release-ready npm packages for broader
+game families.
 
 ## Workspace
 
@@ -15,6 +23,8 @@ packages/
   games-core/
   games-tabletop/
   games-ai/
+  games-api/
+  games-assets/
   games-render/
   games-side-scroller/
   game-core/
@@ -25,7 +35,7 @@ docs/
 scripts/
 ```
 
-## Phase 1 Scripts
+## Core Scripts
 
 ```bash
 bun install
@@ -206,7 +216,17 @@ bun run release:cut -- v0.1.1 --dry-run
 
 The `v0.1.1` release workflow dry-runs and publishes `lunchtable`,
 `@lunchtable/games-core`, `@lunchtable/games-render`,
-`@lunchtable/games-ai`, `@lunchtable/games-tabletop`, and
+`@lunchtable/games-ai`, `@lunchtable/games-api`,
+`@lunchtable/games-assets`, `@lunchtable/games-tabletop`, and
 `@lunchtable/games-side-scroller` to npm after the GitHub release gate passes.
 The first npm publish requires the repository `NPM_TOKEN` secret; switch the
 same packages to npm trusted publishing after their package records exist.
+
+## GitHub Repository Setup
+
+The GitHub repo is configured as the Lunch Table Games library home, not only
+as a TCG app repo. The expected repo health setup is documented in
+[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) and covered by workflow contract
+tests. It includes Phase Gates for every push/PR, tag-based release publishing,
+library-wide issue/PR templates, Dependabot for Actions and npm manifests, repo
+topics, and branch protection for `main`.

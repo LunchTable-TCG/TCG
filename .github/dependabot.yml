@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      library-runtime:
+        patterns:
+          - "@lunchtable/*"
+          - "@convex-dev/*"
+          - "convex"
+      frontend-rendering:
+        patterns:
+          - "@pixi/*"
+          - "pixi.js"
+          - "@react-three/*"
+          - "three"
+          - "react"
+          - "react-dom"
+      tooling:
+        patterns:
+          - "@biomejs/*"
+          - "@playwright/*"
+          - "@types/*"
+          - "typescript"
+          - "vite"
+          - "vitest"

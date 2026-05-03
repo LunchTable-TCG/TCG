@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Release setup
+    url: https://github.com/LunchTable-TCG/TCG/blob/main/docs/RELEASE.md
+    about: Use this for npm and GitHub release prerequisites.
+  - name: GitHub setup
+    url: https://github.com/LunchTable-TCG/TCG/blob/main/docs/GITHUB_SETUP.md
+    about: Use this for repository metadata, branch protection, and package surface setup.

@@ -1,0 +1,43 @@
+name: Feature Request
+description: Propose a Lunch Table Games library, tooling, renderer, agent, or app improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core primitives
+        - Tabletop primitives
+        - AI agents
+        - API/MCP/SSE/A2A
+        - Asset Studio
+        - Renderer adapters
+        - CLI scaffolds
+        - Generated-game authoring
+        - TCG proof app
+        - Side-scroller
+        - 3D shooter
+        - Release/CI/CD
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or platform gap should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the API, scaffold, UI, or runtime behavior you want.
+    validations:
+      required: true
+  - type: textarea
+    id: agent_parity
+    attributes:
+      label: Agent parity impact
+      description: How should human and AI seats access this feature through the same contracts?
