@@ -55,6 +55,23 @@ export interface SideScrollerStudioSeat {
   y: number;
 }
 
+export interface SideScrollerAgentFrame {
+  activeSeatId: SideScrollerSeatId | null;
+  assets: SideScrollerStudioFrame["assets"];
+  legalIntents: SideScrollerIntent[];
+  objective: {
+    collectiblesRemaining: number;
+    goalsRemaining: number;
+    hazardsRemaining: number;
+  };
+  renderScene: RenderSceneModel;
+  scene: SideScrollerStudioFrame["scene"];
+  seat: SideScrollerStudioSeat;
+  seatId: SideScrollerSeatId;
+  stateVersion: number;
+  tick: number;
+}
+
 export interface SideScrollerSelfPlayInput {
   maxTurns: number;
   state?: SideScrollerState;
@@ -182,6 +199,47 @@ export function runSideScrollerSelfPlay(
     finalState: state,
     steps,
     winnerSeatId: findWinnerSeatId(state),
+  };
+}
+
+export function createSideScrollerAgentFrame(
+  config: SideScrollerEngineConfig,
+  state: SideScrollerState | undefined,
+  seatId: SideScrollerSeatId,
+  viewport: Viewport,
+): SideScrollerAgentFrame {
+  const frameState = state ?? createSideScrollerInitialState(config);
+  const studioFrame = createSideScrollerStudioFrame(
+    config,
+    viewport,
+    frameState,
+  );
+  const seat = studioFrame.seats.find(
+    (candidate) => candidate.seatId === seatId,
+  );
+  if (seat === undefined) {
+    throw new Error(`Unknown side-scroller seat: ${seatId}`);
+  }
+
+  return {
+    activeSeatId: frameState.shell.activeSeatId,
+    assets: studioFrame.assets,
+    legalIntents: listSideScrollerLegalIntents(config, frameState, seatId),
+    objective: {
+      collectiblesRemaining: frameState.collectibles.filter(
+        (collectible) => collectible.collectedBy === null,
+      ).length,
+      goalsRemaining:
+        frameState.shell.status === "complete" ? 0 : frameState.goals.length,
+      hazardsRemaining: frameState.hazards.filter((hazard) => !hazard.defeated)
+        .length,
+    },
+    renderScene: deriveSideScrollerRenderScene(config, frameState, viewport),
+    scene: studioFrame.scene,
+    seat,
+    seatId,
+    stateVersion: frameState.shell.version,
+    tick: frameState.tick,
   };
 }
 

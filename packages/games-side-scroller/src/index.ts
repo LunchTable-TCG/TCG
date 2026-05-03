@@ -16,6 +16,7 @@ export type {
   SideScrollerState,
 } from "./engine";
 export type {
+  SideScrollerAgentFrame,
   SideScrollerSelfPlayInput,
   SideScrollerSelfPlayResult,
   SideScrollerSelfPlayStep,
@@ -36,6 +37,7 @@ export {
   stepSideScrollerWorld,
 } from "./engine";
 export {
+  createSideScrollerAgentFrame,
   createSideScrollerStudioFrame,
   runSideScrollerSelfPlay,
 } from "./studio";

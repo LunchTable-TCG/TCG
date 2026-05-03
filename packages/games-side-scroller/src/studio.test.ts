@@ -4,6 +4,7 @@ import { createSideScrollerAssetBundle } from "@lunchtable/games-assets";
 
 import { sideScrollerStarterConfig } from "./engine";
 import {
+  createSideScrollerAgentFrame,
   createSideScrollerStudioFrame,
   runSideScrollerSelfPlay,
 } from "./studio";
@@ -78,6 +79,42 @@ describe("side-scroller studio authoring", () => {
       ),
     ).toBe(true);
     expect(first.finalState.shell.version).toBe(first.steps.length);
+  });
+
+  it("creates side-scroller agent frames with scene and objective context", () => {
+    const frame = createSideScrollerAgentFrame(
+      sideScrollerStarterConfig,
+      undefined,
+      "seat-0",
+      {
+        height: 720,
+        width: 1280,
+      },
+    );
+
+    expect(frame).toMatchObject({
+      activeSeatId: "seat-0",
+      objective: {
+        collectiblesRemaining: 1,
+        goalsRemaining: 1,
+        hazardsRemaining: 1,
+      },
+      scene: {
+        objectCount: 8,
+      },
+      seat: {
+        agentReady: true,
+        seatId: "seat-0",
+      },
+      stateVersion: 0,
+    });
+    expect(frame.legalIntents.map((intent) => intent.kind)).toEqual([
+      "moveLeft",
+      "moveRight",
+      "dash",
+      "jump",
+      "wait",
+    ]);
   });
 
   it("keeps invalid asset-studio collision metadata inspectable", () => {

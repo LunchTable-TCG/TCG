@@ -2697,6 +2697,10 @@ describe("${templateId} scaffold", () => {
 
     expect(preview.frame.seats.every((seat) => seat.agentReady)).toBe(true);
     expect(preview.frame.assets.generatedPlatformCount).toBeGreaterThan(0);
+    expect(preview.agentFrames.map((frame) => frame.seat.seatId)).toEqual([
+      "seat-0",
+      "seat-1",
+    ]);
     expect(preview.frame.scene.objectCount).toBeGreaterThan(0);
     expect(preview.selfPlay.steps.length).toBeGreaterThan(0);
     expect(
@@ -3588,7 +3592,9 @@ function createShell(id: string, rulesetId: string): GameShell {
 
 function createSideScrollerGameSource(): string {
   return `import {
+  createSideScrollerAgentFrame,
   createSideScrollerComponents,
+  createSideScrollerInitialState,
   createSideScrollerRuleset,
   createSideScrollerStudioFrame,
   runSideScrollerSelfPlay,
@@ -3617,11 +3623,17 @@ export function createSideScrollerGame() {
 }
 
 export function createSideScrollerStudioPreview() {
+  const viewport = {
+    height: 720,
+    width: 1280,
+  };
+  const state = createSideScrollerInitialState(sideScrollerConfig);
+
   return {
-    frame: createSideScrollerStudioFrame(sideScrollerConfig, {
-      height: 720,
-      width: 1280,
-    }),
+    agentFrames: ["seat-0", "seat-1"].map((seatId) =>
+      createSideScrollerAgentFrame(sideScrollerConfig, state, seatId, viewport),
+    ),
+    frame: createSideScrollerStudioFrame(sideScrollerConfig, viewport, state),
     selfPlay: runSideScrollerSelfPlay(sideScrollerConfig, {
       maxTurns: 16,
     }),
