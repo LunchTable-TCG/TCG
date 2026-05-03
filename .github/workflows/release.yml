@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release_ref:
+        description: "Release tag to publish, for example v0.1.1"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -18,12 +23,22 @@ jobs:
   verify-and-release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.ref_name }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_REF }}
+
+      - name: Validate release ref
+        run: |
+          if [[ ! "$RELEASE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release ref must be a semver tag like v0.1.1." >&2
+            exit 1
+          fi
 
       - name: Setup workspace
         uses: ./.github/actions/setup-bun-workspace
@@ -49,12 +64,12 @@ jobs:
         run: bun run release:packages:dry-run
 
       - name: Generate release notes
-        run: bash ./scripts/generate-release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
+        run: bash ./scripts/generate-release-notes.sh "$RELEASE_REF" > release-notes.md
 
       - name: Upload release notes artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-notes-${{ github.ref_name }}
+          name: release-notes-${{ env.RELEASE_REF }}
           path: release-notes.md
 
       - name: Publish GitHub release
@@ -62,18 +77,37 @@ jobs:
         with:
           script: |
             const fs = require("node:fs");
+            const tagName = process.env.RELEASE_REF;
             const body = fs.readFileSync("release-notes.md", "utf8");
-            const release = await github.rest.repos.createRelease({
+            const releaseInput = {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: context.ref.replace("refs/tags/", ""),
-              name: context.ref.replace("refs/tags/", ""),
+              tag_name: tagName,
+              name: tagName,
               body,
               draft: false,
               prerelease: false,
               generate_release_notes: false,
-            });
-            core.info(`Release published: ${release.data.html_url}`);
+            };
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tagName,
+              });
+              const release = await github.rest.repos.updateRelease({
+                ...releaseInput,
+                release_id: existing.data.id,
+              });
+              core.info(`Release updated: ${release.data.html_url}`);
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+              const release = await github.rest.repos.createRelease(releaseInput);
+              core.info(`Release published: ${release.data.html_url}`);
+            }
 
       - name: Publish npm packages
         run: bun run release:packages:publish
