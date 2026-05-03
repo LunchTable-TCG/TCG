@@ -405,7 +405,7 @@ function createGameJson(templateId: ScaffoldTemplateId): ScaffoldFileFactory {
         id: `${input.packageName}-${templateId}`,
         name: input.template.name,
         runtime: "lunchtable",
-        runtimeVersion: "0.1.0",
+        runtimeVersion: "0.1.1",
         version: "0.1.0",
       },
       null,
@@ -508,7 +508,23 @@ function createPackObjects(templateId: ScaffoldTemplateId) {
   if (templateId === "side-scroller") {
     return [
       createPackObject("board:level-1", "Level 1", "table", null),
-      createPackObject("piece:hero", "Hero", "table", "seat-0"),
+      createPackObject(
+        "piece:runner-seat-0",
+        "Runner 0",
+        "table",
+        "seat-0",
+        "public",
+      ),
+      createPackObject(
+        "piece:runner-seat-1",
+        "Runner 1",
+        "table",
+        "seat-1",
+        "public",
+      ),
+      createPackObject("token:goal", "Goal", "table", null),
+      createPackObject("token:hazard-1", "Hazard", "table", null),
+      createPackObject("token:collectible-1", "Collectible", "table", null),
     ];
   }
 
@@ -523,6 +539,9 @@ function createPackObject(
   name: string,
   zoneId: string,
   ownerSeat: string | null,
+  visibility: "private-owner" | "public" = ownerSeat === null
+    ? "public"
+    : "private-owner",
 ) {
   return {
     id,
@@ -530,7 +549,7 @@ function createPackObject(
     name,
     ownerSeat,
     state: "ready",
-    visibility: ownerSeat === null ? "public" : "private-owner",
+    visibility,
     zoneId,
   };
 }
@@ -573,8 +592,11 @@ function createPackLegalIntents(templateId: ScaffoldTemplateId) {
 
   if (templateId === "side-scroller") {
     return [
-      { direction: "left", kind: "move" },
-      { direction: "right", kind: "move" },
+      { kind: "moveLeft" },
+      { kind: "moveRight" },
+      { kind: "jump" },
+      { kind: "wait" },
+      { kind: "attack" },
     ];
   }
 
@@ -1240,7 +1262,7 @@ async function callStarterMcpTool(
       const seat = requireString(args, "seat");
       const frame = createDecisionFrame(runtime, seat);
       const action = frame.legalActions.find(
-        (candidate) => candidate.kind === "pass",
+        (candidate) => String(candidate.kind) === "pass",
       );
       if (action === undefined) {
         return createToolError(\`Pass is not legal for seat \${seat}\`);
@@ -1573,6 +1595,67 @@ function createGameTestSource(
   templateId: ScaffoldTemplateId,
 ): ScaffoldFileFactory {
   const functionName = getFactoryName(templateId);
+  if (templateId === "side-scroller") {
+    return () => `import { describe, expect, it } from "vitest";
+
+import { ${functionName} } from "../src/game";
+
+describe("${templateId} scaffold", () => {
+  it("creates a valid Lunch Table Games starter", () => {
+    const game = ${functionName}();
+
+    expect(game.manifest.runtime).toBe("lunchtable");
+    expect(game.components.length).toBeGreaterThan(0);
+    expect(game.ruleset.createInitialState(game.config).shell.status).toBe("playing");
+  });
+
+  it("advances both runners through legal side-scroller actions", () => {
+    const game = ${functionName}();
+    let state = game.ruleset.createInitialState(game.config);
+    const seat0Actions = game.ruleset.listLegalIntents(state, "seat-0");
+    const moveRight = seat0Actions.find((intent) => intent.kind === "moveRight");
+
+    expect(moveRight).toBeDefined();
+    if (moveRight === undefined) {
+      throw new Error("moveRight should be legal");
+    }
+
+    state = game.ruleset.applyIntent(state, moveRight).nextState;
+    const seat1Actions = game.ruleset.listLegalIntents(state, "seat-1");
+    const wait = seat1Actions.find((intent) => intent.kind === "wait");
+
+    expect(wait).toBeDefined();
+    if (wait === undefined) {
+      throw new Error("wait should be legal");
+    }
+
+    state = game.ruleset.applyIntent(state, wait).nextState;
+
+    expect(state.runners["seat-0"].x).toBeGreaterThan(0);
+    expect(state.runners["seat-1"].x).toBe(0);
+    expect(state.shell.version).toBe(2);
+  });
+
+  it("renders runners, hazards, collectibles, and the goal", () => {
+    const game = ${functionName}();
+    const state = game.ruleset.createInitialState(game.config);
+    const scene = game.ruleset.deriveRenderScene(state, {
+      height: 720,
+      width: 1280,
+    });
+    const objectIds = scene.objects.map((object) => object.id);
+
+    expect(scene.camera?.mode).toBe("side-scroller");
+    expect(objectIds).toContain("piece:runner-seat-0");
+    expect(objectIds).toContain("piece:runner-seat-1");
+    expect(objectIds).toContain("token:hazard-1");
+    expect(objectIds).toContain("token:collectible-1");
+    expect(objectIds).toContain("token:goal");
+  });
+});
+`;
+  }
+
   return () => `import { describe, expect, it } from "vitest";
 
 import { ${functionName} } from "../src/game";
@@ -2149,13 +2232,68 @@ interface SideScrollerConfig {
   seed: string;
 }
 
-interface SideScrollerState {
-  heroX: number;
-  shell: GameShell;
+type RunnerSeatId = "seat-0" | "seat-1";
+
+interface RunnerState {
+  facing: "left" | "right";
+  grounded: boolean;
+  health: number;
+  id: string;
+  score: number;
+  velocityX: number;
+  velocityY: number;
+  x: number;
+  y: number;
 }
 
-type SideScrollerIntent = { direction: "left" | "right"; kind: "move"; seatId: string };
-type SideScrollerEvent = { delta: number; kind: "moved"; seatId: string };
+interface HazardState {
+  damage: number;
+  defeated: boolean;
+  id: string;
+  x: number;
+  y: number;
+}
+
+interface CollectibleState {
+  collectedBy: RunnerSeatId | null;
+  id: string;
+  value: number;
+  x: number;
+  y: number;
+}
+
+interface SideScrollerState {
+  collectibles: CollectibleState[];
+  goal: { x: number; y: number };
+  hazards: HazardState[];
+  runners: Record<RunnerSeatId, RunnerState>;
+  shell: GameShell;
+  tick: number;
+}
+
+type SideScrollerIntent =
+  | { kind: "attack"; seatId: string }
+  | { kind: "jump"; seatId: string }
+  | { kind: "moveLeft"; seatId: string }
+  | { kind: "moveRight"; seatId: string }
+  | { kind: "wait"; seatId: string };
+
+type SideScrollerEvent =
+  | { kind: "collectibleClaimed"; collectibleId: string; seatId: RunnerSeatId }
+  | { kind: "goalReached"; seatId: RunnerSeatId }
+  | { kind: "hazardDefeated"; hazardId: string; seatId: RunnerSeatId }
+  | { kind: "runnerDamaged"; damage: number; hazardId: string; seatId: RunnerSeatId }
+  | { kind: "runnerJumped"; seatId: RunnerSeatId }
+  | { kind: "runnerMoved"; seatId: RunnerSeatId; x: number; y: number };
+
+const levelWidth = 2400;
+const groundY = 0;
+const gravity = 3;
+const moveSpeed = 72;
+const jumpVelocity = 132;
+const attackRange = 96;
+const hazardRange = 40;
+const collectibleRange = 32;
 
 const camera: RenderCameraHint = {
   mode: "side-scroller",
@@ -2171,34 +2309,110 @@ const components: TabletopComponent[] = [
     surface: { height: 720, shape: "rectangle", width: 2400 },
   },
   {
-    id: "piece:hero",
+    id: "piece:runner-seat-0",
     kind: "piece",
     movement: { axes: ["x", "y"], grid: "continuous" },
-    name: "Hero",
+    name: "Runner 0",
+  },
+  {
+    id: "piece:runner-seat-1",
+    kind: "piece",
+    movement: { axes: ["x", "y"], grid: "continuous" },
+    name: "Runner 1",
+  },
+  {
+    id: "token:hazard-1",
+    kind: "token",
+    name: "Hazard",
+    ownerSeat: null,
+    visibility: "public",
+  },
+  {
+    id: "token:collectible-1",
+    kind: "token",
+    name: "Collectible",
+    ownerSeat: null,
+    visibility: "public",
+  },
+  {
+    id: "token:goal",
+    kind: "token",
+    name: "Goal",
+    ownerSeat: null,
+    visibility: "public",
   },
 ];
 
 const ruleset: GameRuleset<SideScrollerConfig, SideScrollerState, SideScrollerIntent, SideScrollerEvent, SideScrollerState, SideScrollerState, RenderSceneModel> = {
   applyIntent(state, intent) {
-    const delta = intent.direction === "right" ? 1 : -1;
+    const seatId = getRunnerSeatId(intent.seatId);
+    if (seatId === null) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "Unknown runner seat.",
+      };
+    }
+
+    if (!isIntentLegalForRunner(state, seatId, intent)) {
+      return {
+        events: [],
+        nextState: state,
+        outcome: "rejected",
+        reason: "Intent is not legal for this runner.",
+      };
+    }
+
+    const actionResult = applyRunnerAction(state, seatId, intent);
+    const advanced = advanceRunner(actionResult.state, seatId);
+    const nextActiveSeatId = seatId === "seat-0" ? "seat-1" : "seat-0";
+    const nextStatus =
+      advanced.events.some((event) => event.kind === "goalReached")
+        ? "complete"
+        : state.shell.status;
+
     return {
-      events: [{ delta, kind: "moved", seatId: intent.seatId }],
+      events: [...actionResult.events, ...advanced.events],
       nextState: {
-        heroX: state.heroX + delta,
-        shell: { ...state.shell, version: state.shell.version + 1 },
+        ...advanced.state,
+        shell: {
+          ...state.shell,
+          activeSeatId: nextActiveSeatId,
+          prioritySeatId: nextActiveSeatId,
+          round: seatId === "seat-1" ? state.shell.round + 1 : state.shell.round,
+          status: nextStatus,
+          version: state.shell.version + 1,
+        },
+        tick: state.tick + 1,
       },
       outcome: "applied",
     };
   },
   createInitialState(config) {
-    return { heroX: 0, shell: createShell("side-scroller-starter", config.seed) };
+    return {
+      collectibles: [{ collectedBy: null, id: "token:collectible-1", value: 1, x: 420, y: 28 }],
+      goal: { x: 960, y: groundY },
+      hazards: [{ damage: 1, defeated: false, id: "token:hazard-1", x: 640, y: groundY }],
+      runners: {
+        "seat-0": createRunner("seat-0", 0),
+        "seat-1": createRunner("seat-1", 0),
+      },
+      shell: createShell("side-scroller-starter", config.seed),
+      tick: 0,
+    };
   },
   deriveRenderScene(state) {
+    const activeRunner = getActiveRunner(state);
     return {
-      camera: { ...camera, target: { x: state.heroX, y: 0, z: 0 } },
+      camera: { ...camera, target: { x: activeRunner.x, y: activeRunner.y, z: 0 } },
       cue: null,
-      interactions: [{ affordance: "move", objectId: "piece:hero", seatId: "seat-0" }],
-      objects: [],
+      interactions: [
+        { affordance: "move", objectId: "piece:runner-seat-0", seatId: "seat-0" },
+        { affordance: "move", objectId: "piece:runner-seat-1", seatId: "seat-1" },
+        { affordance: "activate", objectId: "token:hazard-1", seatId: state.shell.activeSeatId },
+      ],
+      objects: createSceneObjects(state),
       viewport: { height: 720, width: 1280 },
     };
   },
@@ -2208,8 +2422,28 @@ const ruleset: GameRuleset<SideScrollerConfig, SideScrollerState, SideScrollerIn
   deriveSpectatorView(state) {
     return state;
   },
-  listLegalIntents(_state, seatId) {
-    return [{ direction: "left", kind: "move", seatId }, { direction: "right", kind: "move", seatId }];
+  listLegalIntents(state, seatId) {
+    const runnerSeatId = getRunnerSeatId(seatId);
+    if (runnerSeatId === null || state.shell.status !== "playing") {
+      return [];
+    }
+
+    const runner = state.runners[runnerSeatId];
+    const intents: SideScrollerIntent[] = [
+      { kind: "moveRight", seatId },
+      { kind: "moveLeft", seatId },
+      { kind: "wait", seatId },
+    ];
+
+    if (runner.grounded) {
+      intents.push({ kind: "jump", seatId });
+    }
+
+    if (findAttackableHazard(state, runnerSeatId) !== null) {
+      intents.push({ kind: "attack", seatId });
+    }
+
+    return intents;
   },
 };
 
@@ -2225,6 +2459,267 @@ export function createSideScrollerGame() {
     },
     ruleset,
   };
+}
+
+function createRunner(id: RunnerSeatId, x: number): RunnerState {
+  return {
+    facing: "right",
+    grounded: true,
+    health: 3,
+    id,
+    score: 0,
+    velocityX: 0,
+    velocityY: 0,
+    x,
+    y: groundY,
+  };
+}
+
+function getRunnerSeatId(seatId: string): RunnerSeatId | null {
+  if (seatId === "seat-0" || seatId === "seat-1") {
+    return seatId;
+  }
+  return null;
+}
+
+function isIntentLegalForRunner(
+  state: SideScrollerState,
+  seatId: RunnerSeatId,
+  intent: SideScrollerIntent,
+): boolean {
+  if (intent.kind === "jump") {
+    return state.runners[seatId].grounded;
+  }
+
+  if (intent.kind === "attack") {
+    return findAttackableHazard(state, seatId) !== null;
+  }
+
+  return true;
+}
+
+function applyRunnerAction(
+  state: SideScrollerState,
+  seatId: RunnerSeatId,
+  intent: SideScrollerIntent,
+): { events: SideScrollerEvent[]; state: SideScrollerState } {
+  const runner = state.runners[seatId];
+  if (intent.kind === "moveLeft") {
+    return updateRunner(state, seatId, {
+      ...runner,
+      facing: "left",
+      velocityX: -moveSpeed,
+    });
+  }
+
+  if (intent.kind === "moveRight") {
+    return updateRunner(state, seatId, {
+      ...runner,
+      facing: "right",
+      velocityX: moveSpeed,
+    });
+  }
+
+  if (intent.kind === "jump") {
+    return {
+      events: [{ kind: "runnerJumped", seatId }],
+      state: updateRunner(state, seatId, {
+        ...runner,
+        grounded: false,
+        velocityY: jumpVelocity,
+      }).state,
+    };
+  }
+
+  if (intent.kind === "attack") {
+    const hazard = findAttackableHazard(state, seatId);
+    if (hazard === null) {
+      return { events: [], state };
+    }
+
+    return {
+      events: [{ hazardId: hazard.id, kind: "hazardDefeated", seatId }],
+      state: {
+        ...state,
+        hazards: state.hazards.map((candidate) =>
+          candidate.id === hazard.id ? { ...candidate, defeated: true } : candidate,
+        ),
+        runners: {
+          ...state.runners,
+          [seatId]: { ...runner, score: runner.score + 2, velocityX: 0 },
+        },
+      },
+    };
+  }
+
+  return updateRunner(state, seatId, { ...runner, velocityX: 0 });
+}
+
+function advanceRunner(
+  state: SideScrollerState,
+  seatId: RunnerSeatId,
+): { events: SideScrollerEvent[]; state: SideScrollerState } {
+  const runner = state.runners[seatId];
+  const nextX = clamp(runner.x + runner.velocityX, 0, levelWidth);
+  const airborneY = runner.y + runner.velocityY;
+  const nextY = airborneY <= groundY ? groundY : airborneY;
+  const nextRunner = {
+    ...runner,
+    grounded: nextY === groundY,
+    velocityX: 0,
+    velocityY: nextY === groundY ? 0 : runner.velocityY - gravity,
+    x: nextX,
+    y: nextY,
+  };
+
+  let nextState = updateRunner(state, seatId, nextRunner).state;
+  const events: SideScrollerEvent[] = [
+    { kind: "runnerMoved", seatId, x: nextRunner.x, y: nextRunner.y },
+  ];
+
+  const collectible = nextState.collectibles.find(
+    (candidate) =>
+      candidate.collectedBy === null &&
+      distance(candidate.x, candidate.y, nextRunner.x, nextRunner.y) <= collectibleRange,
+  );
+  if (collectible !== undefined) {
+    nextState = {
+      ...nextState,
+      collectibles: nextState.collectibles.map((candidate) =>
+        candidate.id === collectible.id
+          ? { ...candidate, collectedBy: seatId }
+          : candidate,
+      ),
+      runners: {
+        ...nextState.runners,
+        [seatId]: {
+          ...nextState.runners[seatId],
+          score: nextState.runners[seatId].score + collectible.value,
+        },
+      },
+    };
+    events.push({ collectibleId: collectible.id, kind: "collectibleClaimed", seatId });
+  }
+
+  const hazard = nextState.hazards.find(
+    (candidate) =>
+      !candidate.defeated &&
+      distance(candidate.x, candidate.y, nextRunner.x, nextRunner.y) <= hazardRange,
+  );
+  if (hazard !== undefined) {
+    nextState = {
+      ...nextState,
+      runners: {
+        ...nextState.runners,
+        [seatId]: {
+          ...nextState.runners[seatId],
+          health: Math.max(0, nextState.runners[seatId].health - hazard.damage),
+        },
+      },
+    };
+    events.push({
+      damage: hazard.damage,
+      hazardId: hazard.id,
+      kind: "runnerDamaged",
+      seatId,
+    });
+  }
+
+  if (nextRunner.x >= nextState.goal.x) {
+    events.push({ kind: "goalReached", seatId });
+  }
+
+  return { events, state: nextState };
+}
+
+function updateRunner(
+  state: SideScrollerState,
+  seatId: RunnerSeatId,
+  runner: RunnerState,
+): { events: SideScrollerEvent[]; state: SideScrollerState } {
+  return {
+    events: [],
+    state: {
+      ...state,
+      runners: { ...state.runners, [seatId]: runner },
+    },
+  };
+}
+
+function getActiveRunner(state: SideScrollerState): RunnerState {
+  const activeSeatId = getRunnerSeatId(state.shell.activeSeatId ?? "seat-0");
+  return state.runners[activeSeatId ?? "seat-0"];
+}
+
+function findAttackableHazard(
+  state: SideScrollerState,
+  seatId: RunnerSeatId,
+): HazardState | null {
+  const runner = state.runners[seatId];
+  const facingMultiplier = runner.facing === "right" ? 1 : -1;
+  const attackX = runner.x + facingMultiplier * attackRange;
+
+  return (
+    state.hazards.find(
+      (hazard) =>
+        !hazard.defeated &&
+        Math.abs(hazard.x - attackX) <= attackRange &&
+        Math.abs(hazard.y - runner.y) <= attackRange,
+    ) ?? null
+  );
+}
+
+function createSceneObjects(state: SideScrollerState) {
+  return [
+    {
+      id: "board:level-1",
+      interactive: false,
+      label: "Level 1",
+      position: { x: levelWidth / 2, y: -24, z: 0 },
+      size: { height: 48, width: levelWidth },
+    },
+    ...Object.values(state.runners).map((runner) => ({
+      id: "piece:runner-" + runner.id,
+      interactive: true,
+      label: runner.id,
+      position: { x: runner.x, y: runner.y, z: 1 },
+      size: { height: 72, width: 36 },
+    })),
+    ...state.hazards.map((hazard) => ({
+      id: hazard.id,
+      interactive: !hazard.defeated,
+      label: hazard.defeated ? "Defeated Hazard" : "Hazard",
+      position: { x: hazard.x, y: hazard.y, z: 1 },
+      size: { height: 48, width: 48 },
+    })),
+    ...state.collectibles.map((collectible) => ({
+      id: collectible.id,
+      interactive: collectible.collectedBy === null,
+      label: collectible.collectedBy === null ? "Collectible" : "Collected",
+      position: { x: collectible.x, y: collectible.y, z: 1 },
+      size: { height: 28, width: 28 },
+    })),
+    {
+      id: "token:goal",
+      interactive: false,
+      label: "Goal",
+      position: { x: state.goal.x, y: state.goal.y, z: 1 },
+      size: { height: 120, width: 24 },
+    },
+  ];
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function distance(
+  firstX: number,
+  firstY: number,
+  secondX: number,
+  secondY: number,
+): number {
+  return Math.hypot(firstX - secondX, firstY - secondY);
 }
 
 function createShell(id: string, rulesetId: string): GameShell {

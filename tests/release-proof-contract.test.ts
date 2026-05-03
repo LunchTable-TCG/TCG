@@ -8,6 +8,17 @@ const packageJsonPath = join(rootDir, "package.json");
 const readmePath = join(rootDir, "README.md");
 const releaseDocPath = join(rootDir, "docs", "RELEASE.md");
 const releaseScriptPath = join(rootDir, "scripts", "release-proof.sh");
+const releaseWorkflowPath = join(
+  rootDir,
+  ".github",
+  "workflows",
+  "release.yml",
+);
+const publicPackageScriptPath = join(
+  rootDir,
+  "scripts",
+  "release-public-packages.ts",
+);
 const cliPackageProofScriptPath = join(
   rootDir,
   "scripts",
@@ -47,13 +58,15 @@ describe("release proof contract", () => {
     );
     expect(releaseScript).toContain("./scripts/phase-check.sh full");
     expect(releaseScript).toContain("./scripts/phase-check.sh regression");
-    expect(releaseScript).toContain("git tag -a v0.1.0");
+    expect(releaseScript).toContain("git tag -a v0.1.1");
   });
 
   it("proves the packed lunchtable CLI through bunx", () => {
     const cliPackageProofScript = readFile(cliPackageProofScriptPath);
 
-    expect(cliPackageProofScript).toContain("bun pm pack");
+    expect(cliPackageProofScript).toContain(
+      "scripts/release-public-packages.ts --dry-run --pack-destination",
+    );
     expect(cliPackageProofScript).toContain(
       'bunx --package "$TARBALL" lunchtable init',
     );
@@ -63,5 +76,43 @@ describe("release proof contract", () => {
     expect(cliPackageProofScript).toContain(
       'bunx --package "$TARBALL" lunchtable eval',
     );
+    expect(cliPackageProofScript).toContain("--template side-scroller");
+    expect(cliPackageProofScript).toContain("bun run --silent mcp:stdio");
+  });
+
+  it("publishes GitHub releases and npm packages from the tag workflow", () => {
+    const releaseWorkflow = readFile(releaseWorkflowPath);
+    const packageJson = readFile(packageJsonPath);
+    const publicPackageScript = readFile(publicPackageScriptPath);
+
+    expect(packageJson).toContain(
+      '"build:packages": "bun run scripts/build-public-packages.ts"',
+    );
+    expect(packageJson).toContain(
+      '"release:packages:dry-run": "bun run scripts/release-public-packages.ts --dry-run"',
+    );
+    expect(packageJson).toContain(
+      '"release:packages:publish": "bun run scripts/release-public-packages.ts --publish"',
+    );
+    expect(releaseWorkflow).toContain("id-token: write");
+    expect(releaseWorkflow).toContain("setup-node@v4");
+    expect(releaseWorkflow).toContain("node-version: 24");
+    expect(releaseWorkflow).toContain("npm install -g npm@^11");
+    expect(releaseWorkflow).toContain("bun run release:packages:dry-run");
+    expect(releaseWorkflow).toContain("bun run release:packages:publish");
+    expect(releaseWorkflow).toContain(
+      "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}",
+    );
+    expect(publicPackageScript).toContain(
+      '"@lunchtable/games-core",\n  "@lunchtable/games-render",\n  "@lunchtable/games-ai",\n  "@lunchtable/games-tabletop",\n  "lunchtable"',
+    );
+    expect(publicPackageScript).toContain("hasTokenAuth");
+    expect(publicPackageScript).toContain(
+      '["publish", stagedDirectory, "--access", "public", "--provenance"]',
+    );
+    expect(publicPackageScript).toContain('["publish", stagedDirectory]');
+    expect(publicPackageScript).toContain("--provenance");
+    expect(publicPackageScript).toContain("workspace:*");
+    expect(publicPackageScript).toContain("test file");
   });
 });

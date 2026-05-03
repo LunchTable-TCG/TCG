@@ -37,8 +37,8 @@ the script resets the local Convex state and retries non-interactively.
 After `bun run release:proof` passes on the commit you intend to ship:
 
 ```bash
-bun run release:cut -- v0.1.0 --dry-run
-bun run release:cut -- v0.1.0 --push
+bun run release:cut -- v0.1.1 --dry-run
+bun run release:cut -- v0.1.1 --push
 ```
 
 `release:cut` runs the release proof first, writes release notes to
@@ -51,8 +51,15 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
 
 1. uses the shared workspace bootstrap action
 2. runs the same full and regression gates as local release proof
-3. generates release notes from git history
-4. publishes a GitHub release for the tag
+3. dry-runs the public npm package set
+4. generates release notes from git history
+5. publishes a GitHub release for the tag
+6. publishes the public npm packages
+
+The first `v0.1.1` npm publish uses the repository `NPM_TOKEN` secret because
+new npm packages cannot use trusted publishing until the package records exist.
+After `lunchtable` and the scoped `@lunchtable/*` packages exist, configure npm
+trusted publishers for this repository and workflow, then remove `NPM_TOKEN`.
 
 ## Recommended Release Notes
 

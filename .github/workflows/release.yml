@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
@@ -29,11 +30,23 @@ jobs:
         with:
           install-playwright: "true"
 
+      - name: Setup Node for npm publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Use npm 11 for provenance
+        run: npm install -g npm@^11
+
       - name: Full validation gate
         run: ./scripts/phase-check.sh full
 
       - name: Regression gate
         run: ./scripts/phase-check.sh regression
+
+      - name: Dry-run npm packages
+        run: bun run release:packages:dry-run
 
       - name: Generate release notes
         run: bash ./scripts/generate-release-notes.sh "${GITHUB_REF_NAME}" > release-notes.md
@@ -61,3 +74,8 @@ jobs:
               generate_release_notes: false,
             });
             core.info(`Release published: ${release.data.html_url}`);
+
+      - name: Publish npm packages
+        run: bun run release:packages:publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

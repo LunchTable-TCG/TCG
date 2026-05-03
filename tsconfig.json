@@ -39,5 +39,5 @@
     "tests/**/*.ts",
     "vitest.config.ts"
   ],
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["node_modules", "dist", "packages/*/dist", "coverage"]
 }

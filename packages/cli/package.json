@@ -1,19 +1,29 @@
 {
   "name": "lunchtable",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "bin": {
     "lunchtable": "./dist/index.js"
   },
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
-  "files": ["dist", "README.md"],
+  "files": ["dist", "README.md", "LICENSE"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunchTable-TCG/TCG.git",
+    "directory": "packages/cli"
+  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build src/index.ts --outdir dist --target bun && bunx tsc --declaration --emitDeclarationOnly --declarationMap false --outDir dist --rootDir src --moduleResolution Bundler --module ESNext --target ES2022 --strict --skipLibCheck src/index.ts",
     "prepack": "bun run build"
   }
 }

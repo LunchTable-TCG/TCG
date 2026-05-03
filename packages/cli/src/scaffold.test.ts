@@ -209,4 +209,62 @@ describe("lunchtable init scaffolding", () => {
       await rm(root, { force: true, recursive: true });
     }
   });
+
+  it("creates a playable two-seat side-scroller starter", async () => {
+    const root = await mkdtemp(join(tmpdir(), "lunchtable-cli-"));
+    const targetDirectory = join(root, "side-runner");
+
+    try {
+      await createScaffoldProject({
+        force: false,
+        packageManager: "bun",
+        targetDirectory,
+        templateId: "side-scroller",
+      });
+
+      const gameSource = await readFile(
+        join(targetDirectory, "src/game.ts"),
+        "utf8",
+      );
+      expect(gameSource).toContain('kind: "moveRight"');
+      expect(gameSource).toContain('kind: "jump"');
+      expect(gameSource).toContain('kind: "attack"');
+      expect(gameSource).toContain("collectibles");
+      expect(gameSource).toContain("hazards");
+      expect(gameSource).toContain("goal");
+      expect(gameSource).toContain("createRunner");
+      expect(gameSource).toContain("deriveRenderScene");
+      expect(gameSource).toContain("activeRunner");
+
+      const gameTestSource = await readFile(
+        join(targetDirectory, "tests/game.test.ts"),
+        "utf8",
+      );
+      expect(gameTestSource).toContain(
+        "advances both runners through legal side-scroller actions",
+      );
+      expect(gameTestSource).toContain(
+        "renders runners, hazards, collectibles, and the goal",
+      );
+
+      const rulesetJson = await readFile(
+        join(targetDirectory, "ruleset.json"),
+        "utf8",
+      );
+      expect(rulesetJson).toContain('"moveRight"');
+      expect(rulesetJson).toContain('"attack"');
+
+      const objectsJson = await readFile(
+        join(targetDirectory, "objects.json"),
+        "utf8",
+      );
+      expect(objectsJson).toContain("Runner 0");
+      expect(objectsJson).toContain("Runner 1");
+      expect(objectsJson).toContain("Goal");
+      expect(objectsJson).toContain("Hazard");
+      expect(objectsJson).toContain("Collectible");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
 });

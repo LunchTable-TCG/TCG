@@ -76,7 +76,7 @@ describe("program docs contract", () => {
     const packageJson = readFile(packageJsonPath);
 
     expect(packageJson).toContain(
-      '"test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts"',
+      '"test:workflow": "vitest run tests/phase-gates-workflow.test.ts tests/program-docs-contract.test.ts tests/release-proof-contract.test.ts tests/npm-publishing-contract.test.ts"',
     );
   });
 

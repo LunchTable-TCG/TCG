@@ -1,9 +1,20 @@
 {
   "name": "@lunchtable/games-render",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunchTable-TCG/TCG.git",
+    "directory": "packages/games-render"
   },
   "publishConfig": {
     "access": "public"

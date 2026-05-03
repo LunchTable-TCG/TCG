@@ -12,6 +12,7 @@ convex/tsconfig.json
 !.agents/skills/play-lunchtable-game/SKILL.md
 node_modules/
 dist/
+packages/*/dist/
 coverage/
 playwright-report/
 test-results/

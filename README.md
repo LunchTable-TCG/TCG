@@ -189,6 +189,11 @@ The full release handoff is documented in [docs/RELEASE.md](docs/RELEASE.md).
 Generate release notes or cut an annotated tag locally:
 
 ```bash
-bun run release:notes -- v0.1.0
-bun run release:cut -- v0.1.0 --dry-run
+bun run release:notes -- v0.1.1
+bun run release:cut -- v0.1.1 --dry-run
 ```
+
+The `v0.1.1` release workflow dry-runs and publishes `lunchtable` plus the
+public `@lunchtable/games-*` packages to npm after the GitHub release gate
+passes. The first npm publish requires the repository `NPM_TOKEN` secret; switch
+the same packages to npm trusted publishing after their package records exist.

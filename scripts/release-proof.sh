@@ -194,4 +194,4 @@ echo "==> Running regression gate"
 warn_if_dirty
 
 echo "Release proof complete for $(git rev-parse --short HEAD)"
-echo "Suggested next step: git tag -a v0.1.0 -m \"Lunch-Table release v0.1.0\""
+echo "Suggested next step: git tag -a v0.1.1 -m \"Lunch-Table release v0.1.1\""
