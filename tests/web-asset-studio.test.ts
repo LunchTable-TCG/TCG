@@ -17,6 +17,9 @@ describe("browser asset studio panel model", () => {
       previewEventCount: 12,
       primaryAsset: "sprite:runner",
       ready: true,
+      readinessBlockedGateCount: 0,
+      readinessGateCount: 8,
+      readinessRequiredGateCount: 7,
       sceneObjectCount: 9,
       sideScrollerReady: true,
       spriteCount: 2,
@@ -30,6 +33,7 @@ describe("browser asset studio panel model", () => {
     expect(createInvalidAssetStudioPanelModel()).toMatchObject({
       issueCount: 2,
       ready: false,
+      readinessBlockedGateCount: 5,
       title: "Broken Side Runner Assets",
     });
   });

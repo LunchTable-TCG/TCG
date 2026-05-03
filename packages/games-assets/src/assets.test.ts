@@ -8,6 +8,7 @@ import {
   createHitboxSet,
   createSceneTimeline,
   createSideScrollerAssetBundle,
+  createSideScrollerAssetReadinessReport,
   createSpriteSheetAsset,
   createTilemapAsset,
   exportSpriteAtlasJson,
@@ -274,6 +275,7 @@ describe("Lunch Table Games asset primitives", () => {
       [
         "listAssets",
         "validateAssets",
+        "inspectSideScrollerReadiness",
         "exportAssetBundle",
         "exportSpriteAtlas",
         "requestImageGeneration",
@@ -290,6 +292,20 @@ describe("Lunch Table Games asset primitives", () => {
       },
       validation: {
         ok: true,
+      },
+    });
+    expect(
+      runAssetStudioTool(bundle, {
+        arguments: {},
+        name: "inspectSideScrollerReadiness",
+      }),
+    ).toMatchObject({
+      isError: false,
+      structuredContent: {
+        readiness: {
+          ready: false,
+          requiredGateCount: 7,
+        },
       },
     });
     expect(
@@ -343,6 +359,105 @@ describe("Lunch Table Games asset primitives", () => {
       }),
     ).toMatchObject({
       isError: true,
+    });
+  });
+
+  it("creates a side-scroller readiness report for agent authoring", () => {
+    const runner = createSpriteSheetAsset({
+      frame: { columns: 4, height: 32, rows: 2, totalFrames: 8, width: 32 },
+      id: "sprite:runner",
+      image: {
+        height: 64,
+        mediaType: "image/png",
+        storageId: "storage-runner",
+        width: 128,
+      },
+      name: "Runner",
+      pivot: { x: 0.5, y: 1 },
+    });
+    const run = createAnimationClip({
+      assetId: runner.id,
+      fps: 12,
+      fromFrame: 0,
+      id: "clip:runner:run",
+      loop: true,
+      name: "Run",
+      playback: "forward",
+      toFrame: 7,
+    });
+    const tilemap = createTilemapAsset({
+      cellSize: 32,
+      columns: 2,
+      id: "tilemap:level-1",
+      layers: [
+        {
+          data: [
+            [-1, -1],
+            [0, 0],
+          ],
+          id: "layer:collision",
+          kind: "collision",
+          name: "Collision",
+          visible: false,
+        },
+      ],
+      name: "Level 1",
+      rows: 2,
+      tilesetAssetId: runner.id,
+    });
+    const bundle = createSideScrollerAssetBundle({
+      bindings: [
+        {
+          assetId: runner.id,
+          clip: run.id,
+          objectId: "piece:runner-seat-0",
+        },
+      ],
+      clips: [run],
+      collisionTilemapId: tilemap.id,
+      hitboxes: [
+        createHitboxSet({
+          assetId: runner.id,
+          boxes: [
+            {
+              frame: 0,
+              height: 24,
+              kind: "hurt",
+              width: 12,
+              x: 10,
+              y: 6,
+            },
+          ],
+          id: "hitbox:runner",
+        }),
+      ],
+      id: "assets:side-runner",
+      name: "Side Runner Assets",
+      sprites: [runner],
+      tilemaps: [tilemap],
+      timelines: [
+        createSceneTimeline({
+          id: "timeline:runner",
+          name: "Runner timeline",
+          scenes: [
+            {
+              clipId: run.id,
+              id: "scene:run",
+              loopCount: "infinite",
+              name: "Run",
+              order: 1,
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(createSideScrollerAssetReadinessReport(bundle)).toMatchObject({
+      blockedGateCount: 0,
+      bundleId: "assets:side-runner",
+      ready: true,
+      requiredGateCount: 7,
+      validationIssueCount: 0,
     });
   });
 

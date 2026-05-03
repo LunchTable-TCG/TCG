@@ -242,9 +242,41 @@ export type AssetStudioToolAuthority = "export" | "generate-request" | "read";
 export type AssetStudioToolName =
   | "exportAssetBundle"
   | "exportSpriteAtlas"
+  | "inspectSideScrollerReadiness"
   | "listAssets"
   | "requestImageGeneration"
   | "validateAssets";
+
+export type SideScrollerAssetReadinessGateId =
+  | "bindings"
+  | "clips"
+  | "collision"
+  | "generation"
+  | "hitboxes"
+  | "sprites"
+  | "tilemaps"
+  | "timelines";
+
+export interface SideScrollerAssetReadinessGate {
+  count: number;
+  detail: string;
+  id: SideScrollerAssetReadinessGateId;
+  label: string;
+  ok: boolean;
+  required: boolean;
+}
+
+export interface SideScrollerAssetReadinessReport {
+  blockedGateCount: number;
+  bundleId: string;
+  gates: SideScrollerAssetReadinessGate[];
+  missing: SideScrollerAssetReadinessGateId[];
+  ready: boolean;
+  recommendedNextActions: string[];
+  requiredGateCount: number;
+  validationIssueCount: number;
+  validationIssues: AssetBundleValidationIssue[];
+}
 
 export type AssetStudioToolSchemaValueType =
   | "array"
@@ -429,6 +461,114 @@ export function exportTilemapCollisionRects(
   return rects;
 }
 
+export function createSideScrollerAssetReadinessReport(
+  bundle: SideScrollerAssetBundle,
+): SideScrollerAssetReadinessReport {
+  const validation = validateAssetBundle(bundle);
+  const collisionTilemapId = bundle.sideScroller.collisionTilemapId;
+  const collisionTilemap =
+    collisionTilemapId === null
+      ? null
+      : bundle.tilemaps.find((tilemap) => tilemap.id === collisionTilemapId);
+  const collisionLayerCount =
+    collisionTilemap === null || collisionTilemap === undefined
+      ? 0
+      : collisionTilemap.layers.filter((layer) => layer.kind === "collision")
+          .length;
+  const gates: SideScrollerAssetReadinessGate[] = [
+    createReadinessGate(
+      "sprites",
+      "Sprites",
+      true,
+      bundle.sprites.length,
+      bundle.sprites.length > 0,
+      "Sprite sheets are available for render objects.",
+    ),
+    createReadinessGate(
+      "clips",
+      "Animation clips",
+      true,
+      bundle.clips.length,
+      bundle.clips.length > 0,
+      "Animation clips are available for moving objects.",
+    ),
+    createReadinessGate(
+      "hitboxes",
+      "Hitboxes",
+      true,
+      bundle.hitboxes.length,
+      bundle.hitboxes.length > 0,
+      "Hitbox metadata is available for collision and combat authoring.",
+    ),
+    createReadinessGate(
+      "tilemaps",
+      "Tilemaps",
+      true,
+      bundle.tilemaps.length,
+      bundle.tilemaps.length > 0 &&
+        !hasValidationIssue(validation.issues, [
+          "invalidTilemapLayer",
+          "unknownTilemapTileset",
+        ]),
+      "Tilemaps validate and can be consumed by renderers.",
+    ),
+    createReadinessGate(
+      "collision",
+      "Collision tilemap",
+      true,
+      collisionLayerCount,
+      collisionTilemap !== null &&
+        collisionTilemap !== undefined &&
+        collisionLayerCount > 0 &&
+        !hasValidationIssue(validation.issues, ["unknownCollisionTilemap"]),
+      "A collision tilemap is selected for generated side-scroller platforms.",
+    ),
+    createReadinessGate(
+      "bindings",
+      "Render bindings",
+      true,
+      bundle.sideScroller.bindings.length,
+      bundle.sideScroller.bindings.length > 0,
+      "Render objects can resolve pack assets without mutating rules state.",
+    ),
+    createReadinessGate(
+      "timelines",
+      "Scene timelines",
+      true,
+      bundle.timelines.length,
+      bundle.timelines.length > 0,
+      "Scene timelines are available for previews and agent inspection.",
+    ),
+    createReadinessGate(
+      "generation",
+      "Generation request",
+      false,
+      1,
+      true,
+      "Server-side elizaOS Cloud generation requests are routable.",
+    ),
+  ];
+  const requiredGates = gates.filter((gate) => gate.required);
+  const missing = requiredGates
+    .filter((gate) => !gate.ok)
+    .map((gate) => gate.id);
+
+  return {
+    blockedGateCount: missing.length,
+    bundleId: bundle.id,
+    gates,
+    missing,
+    ready: validation.ok && missing.length === 0,
+    recommendedNextActions: createReadinessActions(
+      missing,
+      validation.issues.length,
+    ),
+    requiredGateCount: requiredGates.length,
+    validationIssueCount: validation.issues.length,
+    validationIssues: validation.issues.map((issue) => ({ ...issue })),
+  };
+}
+
 export function createSceneTimeline(input: SceneTimeline): SceneTimeline {
   return {
     id: input.id,
@@ -610,6 +750,13 @@ export function createAssetStudioToolDefinitions(): AssetStudioToolDefinition[] 
       [],
     ),
     createAssetStudioTool(
+      "inspectSideScrollerReadiness",
+      "Inspect side-scroller asset readiness gates for humans and agents.",
+      "read",
+      {},
+      [],
+    ),
+    createAssetStudioTool(
       "exportAssetBundle",
       "Export the current asset bundle as pack-ready JSON.",
       "export",
@@ -693,6 +840,19 @@ export function runAssetStudioTool(
       });
     }
 
+    if (call.name === "inspectSideScrollerReadiness") {
+      if (!isSideScrollerAssetBundle(bundle)) {
+        return createAssetStudioToolError(
+          "Asset bundle does not include side-scroller metadata",
+        );
+      }
+      return createAssetStudioToolResult({
+        readiness: toAssetStudioJsonValue(
+          createSideScrollerAssetReadinessReport(bundle),
+        ),
+      });
+    }
+
     if (call.name === "exportAssetBundle") {
       return createAssetStudioToolResult({
         bundleJson: `${JSON.stringify(bundle, null, 2)}\n`,
@@ -760,6 +920,73 @@ function createAssetStudioTool(
       .replace(/([A-Z])/g, " $1")
       .replace(/^./, (letter) => letter.toUpperCase()),
   };
+}
+
+function createReadinessGate(
+  id: SideScrollerAssetReadinessGateId,
+  label: string,
+  required: boolean,
+  count: number,
+  ok: boolean,
+  detail: string,
+): SideScrollerAssetReadinessGate {
+  return {
+    count,
+    detail,
+    id,
+    label,
+    ok,
+    required,
+  };
+}
+
+function hasValidationIssue(
+  issues: AssetBundleValidationIssue[],
+  codes: AssetBundleValidationIssueCode[],
+): boolean {
+  const codeSet = new Set(codes);
+  return issues.some((issue) => codeSet.has(issue.code));
+}
+
+function createReadinessActions(
+  missing: SideScrollerAssetReadinessGateId[],
+  validationIssueCount: number,
+): string[] {
+  const actions: string[] = [];
+  if (validationIssueCount > 0) {
+    actions.push("Resolve asset validation issues.");
+  }
+
+  for (const gate of missing) {
+    actions.push(createReadinessAction(gate));
+  }
+
+  return actions;
+}
+
+function createReadinessAction(gate: SideScrollerAssetReadinessGateId): string {
+  if (gate === "sprites") {
+    return "Add at least one sprite sheet asset.";
+  }
+  if (gate === "clips") {
+    return "Add at least one animation clip.";
+  }
+  if (gate === "hitboxes") {
+    return "Add hitbox metadata for playable objects.";
+  }
+  if (gate === "tilemaps") {
+    return "Add a valid tilemap asset.";
+  }
+  if (gate === "collision") {
+    return "Select a valid collision tilemap with a collision layer.";
+  }
+  if (gate === "bindings") {
+    return "Bind render object ids to sprite assets.";
+  }
+  if (gate === "timelines") {
+    return "Add a scene timeline for previews.";
+  }
+  return "Keep server-side generation requests available.";
 }
 
 function requireToolString(

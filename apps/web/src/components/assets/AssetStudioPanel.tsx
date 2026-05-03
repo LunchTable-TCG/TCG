@@ -4,6 +4,7 @@ import {
   createHitboxSet,
   createSceneTimeline,
   createSideScrollerAssetBundle,
+  createSideScrollerAssetReadinessReport,
   createSpriteSheetAsset,
   createTilemapAsset,
   validateAssetBundle,
@@ -24,6 +25,9 @@ export interface AssetStudioPanelModel {
   previewEventCount: number;
   primaryAsset: string;
   ready: boolean;
+  readinessBlockedGateCount: number;
+  readinessGateCount: number;
+  readinessRequiredGateCount: number;
   sceneObjectCount: number;
   sideScrollerReady: boolean;
   spriteCount: number;
@@ -75,6 +79,10 @@ export function AssetStudioPanel() {
           <strong>{model.issueCount}</strong>
         </div>
         <div>
+          <span className="metric-label">Blocked</span>
+          <strong>{model.readinessBlockedGateCount}</strong>
+        </div>
+        <div>
           <span className="metric-label">Actions</span>
           <strong>{model.previewActionCount}</strong>
         </div>
@@ -85,6 +93,9 @@ export function AssetStudioPanel() {
         <span>{model.tilemapCount} tilemap</span>
         <span>{model.sceneObjectCount} scene objects</span>
         <span>{model.generatedPlatformCount} generated platform</span>
+        <span>
+          {model.readinessRequiredGateCount}/{model.readinessGateCount} gates
+        </span>
       </div>
       <div className="pack-editor-gates">
         {model.timelineScenes.map((scene) => (
@@ -99,6 +110,7 @@ function createModelFromValidation(
   input: ReturnType<typeof createSampleAssetBundle>,
 ): AssetStudioPanelModel {
   const validation: AssetBundleValidationResult = validateAssetBundle(input);
+  const readiness = createSideScrollerAssetReadinessReport(input);
   const timeline = input.timelines[0];
   const sideScrollerConfig = {
     ...sideScrollerStarterConfig,
@@ -124,7 +136,10 @@ function createModelFromValidation(
       0,
     ),
     primaryAsset: input.sprites[0]?.id ?? "none",
-    ready: validation.ok,
+    readinessBlockedGateCount: readiness.blockedGateCount,
+    readinessGateCount: readiness.gates.length,
+    readinessRequiredGateCount: readiness.requiredGateCount,
+    ready: readiness.ready,
     sceneObjectCount: studioFrame.scene.objectCount,
     sideScrollerReady: studioFrame.seats.every((seat) => seat.agentReady),
     spriteCount: input.sprites.length,

@@ -1781,6 +1781,11 @@ function createApiAssetRouteDefinitions(
 
   return `{ method: "GET", path: "/api/assets", toolName: "listAssets" },
   { method: "GET", path: "/api/assets/validate", toolName: "validateAssets" },
+  {
+    method: "GET",
+    path: "/api/assets/readiness",
+    toolName: "inspectSideScrollerReadiness",
+  },
   { method: "GET", path: "/api/assets/export", toolName: "exportAssetBundle" },
   { method: "POST", path: "/api/assets/atlas", toolName: "exportSpriteAtlas" },
   {
@@ -1801,6 +1806,10 @@ function createApiAssetRouteCases(templateId: ScaffoldTemplateId): string {
 
     if (route === "GET /api/assets/validate") {
       return handleAssetApiTool("validateAssets", {});
+    }
+
+    if (route === "GET /api/assets/readiness") {
+      return handleAssetApiTool("inspectSideScrollerReadiness", {});
     }
 
     if (route === "GET /api/assets/export") {
@@ -1944,6 +1953,7 @@ function createMcpAssetToolCases(templateId: ScaffoldTemplateId): string {
 
   return `case "listAssets":
     case "validateAssets":
+    case "inspectSideScrollerReadiness":
     case "exportAssetBundle":
     case "exportSpriteAtlas":
     case "requestImageGeneration":
@@ -2835,6 +2845,9 @@ function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
     const validate = await readJson(
       await handleStarterApiRequest(runtime, createRequest("/api/assets/validate")),
     );
+    const readiness = await readJson(
+      await handleStarterApiRequest(runtime, createRequest("/api/assets/readiness")),
+    );
     const atlas = await readJson(
       await handleStarterApiRequest(
         runtime,
@@ -2857,6 +2870,12 @@ function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
     expect(validate).toMatchObject({
       ok: true,
       validation: { ok: true },
+    });
+    expect(readiness).toMatchObject({
+      ok: true,
+      readiness: {
+        ready: true,
+      },
     });
     expect(String(atlas.atlasJson)).toContain("sprite:runner");
     expect(generationRequest).toMatchObject({
@@ -3128,6 +3147,7 @@ function createAssetMcpToolExpectations(
   }
 
   return `expect.objectContaining({ name: "validateAssets" }),
+          expect.objectContaining({ name: "inspectSideScrollerReadiness" }),
           expect.objectContaining({ name: "exportSpriteAtlas" }),
           expect.objectContaining({ name: "requestImageGeneration" }),`;
 }
@@ -3156,8 +3176,28 @@ function createAssetMcpServerTestCase(templateId: ScaffoldTemplateId): string {
       },
     });
 
+    await expect(
+      handleStarterMcpRequest(runtime, {
+        id: 2,
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: {
+          arguments: {},
+          name: "inspectSideScrollerReadiness",
+        },
+      }),
+    ).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          readiness: {
+            ready: true,
+          },
+        },
+      },
+    });
+
     const atlasResponse = await handleStarterMcpRequest(runtime, {
-      id: 2,
+      id: 3,
       jsonrpc: "2.0",
       method: "tools/call",
       params: {
@@ -3171,7 +3211,7 @@ function createAssetMcpServerTestCase(templateId: ScaffoldTemplateId): string {
 
     await expect(
       handleStarterMcpRequest(runtime, {
-        id: 3,
+        id: 4,
         jsonrpc: "2.0",
         method: "tools/call",
         params: {

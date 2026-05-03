@@ -340,6 +340,7 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(mcpServerSource).toContain("listAssets");
       expect(mcpServerSource).toContain("validateAssets");
+      expect(mcpServerSource).toContain("inspectSideScrollerReadiness");
       expect(mcpServerSource).toContain("exportSpriteAtlas");
       expect(mcpServerSource).toContain("requestImageGeneration");
       expect(mcpServerSource).toContain("assets/manifest.json");
@@ -349,6 +350,7 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(apiServerSource).toContain("/api/assets/atlas");
+      expect(apiServerSource).toContain("/api/assets/readiness");
       expect(apiServerSource).toContain("/api/assets/generation-request");
       expect(apiServerSource).toContain("/api/studio/preview");
       expect(apiServerSource).toContain("createSideScrollerStudioPreview");
