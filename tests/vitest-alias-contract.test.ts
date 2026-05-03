@@ -12,6 +12,7 @@ describe("vitest workspace alias contract", () => {
     expect(config).toContain('"packages/games-core/src/index.ts"');
     expect(config).toContain('"packages/games-ai/src/index.ts"');
     expect(config).toContain('"packages/games-assets/src/index.ts"');
+    expect(config).toContain('"packages/games-api/src/index.ts"');
     expect(config).toContain('"packages/games-render/src/index.ts"');
     expect(config).toContain('"packages/games-side-scroller/src/index.ts"');
     expect(config).toContain('"packages/games-tabletop/src/index.ts"');

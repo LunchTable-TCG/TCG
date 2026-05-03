@@ -1,0 +1,26 @@
+{
+  "name": "@lunchtable/games-api",
+  "version": "0.1.1",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunchTable-TCG/TCG.git",
+    "directory": "packages/games-api"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@lunchtable/games-ai": "workspace:*",
+    "@lunchtable/games-core": "workspace:*"
+  }
+}

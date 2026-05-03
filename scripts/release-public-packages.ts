@@ -40,6 +40,7 @@ const publicPackageNames = [
   "@lunchtable/games-core",
   "@lunchtable/games-render",
   "@lunchtable/games-ai",
+  "@lunchtable/games-api",
   "@lunchtable/games-assets",
   "@lunchtable/games-tabletop",
   "@lunchtable/games-side-scroller",
@@ -49,6 +50,7 @@ const publicPackageNames = [
 const packageDirectories: Record<(typeof publicPackageNames)[number], string> =
   {
     "@lunchtable/games-ai": "packages/games-ai",
+    "@lunchtable/games-api": "packages/games-api",
     "@lunchtable/games-assets": "packages/games-assets",
     "@lunchtable/games-core": "packages/games-core",
     "@lunchtable/games-render": "packages/games-render",

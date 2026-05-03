@@ -18,6 +18,7 @@
       "@lunchtable/game-core": ["packages/game-core/src/index.ts"],
       "@lunchtable/games-core": ["packages/games-core/src/index.ts"],
       "@lunchtable/games-ai": ["packages/games-ai/src/index.ts"],
+      "@lunchtable/games-api": ["packages/games-api/src/index.ts"],
       "@lunchtable/games-assets": ["packages/games-assets/src/index.ts"],
       "@lunchtable/games-render": ["packages/games-render/src/index.ts"],
       "@lunchtable/games-side-scroller": [

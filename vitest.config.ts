@@ -17,6 +17,10 @@ export default defineConfig({
         __dirname,
         "packages/games-ai/src/index.ts",
       ),
+      "@lunchtable/games-api": path.resolve(
+        __dirname,
+        "packages/games-api/src/index.ts",
+      ),
       "@lunchtable/games-assets": path.resolve(
         __dirname,
         "packages/games-assets/src/index.ts",

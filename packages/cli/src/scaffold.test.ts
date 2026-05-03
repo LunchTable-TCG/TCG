@@ -128,6 +128,9 @@ describe("lunchtable init scaffolding", () => {
         join(targetDirectory, "src/api/server.ts"),
         "utf8",
       );
+      expect(apiServerSource).toContain("@lunchtable/games-api");
+      expect(apiServerSource).toContain("createAgentApiManifest");
+      expect(apiServerSource).toContain("createSubmitActionResult");
       expect(apiServerSource).toContain("handleStarterApiRequest");
       expect(apiServerSource).toContain("/api/legal-actions");
       expect(apiServerSource).toContain("/api/actions/submit");
@@ -141,7 +144,11 @@ describe("lunchtable init scaffolding", () => {
 
       const packageJson = JSON.parse(
         await readFile(join(targetDirectory, "package.json"), "utf8"),
-      ) as { scripts: Record<string, string> };
+      ) as {
+        dependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+      expect(packageJson.dependencies["@lunchtable/games-api"]).toBe("latest");
       expect(packageJson.scripts["mcp:stdio"]).toBe("bun src/mcp/server.ts");
 
       const mcpServerSource = await readFile(
@@ -302,6 +309,7 @@ describe("lunchtable init scaffolding", () => {
       const packageJson = JSON.parse(
         await readFile(join(targetDirectory, "package.json"), "utf8"),
       ) as { dependencies: Record<string, string> };
+      expect(packageJson.dependencies["@lunchtable/games-api"]).toBe("latest");
       expect(packageJson.dependencies["@lunchtable/games-assets"]).toBe(
         "latest",
       );

@@ -29,6 +29,11 @@ const publicPackages: PublicPackage[] = [
   },
   {
     bundleDependencies: false,
+    directory: "packages/games-api",
+    name: "@lunchtable/games-api",
+  },
+  {
+    bundleDependencies: false,
     directory: "packages/games-assets",
     name: "@lunchtable/games-assets",
   },

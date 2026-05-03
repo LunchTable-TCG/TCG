@@ -80,6 +80,7 @@ describe("release proof contract", () => {
     expect(cliPackageProofScript).toContain(
       "lunchtable-games-assets-0.1.1.tgz",
     );
+    expect(cliPackageProofScript).toContain("lunchtable-games-api-0.1.1.tgz");
     expect(cliPackageProofScript).toContain('"listAssets"');
     expect(cliPackageProofScript).toContain('"validateAssets"');
     expect(cliPackageProofScript).toContain('"exportSpriteAtlas"');
@@ -122,7 +123,7 @@ describe("release proof contract", () => {
       "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}",
     );
     expect(publicPackageScript).toContain(
-      '"@lunchtable/games-core",\n  "@lunchtable/games-render",\n  "@lunchtable/games-ai",\n  "@lunchtable/games-assets",\n  "@lunchtable/games-tabletop",\n  "@lunchtable/games-side-scroller",\n  "lunchtable"',
+      '"@lunchtable/games-core",\n  "@lunchtable/games-render",\n  "@lunchtable/games-ai",\n  "@lunchtable/games-api",\n  "@lunchtable/games-assets",\n  "@lunchtable/games-tabletop",\n  "@lunchtable/games-side-scroller",\n  "lunchtable"',
     );
     expect(publicPackageScript).toContain("hasTokenAuth");
     expect(publicPackageScript).toContain(

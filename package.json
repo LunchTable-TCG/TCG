@@ -44,6 +44,7 @@
     "@lunchtable/card-content": "workspace:*",
     "@lunchtable/game-core": "workspace:*",
     "@lunchtable/games-ai": "workspace:*",
+    "@lunchtable/games-api": "workspace:*",
     "@lunchtable/games-assets": "workspace:*",
     "@lunchtable/games-core": "workspace:*",
     "@lunchtable/games-render": "workspace:*",

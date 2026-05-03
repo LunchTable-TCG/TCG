@@ -9,6 +9,7 @@ const genericPackageRoots = [
   "packages/games-core/src",
   "packages/games-tabletop/src",
   "packages/games-ai/src",
+  "packages/games-api/src",
   "packages/games-render/src",
   "packages/games-side-scroller/src",
 ] as const;

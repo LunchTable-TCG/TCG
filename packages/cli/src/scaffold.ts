@@ -1446,8 +1446,26 @@ function createApiServerSource(
 ): ScaffoldFileFactory {
   const functionName = getFactoryName(templateId);
 
-  return () => `import { createStarterDecisionFrame } from "../agents/baseline";
-import { createStarterMcpToolManifest } from "../agents/mcp";
+  return () => `import {
+  createAgentApiManifest,
+  createAgentApiResponse,
+  createDefaultAgentApiRoutes,
+  createSubmitActionResult,
+  optionalAgentApiInteger,
+  optionalAgentApiString,
+  parseAgentApiJsonObject,
+  requireAgentApiInteger,
+  requireAgentApiString,
+  toAgentApiJsonValue,
+  type AgentApiJsonObject,
+  type AgentApiJsonValue,
+  type AgentApiRoute,
+} from "@lunchtable/games-api";
+
+import {
+  baselineAgentManifest,
+  createStarterDecisionFrame,
+} from "../agents/baseline";
 import { runStarterSelfPlay } from "../agents/self-play";
 ${createApiAssetImports(templateId)}
 ${createApiAssetSourceImport(templateId)}
@@ -1457,9 +1475,8 @@ type StarterGame = ReturnType<typeof ${functionName}>;
 type StarterState = ReturnType<StarterGame["ruleset"]["createInitialState"]>;
 type StarterEvent = ReturnType<StarterGame["ruleset"]["applyIntent"]>["events"][number];
 
-type JsonPrimitive = boolean | null | number | string;
-type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-type JsonObject = { [key: string]: JsonValue };
+type JsonValue = AgentApiJsonValue;
+type JsonObject = AgentApiJsonObject;
 
 export interface StarterApiEventLogEntry {
   actionId: string | null;
@@ -1478,19 +1495,10 @@ export interface StarterApiRuntime {
 
 ${createApiAssetConstants(templateId)}
 
-const apiRoutes = [
-  { method: "GET", path: "/api/agent/manifest" },
-  { method: "POST", path: "/api/seats/join" },
-  { method: "POST", path: "/api/observe" },
-  { method: "POST", path: "/api/legal-actions" },
-  { method: "POST", path: "/api/actions/submit" },
-  { method: "POST", path: "/api/priority/pass" },
-  { method: "GET", path: "/api/rules" },
-  { method: "POST", path: "/api/objective" },
-  { method: "GET", path: "/api/replay" },
-  { method: "POST", path: "/api/self-play" },
+const apiRoutes: AgentApiRoute[] = [
+  ...createDefaultAgentApiRoutes(),
   ${createApiAssetRouteDefinitions(templateId)}
-] as const;
+];
 
 export function createStarterApiRuntime(): StarterApiRuntime {
   const game = ${functionName}();
@@ -1511,11 +1519,18 @@ export async function handleStarterApiRequest(
 
   try {
     if (route === "GET /api/agent/manifest") {
-      return jsonResponse({
-        manifest: toJsonValue(runtime.game.manifest),
-        routes: toJsonValue(apiRoutes),
-        tools: toJsonValue(createStarterMcpToolManifest().tools),
-      });
+      return jsonResponse(
+        toJsonValue(
+          createAgentApiManifest({
+            displayName: runtime.game.manifest.title,
+            gameId: runtime.state.shell.id,
+            routes: apiRoutes,
+            rulesetId:
+              runtime.state.shell.format?.rulesetId ?? runtime.game.manifest.title,
+            tools: baselineAgentManifest.tools,
+          }),
+        ),
+      );
     }
 
     if (route === "POST /api/seats/join") {
@@ -1624,34 +1639,40 @@ function submitAction(
   }
 
   const frame = createDecisionFrame(runtime, seat);
-  const action = frame.legalActions.find(
-    (candidate) => candidate.actionId === actionId,
-  );
-  if (action === undefined) {
+  const result = createSubmitActionResult({
+    actionId,
+    applyIntent: runtime.game.ruleset.applyIntent,
+    legalActions: frame.legalActions,
+    readStateVersion: (nextState) => nextState.shell.version,
+    seat,
+    state: runtime.state,
+    stateVersion,
+    version: runtime.state.shell.version,
+  });
+  if (!result.ok) {
     return {
-      error: \`Unknown or illegal actionId: \${actionId}\`,
+      error: result.error,
       ok: false,
     };
   }
 
-  const transition = runtime.game.ruleset.applyIntent(runtime.state, action.intent);
-  runtime.state = transition.nextState;
+  runtime.state = result.nextState;
   runtime.eventLog.push({
     actionId,
     at: Date.now(),
-    events: transition.events,
-    outcome: transition.outcome,
+    events: result.events,
+    outcome: result.outcome,
     seat,
-    stateVersion: runtime.state.shell.version,
+    stateVersion: result.stateVersion,
   });
 
   return {
     actionId,
-    events: toJsonValue(transition.events),
+    events: toJsonValue(result.events),
     ok: true,
-    outcome: transition.outcome,
+    outcome: result.outcome,
     seat,
-    stateVersion: runtime.state.shell.version,
+    stateVersion: result.stateVersion,
   };
 }
 
@@ -1689,71 +1710,31 @@ function createRulesSummary(runtime: StarterApiRuntime): JsonObject {
 }
 
 async function readJsonBody(request: Request): Promise<JsonObject> {
-  const content = await request.text();
-  if (content.trim().length === 0) {
-    return {};
-  }
-
-  const parsed: JsonValue = JSON.parse(content);
-  if (!isJsonObject(parsed)) {
-    throw new Error("API request body must be a JSON object");
-  }
-  return parsed;
+  return parseAgentApiJsonObject(request);
 }
 
 function jsonResponse(value: JsonValue, status = 200): Response {
-  return new Response(JSON.stringify(value, null, 2), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-    status,
-  });
+  return createAgentApiResponse(value, status);
 }
 
 function requireString(args: JsonObject, key: string): string {
-  const value = args[key];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(\`\${key} must be a non-empty string\`);
-  }
-  return value;
+  return requireAgentApiString(args, key);
 }
 
 function optionalString(args: JsonObject, key: string): string | null {
-  const value = args[key];
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (typeof value !== "string") {
-    throw new Error(\`\${key} must be a string\`);
-  }
-  return value;
+  return optionalAgentApiString(args, key);
 }
 
 function requireNumber(args: JsonObject, key: string): number {
-  const value = args[key];
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    throw new Error(\`\${key} must be an integer\`);
-  }
-  return value;
+  return requireAgentApiInteger(args, key);
 }
 
 function optionalNumber(args: JsonObject, key: string): number | null {
-  const value = args[key];
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    throw new Error(\`\${key} must be an integer\`);
-  }
-  return value;
-}
-
-function isJsonObject(value: JsonValue | undefined): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return optionalAgentApiInteger(args, key);
 }
 
 function toJsonValue(value: object): JsonValue {
-  return JSON.parse(JSON.stringify(value));
+  return toAgentApiJsonValue(value);
 }
 
 ${createApiAssetHelperFunctions(templateId)}
@@ -1796,11 +1777,15 @@ function createApiAssetRouteDefinitions(
     return "";
   }
 
-  return `{ method: "GET", path: "/api/assets" },
-  { method: "GET", path: "/api/assets/validate" },
-  { method: "GET", path: "/api/assets/export" },
-  { method: "POST", path: "/api/assets/atlas" },
-  { method: "POST", path: "/api/assets/generation-request" },`;
+  return `{ method: "GET", path: "/api/assets", toolName: "listAssets" },
+  { method: "GET", path: "/api/assets/validate", toolName: "validateAssets" },
+  { method: "GET", path: "/api/assets/export", toolName: "exportAssetBundle" },
+  { method: "POST", path: "/api/assets/atlas", toolName: "exportSpriteAtlas" },
+  {
+    method: "POST",
+    path: "/api/assets/generation-request",
+    toolName: "requestImageGeneration",
+  },`;
 }
 
 function createApiAssetRouteCases(templateId: ScaffoldTemplateId): string {
@@ -2525,6 +2510,7 @@ if (argv[1]?.endsWith("src/mcp/server.ts")) {
 function createPackageJson(input: ScaffoldFileInput): string {
   const dependencies: Record<string, string> = {
     "@lunchtable/games-ai": "latest",
+    "@lunchtable/games-api": "latest",
     "@lunchtable/games-core": "latest",
     "@lunchtable/games-render": "latest",
     "@lunchtable/games-tabletop": "latest",
