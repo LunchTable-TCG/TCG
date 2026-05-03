@@ -10,6 +10,7 @@ import {
   type SideScrollerState,
   applySideScrollerIntent,
   createSideScrollerInitialState,
+  createSideScrollerPlatformsFromAssetBundle,
   deriveSideScrollerRenderScene,
   listSideScrollerLegalIntents,
 } from "./engine";
@@ -18,6 +19,7 @@ export interface SideScrollerStudioFrame {
   assets: {
     boundObjectCount: number;
     boundObjectIds: string[];
+    generatedPlatformCount: number;
     missingBindingObjectIds: string[];
     ready: boolean;
     spriteCount: number;
@@ -76,22 +78,32 @@ export interface SideScrollerSelfPlayResult {
 export function createSideScrollerStudioFrame(
   config: SideScrollerEngineConfig,
   viewport: Viewport,
-  state = createSideScrollerInitialState(config),
+  state?: SideScrollerState,
 ): SideScrollerStudioFrame {
-  const scene = deriveSideScrollerRenderScene(config, state, viewport);
+  const assetValidation =
+    config.assets === undefined ? null : validateAssetBundle(config.assets);
+  const frameState =
+    state ??
+    createSideScrollerInitialState(
+      assetValidation?.ok === false ? { ...config, assets: undefined } : config,
+    );
+  const scene = deriveSideScrollerRenderScene(config, frameState, viewport);
   const boundObjectIds = scene.objects
     .filter((object) => object.asset !== undefined)
     .map((object) => object.id);
   const missingBindingObjectIds = scene.objects
     .filter((object) => object.asset === undefined)
     .map((object) => object.id);
-  const assetValidation =
-    config.assets === undefined ? null : validateAssetBundle(config.assets);
+  const generatedPlatformCount =
+    config.assets === undefined || assetValidation?.ok !== true
+      ? 0
+      : createSideScrollerPlatformsFromAssetBundle(config.assets).length;
 
   return {
     assets: {
       boundObjectCount: boundObjectIds.length,
       boundObjectIds,
+      generatedPlatformCount,
       missingBindingObjectIds,
       ready: assetValidation?.ok ?? false,
       spriteCount: config.assets?.sprites.length ?? 0,
@@ -114,10 +126,10 @@ export function createSideScrollerStudioFrame(
         .map((object) => object.id),
       objectCount: scene.objects.length,
     },
-    seats: Object.values(state.runners).map((runner) => {
+    seats: Object.values(frameState.runners).map((runner) => {
       const legalIntentKinds = listSideScrollerLegalIntents(
         config,
-        state,
+        frameState,
         runner.id,
       ).map((intent) => intent.kind);
 

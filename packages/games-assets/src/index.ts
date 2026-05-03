@@ -80,6 +80,22 @@ export interface TilemapAsset {
   tilesetAssetId: string;
 }
 
+export interface TilemapCollisionRect {
+  height: number;
+  id: string;
+  layerId: string;
+  tileIds: number[];
+  width: number;
+  x: number;
+  y: number;
+}
+
+export interface ExportTilemapCollisionRectsOptions {
+  originX?: number;
+  originY?: number;
+  solidTileIds?: number[];
+}
+
 export interface SceneTimelineScene {
   clipId: string;
   id: string;
@@ -123,6 +139,7 @@ export type AssetBundleValidationIssueCode =
   | "duplicateAssetId"
   | "invalidAnimationFrameRange"
   | "invalidTilemapLayer"
+  | "unknownCollisionTilemap"
   | "unknownBindingAsset"
   | "unknownBindingClip"
   | "unknownClipAsset"
@@ -348,6 +365,70 @@ export function createTilemapAsset(input: TilemapAsset): TilemapAsset {
   };
 }
 
+export function exportTilemapCollisionRects(
+  tilemap: TilemapAsset,
+  options: ExportTilemapCollisionRectsOptions = {},
+): TilemapCollisionRect[] {
+  const originX = options.originX ?? 0;
+  const originY = options.originY ?? 0;
+  const solidTileIds =
+    options.solidTileIds === undefined ? null : new Set(options.solidTileIds);
+  const rects: TilemapCollisionRect[] = [];
+
+  for (const layer of tilemap.layers) {
+    if (layer.kind !== "collision") {
+      continue;
+    }
+
+    assertTilemapLayerDimensions(tilemap, layer);
+
+    for (let rowIndex = 0; rowIndex < tilemap.rows; rowIndex += 1) {
+      const row = layer.data[rowIndex];
+      let runStart: number | null = null;
+      let tileIds: number[] = [];
+
+      for (
+        let columnIndex = 0;
+        columnIndex <= tilemap.columns;
+        columnIndex += 1
+      ) {
+        const tileId = columnIndex < tilemap.columns ? row[columnIndex] : -1;
+        const solid =
+          columnIndex < tilemap.columns &&
+          (solidTileIds === null ? tileId >= 0 : solidTileIds.has(tileId));
+
+        if (solid) {
+          if (runStart === null) {
+            runStart = columnIndex;
+          }
+          tileIds.push(tileId);
+          continue;
+        }
+
+        if (runStart === null) {
+          continue;
+        }
+
+        const runEnd = columnIndex - 1;
+        const width = (runEnd - runStart + 1) * tilemap.cellSize;
+        rects.push({
+          height: tilemap.cellSize,
+          id: `${tilemap.id}:${layer.id}:r${rowIndex}:c${runStart}-${runEnd}`,
+          layerId: layer.id,
+          tileIds,
+          width,
+          x: originX + runStart * tilemap.cellSize + width / 2,
+          y: originY + (tilemap.rows - rowIndex - 1) * tilemap.cellSize,
+        });
+        runStart = null;
+        tileIds = [];
+      }
+    }
+  }
+
+  return rects;
+}
+
 export function createSceneTimeline(input: SceneTimeline): SceneTimeline {
   return {
     id: input.id,
@@ -396,13 +477,21 @@ export function validateAssetBundle(
   const clipById = new Map(
     bundle.clips.map((clip) => [clip.id, clip] as const),
   );
+  const tilemapById = new Map(
+    bundle.tilemaps.map((tilemap) => [tilemap.id, tilemap] as const),
+  );
   const issues: AssetBundleValidationIssue[] = [
     ...collectDuplicateAssetIssues(bundle),
     ...collectClipIssues(bundle.clips, spriteById),
     ...collectHitboxIssues(bundle.hitboxes, spriteById),
     ...collectTilemapIssues(bundle.tilemaps, spriteById),
     ...collectTimelineIssues(bundle.timelines, clipById),
-    ...collectSideScrollerBindingIssues(bundle, spriteById, clipById),
+    ...collectSideScrollerBindingIssues(
+      bundle,
+      spriteById,
+      clipById,
+      tilemapById,
+    ),
   ];
 
   return {
@@ -734,6 +823,20 @@ function clampInteger(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function assertTilemapLayerDimensions(
+  tilemap: TilemapAsset,
+  layer: TilemapLayer,
+): void {
+  if (
+    layer.data.length !== tilemap.rows ||
+    layer.data.some((row) => row.length !== tilemap.columns)
+  ) {
+    throw new Error(
+      `${layer.id}: tilemap layer dimensions do not match tilemap`,
+    );
+  }
+}
+
 function collectDuplicateAssetIssues(
   bundle: AssetBundle,
 ): AssetBundleValidationIssue[] {
@@ -870,12 +973,24 @@ function collectSideScrollerBindingIssues(
   bundle: AssetBundle | SideScrollerAssetBundle,
   spriteById: ReadonlyMap<string, SpriteSheetAsset>,
   clipById: ReadonlyMap<string, AnimationClip>,
+  tilemapById: ReadonlyMap<string, TilemapAsset>,
 ): AssetBundleValidationIssue[] {
   if (!isSideScrollerAssetBundle(bundle)) {
     return [];
   }
 
   const issues: AssetBundleValidationIssue[] = [];
+  const collisionTilemapId = bundle.sideScroller.collisionTilemapId;
+  if (collisionTilemapId !== null && !tilemapById.has(collisionTilemapId)) {
+    issues.push(
+      createIssue(
+        "unknownCollisionTilemap",
+        `${bundle.id}: unknown collision tilemap ${collisionTilemapId}`,
+        `${bundle.id}.sideScroller.collisionTilemapId`,
+      ),
+    );
+  }
+
   for (const binding of bundle.sideScroller.bindings) {
     if (!spriteById.has(binding.assetId)) {
       issues.push(

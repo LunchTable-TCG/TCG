@@ -2686,6 +2686,7 @@ describe("${templateId} scaffold", () => {
     const preview = createSideScrollerStudioPreview();
 
     expect(preview.frame.seats.every((seat) => seat.agentReady)).toBe(true);
+    expect(preview.frame.assets.generatedPlatformCount).toBeGreaterThan(0);
     expect(preview.frame.scene.objectCount).toBeGreaterThan(0);
     expect(preview.selfPlay.steps.length).toBeGreaterThan(0);
     expect(
@@ -2865,6 +2866,7 @@ function createApiAssetServerTestCase(templateId: ScaffoldTemplateId): string {
     });
     expect(JSON.stringify(studioPreview)).toContain("selfPlay");
     expect(JSON.stringify(studioPreview)).toContain("moveRight");
+    expect(JSON.stringify(studioPreview)).toContain("generatedPlatformCount");
   });
 `;
 }

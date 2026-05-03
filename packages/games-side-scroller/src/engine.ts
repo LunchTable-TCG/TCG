@@ -1,4 +1,7 @@
-import type { SideScrollerAssetBundle } from "@lunchtable/games-assets";
+import {
+  type SideScrollerAssetBundle,
+  exportTilemapCollisionRects,
+} from "@lunchtable/games-assets";
 import type { GameRuleset, GameShell, Viewport } from "@lunchtable/games-core";
 import type {
   RenderCameraHint,
@@ -193,7 +196,7 @@ export function createSideScrollerInitialState(
       ...hazard,
       defeated: false,
     })),
-    platforms: config.level.platforms.map((platform) => ({ ...platform })),
+    platforms: createSideScrollerRuntimePlatforms(config),
     runners: Object.fromEntries(
       config.level.runners.map((runner) => [
         runner.seatId,
@@ -452,7 +455,7 @@ export function createSideScrollerComponents(
         width: config.level.width,
       },
     },
-    ...config.level.platforms.map(
+    ...createSideScrollerRuntimePlatforms(config).map(
       (platform): TabletopComponent => ({
         id: platform.id,
         kind: "board",
@@ -499,6 +502,43 @@ export function createSideScrollerComponents(
         visibility: "public",
       }),
     ),
+  ];
+}
+
+export function createSideScrollerPlatformsFromAssetBundle(
+  assets: SideScrollerAssetBundle,
+): SideScrollerPlatform[] {
+  const collisionTilemapId = assets.sideScroller.collisionTilemapId;
+  if (collisionTilemapId === null) {
+    return [];
+  }
+
+  const tilemap = assets.tilemaps.find(
+    (candidate) => candidate.id === collisionTilemapId,
+  );
+  if (tilemap === undefined) {
+    throw new Error(
+      `Unknown side-scroller collision tilemap: ${collisionTilemapId}`,
+    );
+  }
+
+  return exportTilemapCollisionRects(tilemap).map((rect) => ({
+    height: rect.height,
+    id: `platform:${rect.id}`,
+    width: rect.width,
+    x: rect.x,
+    y: rect.y,
+  }));
+}
+
+export function createSideScrollerRuntimePlatforms(
+  config: SideScrollerEngineConfig,
+): SideScrollerPlatform[] {
+  return [
+    ...config.level.platforms.map((platform) => ({ ...platform })),
+    ...(config.assets === undefined
+      ? []
+      : createSideScrollerPlatformsFromAssetBundle(config.assets)),
   ];
 }
 

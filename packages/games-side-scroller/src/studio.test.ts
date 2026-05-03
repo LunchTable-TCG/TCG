@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { createSideScrollerAssetBundle } from "@lunchtable/games-assets";
+
 import { sideScrollerStarterConfig } from "./engine";
 import {
   createSideScrollerStudioFrame,
@@ -16,6 +18,7 @@ describe("side-scroller studio authoring", () => {
     expect(frame).toMatchObject({
       assets: {
         boundObjectCount: 0,
+        generatedPlatformCount: 0,
         ready: false,
       },
       level: {
@@ -75,5 +78,33 @@ describe("side-scroller studio authoring", () => {
       ),
     ).toBe(true);
     expect(first.finalState.shell.version).toBe(first.steps.length);
+  });
+
+  it("keeps invalid asset-studio collision metadata inspectable", () => {
+    const frame = createSideScrollerStudioFrame(
+      {
+        ...sideScrollerStarterConfig,
+        assets: createSideScrollerAssetBundle({
+          bindings: [],
+          clips: [],
+          collisionTilemapId: "tilemap:missing",
+          hitboxes: [],
+          id: "assets:side-runner",
+          name: "Side Runner Assets",
+          sprites: [],
+          tilemaps: [],
+          timelines: [],
+        }),
+      },
+      {
+        height: 720,
+        width: 1280,
+      },
+    );
+
+    expect(frame.assets).toMatchObject({
+      generatedPlatformCount: 0,
+      ready: false,
+    });
   });
 });

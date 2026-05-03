@@ -17,6 +17,7 @@ import {
 export interface AssetStudioPanelModel {
   bundleId: string;
   clipCount: number;
+  generatedPlatformCount: number;
   hitboxCount: number;
   issueCount: number;
   previewActionCount: number;
@@ -83,6 +84,7 @@ export function AssetStudioPanel() {
         <span>{model.hitboxCount} hitbox set</span>
         <span>{model.tilemapCount} tilemap</span>
         <span>{model.sceneObjectCount} scene objects</span>
+        <span>{model.generatedPlatformCount} generated platform</span>
       </div>
       <div className="pack-editor-gates">
         {model.timelineScenes.map((scene) => (
@@ -113,6 +115,7 @@ function createModelFromValidation(
   return {
     bundleId: input.id,
     clipCount: input.clips.length,
+    generatedPlatformCount: studioFrame.assets.generatedPlatformCount,
     hitboxCount: input.hitboxes.length,
     issueCount: validation.issues.length,
     previewActionCount: studioFrame.seats[0]?.legalIntentKinds.length ?? 0,
@@ -181,6 +184,7 @@ function createSampleAssetBundle() {
       },
     ],
     clips: [run],
+    collisionTilemapId: "tilemap:level-1",
     hitboxes: [
       createHitboxSet({
         assetId: runner.id,

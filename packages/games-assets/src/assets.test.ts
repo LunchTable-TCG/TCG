@@ -11,6 +11,7 @@ import {
   createSpriteSheetAsset,
   createTilemapAsset,
   exportSpriteAtlasJson,
+  exportTilemapCollisionRects,
   parseElizaImageGenerationResponse,
   runAssetStudioTool,
   validateAssetBundle,
@@ -139,6 +140,93 @@ describe("Lunch Table Games asset primitives", () => {
         tilemapCount: 1,
         timelineCount: 1,
       },
+    });
+  });
+
+  it("exports collision tilemap rows as deterministic world rectangles", () => {
+    const tilemap = createTilemapAsset({
+      cellSize: 32,
+      columns: 5,
+      id: "tilemap:level-1",
+      layers: [
+        {
+          data: [
+            [-1, -1, -1, -1, -1],
+            [0, 0, -1, 2, 2],
+            [1, 1, 1, -1, -1],
+          ],
+          id: "layer:collision",
+          kind: "collision",
+          name: "Collision",
+          visible: false,
+        },
+      ],
+      name: "Level 1",
+      rows: 3,
+      tilesetAssetId: "sprite:tiles",
+    });
+
+    expect(exportTilemapCollisionRects(tilemap)).toEqual([
+      {
+        height: 32,
+        id: "tilemap:level-1:layer:collision:r1:c0-1",
+        layerId: "layer:collision",
+        tileIds: [0, 0],
+        width: 64,
+        x: 32,
+        y: 32,
+      },
+      {
+        height: 32,
+        id: "tilemap:level-1:layer:collision:r1:c3-4",
+        layerId: "layer:collision",
+        tileIds: [2, 2],
+        width: 64,
+        x: 128,
+        y: 32,
+      },
+      {
+        height: 32,
+        id: "tilemap:level-1:layer:collision:r2:c0-2",
+        layerId: "layer:collision",
+        tileIds: [1, 1, 1],
+        width: 96,
+        x: 48,
+        y: 0,
+      },
+    ]);
+  });
+
+  it("validates side-scroller collision tilemap references", () => {
+    const runner = createSpriteSheetAsset({
+      frame: { columns: 1, height: 32, rows: 1, totalFrames: 1, width: 32 },
+      id: "sprite:runner",
+      image: {
+        height: 32,
+        mediaType: "image/png",
+        storageId: "storage-runner",
+        width: 32,
+      },
+      name: "Runner",
+      pivot: { x: 0.5, y: 1 },
+    });
+    const bundle = createSideScrollerAssetBundle({
+      bindings: [],
+      clips: [],
+      collisionTilemapId: "tilemap:missing",
+      hitboxes: [],
+      id: "assets:side-runner",
+      name: "Side Runner Assets",
+      sprites: [runner],
+      tilemaps: [],
+      timelines: [],
+    });
+
+    expect(validateAssetBundle(bundle).issues).toContainEqual({
+      code: "unknownCollisionTilemap",
+      message: "assets:side-runner: unknown collision tilemap tilemap:missing",
+      path: "assets:side-runner.sideScroller.collisionTilemapId",
+      severity: "error",
     });
   });
 
