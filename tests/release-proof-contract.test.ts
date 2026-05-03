@@ -115,7 +115,7 @@ describe("release proof contract", () => {
       "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}",
     );
     expect(publicPackageScript).toContain(
-      '"@lunchtable/games-core",\n  "@lunchtable/games-render",\n  "@lunchtable/games-ai",\n  "@lunchtable/games-tabletop",\n  "lunchtable"',
+      '"@lunchtable/games-core",\n  "@lunchtable/games-render",\n  "@lunchtable/games-ai",\n  "@lunchtable/games-tabletop",\n  "@lunchtable/games-side-scroller",\n  "lunchtable"',
     );
     expect(publicPackageScript).toContain("hasTokenAuth");
     expect(publicPackageScript).toContain(

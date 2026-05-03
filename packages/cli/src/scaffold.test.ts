@@ -226,15 +226,10 @@ describe("lunchtable init scaffolding", () => {
         join(targetDirectory, "src/game.ts"),
         "utf8",
       );
-      expect(gameSource).toContain('kind: "moveRight"');
-      expect(gameSource).toContain('kind: "jump"');
-      expect(gameSource).toContain('kind: "attack"');
-      expect(gameSource).toContain("collectibles");
-      expect(gameSource).toContain("hazards");
-      expect(gameSource).toContain("goal");
-      expect(gameSource).toContain("createRunner");
-      expect(gameSource).toContain("deriveRenderScene");
-      expect(gameSource).toContain("activeRunner");
+      expect(gameSource).toContain("@lunchtable/games-side-scroller");
+      expect(gameSource).toContain("createSideScrollerComponents");
+      expect(gameSource).toContain("createSideScrollerRuleset");
+      expect(gameSource).toContain("sideScrollerStarterConfig");
 
       const gameTestSource = await readFile(
         join(targetDirectory, "tests/game.test.ts"),
@@ -252,6 +247,7 @@ describe("lunchtable init scaffolding", () => {
         "utf8",
       );
       expect(rulesetJson).toContain('"moveRight"');
+      expect(rulesetJson).toContain('"dash"');
       expect(rulesetJson).toContain('"attack"');
 
       const objectsJson = await readFile(
@@ -260,6 +256,8 @@ describe("lunchtable init scaffolding", () => {
       );
       expect(objectsJson).toContain("Runner 0");
       expect(objectsJson).toContain("Runner 1");
+      expect(objectsJson).toContain("Ground");
+      expect(objectsJson).toContain("Ledge 1");
       expect(objectsJson).toContain("Goal");
       expect(objectsJson).toContain("Hazard");
       expect(objectsJson).toContain("Collectible");

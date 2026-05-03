@@ -1,0 +1,27 @@
+{
+  "name": "@lunchtable/games-side-scroller",
+  "version": "0.1.1",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LunchTable-TCG/TCG.git",
+    "directory": "packages/games-side-scroller"
+  },
+  "dependencies": {
+    "@lunchtable/games-core": "workspace:*",
+    "@lunchtable/games-render": "workspace:*",
+    "@lunchtable/games-tabletop": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

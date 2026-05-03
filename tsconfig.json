@@ -19,6 +19,9 @@
       "@lunchtable/games-core": ["packages/games-core/src/index.ts"],
       "@lunchtable/games-ai": ["packages/games-ai/src/index.ts"],
       "@lunchtable/games-render": ["packages/games-render/src/index.ts"],
+      "@lunchtable/games-side-scroller": [
+        "packages/games-side-scroller/src/index.ts"
+      ],
       "@lunchtable/games-tabletop": ["packages/games-tabletop/src/index.ts"],
       "lunchtable": ["packages/cli/src/index.ts"],
       "@lunchtable/bot-sdk": ["packages/bot-sdk/src/index.ts"],

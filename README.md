@@ -16,6 +16,7 @@ packages/
   games-tabletop/
   games-ai/
   games-render/
+  games-side-scroller/
   game-core/
   card-content/
   render-pixi/
@@ -75,6 +76,11 @@ Each scaffold is agent-native from day one: it includes a baseline local agent,
 external HTTP envelopes, a runnable stdio MCP server, MCP tool metadata, an A2A
 agent card, self-play, and agent parity tests. Agents submit legal action ids
 through the same ruleset path as human seats.
+
+The side-scroller scaffold uses `@lunchtable/games-side-scroller`, a reusable
+deterministic runner engine with two equal seats, movement, dash, jump, attack,
+gravity, platforms, hazards, collectibles, goals, tabletop components, and
+renderer-neutral side-scroller scenes.
 
 Generated starters expose `bun run --silent mcp:stdio` so local MCP clients and
 developer agent tools can connect immediately without script banners on stdout.
@@ -198,7 +204,9 @@ bun run release:notes -- v0.1.1
 bun run release:cut -- v0.1.1 --dry-run
 ```
 
-The `v0.1.1` release workflow dry-runs and publishes `lunchtable` plus the
-public `@lunchtable/games-*` packages to npm after the GitHub release gate
-passes. The first npm publish requires the repository `NPM_TOKEN` secret; switch
-the same packages to npm trusted publishing after their package records exist.
+The `v0.1.1` release workflow dry-runs and publishes `lunchtable`,
+`@lunchtable/games-core`, `@lunchtable/games-render`,
+`@lunchtable/games-ai`, `@lunchtable/games-tabletop`, and
+`@lunchtable/games-side-scroller` to npm after the GitHub release gate passes.
+The first npm publish requires the repository `NPM_TOKEN` secret; switch the
+same packages to npm trusted publishing after their package records exist.

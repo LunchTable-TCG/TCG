@@ -33,6 +33,11 @@ const publicPackages: PublicPackage[] = [
     name: "@lunchtable/games-tabletop",
   },
   {
+    bundleDependencies: false,
+    directory: "packages/games-side-scroller",
+    name: "@lunchtable/games-side-scroller",
+  },
+  {
     bundleDependencies: true,
     directory: "packages/cli",
     name: "lunchtable",

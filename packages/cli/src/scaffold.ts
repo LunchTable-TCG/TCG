@@ -509,6 +509,22 @@ function createPackObjects(templateId: ScaffoldTemplateId) {
     return [
       createPackObject("board:level-1", "Level 1", "table", null),
       createPackObject(
+        "platform:ground",
+        "Ground",
+        "table",
+        null,
+        "public",
+        "board",
+      ),
+      createPackObject(
+        "platform:ledge-1",
+        "Ledge 1",
+        "table",
+        null,
+        "public",
+        "board",
+      ),
+      createPackObject(
         "piece:runner-seat-0",
         "Runner 0",
         "table",
@@ -542,10 +558,11 @@ function createPackObject(
   visibility: "private-owner" | "public" = ownerSeat === null
     ? "public"
     : "private-owner",
+  kind = id.split(":")[0],
 ) {
   return {
     id,
-    kind: id.split(":")[0],
+    kind,
     name,
     ownerSeat,
     state: "ready",
@@ -594,6 +611,7 @@ function createPackLegalIntents(templateId: ScaffoldTemplateId) {
     return [
       { kind: "moveLeft" },
       { kind: "moveRight" },
+      { kind: "dash" },
       { kind: "jump" },
       { kind: "wait" },
       { kind: "attack" },
@@ -1529,6 +1547,16 @@ if (argv[1]?.endsWith("src/mcp/server.ts")) {
 }
 
 function createPackageJson(input: ScaffoldFileInput): string {
+  const dependencies: Record<string, string> = {
+    "@lunchtable/games-ai": "latest",
+    "@lunchtable/games-core": "latest",
+    "@lunchtable/games-render": "latest",
+    "@lunchtable/games-tabletop": "latest",
+  };
+  if (input.template.id === "side-scroller") {
+    dependencies["@lunchtable/games-side-scroller"] = "latest";
+  }
+
   return `${JSON.stringify(
     {
       name: input.packageName,
@@ -1539,12 +1567,7 @@ function createPackageJson(input: ScaffoldFileInput): string {
         typecheck: "tsc --noEmit",
       },
       type: "module",
-      dependencies: {
-        "@lunchtable/games-ai": "latest",
-        "@lunchtable/games-core": "latest",
-        "@lunchtable/games-render": "latest",
-        "@lunchtable/games-tabletop": "latest",
-      },
+      dependencies,
       devDependencies: {
         "@types/node": "^24.6.1",
         typescript: "^5.9.3",
@@ -1614,8 +1637,10 @@ describe("${templateId} scaffold", () => {
     let state = game.ruleset.createInitialState(game.config);
     const seat0Actions = game.ruleset.listLegalIntents(state, "seat-0");
     const moveRight = seat0Actions.find((intent) => intent.kind === "moveRight");
+    const dash = seat0Actions.find((intent) => intent.kind === "dash");
 
     expect(moveRight).toBeDefined();
+    expect(dash).toBeDefined();
     if (moveRight === undefined) {
       throw new Error("moveRight should be legal");
     }
@@ -1646,6 +1671,8 @@ describe("${templateId} scaffold", () => {
     const objectIds = scene.objects.map((object) => object.id);
 
     expect(scene.camera?.mode).toBe("side-scroller");
+    expect(objectIds).toContain("platform:ground");
+    expect(objectIds).toContain("platform:ledge-1");
     expect(objectIds).toContain("piece:runner-seat-0");
     expect(objectIds).toContain("piece:runner-seat-1");
     expect(objectIds).toContain("token:hazard-1");
@@ -2224,515 +2251,23 @@ function createShell(id: string, rulesetId: string): GameShell {
 }
 
 function createSideScrollerGameSource(): string {
-  return `import type { GameRuleset, GameShell } from "@lunchtable/games-core";
-import type { TabletopComponent } from "@lunchtable/games-tabletop";
-import type { RenderCameraHint, RenderSceneModel } from "@lunchtable/games-render";
-
-interface SideScrollerConfig {
-  seed: string;
-}
-
-type RunnerSeatId = "seat-0" | "seat-1";
-
-interface RunnerState {
-  facing: "left" | "right";
-  grounded: boolean;
-  health: number;
-  id: string;
-  score: number;
-  velocityX: number;
-  velocityY: number;
-  x: number;
-  y: number;
-}
-
-interface HazardState {
-  damage: number;
-  defeated: boolean;
-  id: string;
-  x: number;
-  y: number;
-}
-
-interface CollectibleState {
-  collectedBy: RunnerSeatId | null;
-  id: string;
-  value: number;
-  x: number;
-  y: number;
-}
-
-interface SideScrollerState {
-  collectibles: CollectibleState[];
-  goal: { x: number; y: number };
-  hazards: HazardState[];
-  runners: Record<RunnerSeatId, RunnerState>;
-  shell: GameShell;
-  tick: number;
-}
-
-type SideScrollerIntent =
-  | { kind: "attack"; seatId: string }
-  | { kind: "jump"; seatId: string }
-  | { kind: "moveLeft"; seatId: string }
-  | { kind: "moveRight"; seatId: string }
-  | { kind: "wait"; seatId: string };
-
-type SideScrollerEvent =
-  | { kind: "collectibleClaimed"; collectibleId: string; seatId: RunnerSeatId }
-  | { kind: "goalReached"; seatId: RunnerSeatId }
-  | { kind: "hazardDefeated"; hazardId: string; seatId: RunnerSeatId }
-  | { kind: "runnerDamaged"; damage: number; hazardId: string; seatId: RunnerSeatId }
-  | { kind: "runnerJumped"; seatId: RunnerSeatId }
-  | { kind: "runnerMoved"; seatId: RunnerSeatId; x: number; y: number };
-
-const levelWidth = 2400;
-const groundY = 0;
-const gravity = 3;
-const moveSpeed = 72;
-const jumpVelocity = 132;
-const attackRange = 96;
-const hazardRange = 40;
-const collectibleRange = 32;
-
-const camera: RenderCameraHint = {
-  mode: "side-scroller",
-  target: { x: 0, y: 0, z: 0 },
-  zoom: 1,
-};
-
-const components: TabletopComponent[] = [
-  {
-    id: "board:level-1",
-    kind: "board",
-    name: "Level 1",
-    surface: { height: 720, shape: "rectangle", width: 2400 },
-  },
-  {
-    id: "piece:runner-seat-0",
-    kind: "piece",
-    movement: { axes: ["x", "y"], grid: "continuous" },
-    name: "Runner 0",
-  },
-  {
-    id: "piece:runner-seat-1",
-    kind: "piece",
-    movement: { axes: ["x", "y"], grid: "continuous" },
-    name: "Runner 1",
-  },
-  {
-    id: "token:hazard-1",
-    kind: "token",
-    name: "Hazard",
-    ownerSeat: null,
-    visibility: "public",
-  },
-  {
-    id: "token:collectible-1",
-    kind: "token",
-    name: "Collectible",
-    ownerSeat: null,
-    visibility: "public",
-  },
-  {
-    id: "token:goal",
-    kind: "token",
-    name: "Goal",
-    ownerSeat: null,
-    visibility: "public",
-  },
-];
-
-const ruleset: GameRuleset<SideScrollerConfig, SideScrollerState, SideScrollerIntent, SideScrollerEvent, SideScrollerState, SideScrollerState, RenderSceneModel> = {
-  applyIntent(state, intent) {
-    const seatId = getRunnerSeatId(intent.seatId);
-    if (seatId === null) {
-      return {
-        events: [],
-        nextState: state,
-        outcome: "rejected",
-        reason: "Unknown runner seat.",
-      };
-    }
-
-    if (!isIntentLegalForRunner(state, seatId, intent)) {
-      return {
-        events: [],
-        nextState: state,
-        outcome: "rejected",
-        reason: "Intent is not legal for this runner.",
-      };
-    }
-
-    const actionResult = applyRunnerAction(state, seatId, intent);
-    const advanced = advanceRunner(actionResult.state, seatId);
-    const nextActiveSeatId = seatId === "seat-0" ? "seat-1" : "seat-0";
-    const nextStatus =
-      advanced.events.some((event) => event.kind === "goalReached")
-        ? "complete"
-        : state.shell.status;
-
-    return {
-      events: [...actionResult.events, ...advanced.events],
-      nextState: {
-        ...advanced.state,
-        shell: {
-          ...state.shell,
-          activeSeatId: nextActiveSeatId,
-          prioritySeatId: nextActiveSeatId,
-          round: seatId === "seat-1" ? state.shell.round + 1 : state.shell.round,
-          status: nextStatus,
-          version: state.shell.version + 1,
-        },
-        tick: state.tick + 1,
-      },
-      outcome: "applied",
-    };
-  },
-  createInitialState(config) {
-    return {
-      collectibles: [{ collectedBy: null, id: "token:collectible-1", value: 1, x: 420, y: 28 }],
-      goal: { x: 960, y: groundY },
-      hazards: [{ damage: 1, defeated: false, id: "token:hazard-1", x: 640, y: groundY }],
-      runners: {
-        "seat-0": createRunner("seat-0", 0),
-        "seat-1": createRunner("seat-1", 0),
-      },
-      shell: createShell("side-scroller-starter", config.seed),
-      tick: 0,
-    };
-  },
-  deriveRenderScene(state) {
-    const activeRunner = getActiveRunner(state);
-    return {
-      camera: { ...camera, target: { x: activeRunner.x, y: activeRunner.y, z: 0 } },
-      cue: null,
-      interactions: [
-        { affordance: "move", objectId: "piece:runner-seat-0", seatId: "seat-0" },
-        { affordance: "move", objectId: "piece:runner-seat-1", seatId: "seat-1" },
-        { affordance: "activate", objectId: "token:hazard-1", seatId: state.shell.activeSeatId },
-      ],
-      objects: createSceneObjects(state),
-      viewport: { height: 720, width: 1280 },
-    };
-  },
-  deriveSeatView(state) {
-    return state;
-  },
-  deriveSpectatorView(state) {
-    return state;
-  },
-  listLegalIntents(state, seatId) {
-    const runnerSeatId = getRunnerSeatId(seatId);
-    if (runnerSeatId === null || state.shell.status !== "playing") {
-      return [];
-    }
-
-    const runner = state.runners[runnerSeatId];
-    const intents: SideScrollerIntent[] = [
-      { kind: "moveRight", seatId },
-      { kind: "moveLeft", seatId },
-      { kind: "wait", seatId },
-    ];
-
-    if (runner.grounded) {
-      intents.push({ kind: "jump", seatId });
-    }
-
-    if (findAttackableHazard(state, runnerSeatId) !== null) {
-      intents.push({ kind: "attack", seatId });
-    }
-
-    return intents;
-  },
-};
+  return `import {
+  createSideScrollerComponents,
+  createSideScrollerRuleset,
+  sideScrollerStarterConfig,
+} from "@lunchtable/games-side-scroller";
 
 export function createSideScrollerGame() {
   return {
-    components,
+    components: createSideScrollerComponents(sideScrollerStarterConfig),
     config: { seed: "seed:side-scroller" },
     manifest: {
       genre: "side-scroller",
       runtime: "lunchtable",
-      title: "Side-Scroller Starter",
-      version: "0.1.0",
+      title: sideScrollerStarterConfig.title,
+      version: sideScrollerStarterConfig.version,
     },
-    ruleset,
-  };
-}
-
-function createRunner(id: RunnerSeatId, x: number): RunnerState {
-  return {
-    facing: "right",
-    grounded: true,
-    health: 3,
-    id,
-    score: 0,
-    velocityX: 0,
-    velocityY: 0,
-    x,
-    y: groundY,
-  };
-}
-
-function getRunnerSeatId(seatId: string): RunnerSeatId | null {
-  if (seatId === "seat-0" || seatId === "seat-1") {
-    return seatId;
-  }
-  return null;
-}
-
-function isIntentLegalForRunner(
-  state: SideScrollerState,
-  seatId: RunnerSeatId,
-  intent: SideScrollerIntent,
-): boolean {
-  if (intent.kind === "jump") {
-    return state.runners[seatId].grounded;
-  }
-
-  if (intent.kind === "attack") {
-    return findAttackableHazard(state, seatId) !== null;
-  }
-
-  return true;
-}
-
-function applyRunnerAction(
-  state: SideScrollerState,
-  seatId: RunnerSeatId,
-  intent: SideScrollerIntent,
-): { events: SideScrollerEvent[]; state: SideScrollerState } {
-  const runner = state.runners[seatId];
-  if (intent.kind === "moveLeft") {
-    return updateRunner(state, seatId, {
-      ...runner,
-      facing: "left",
-      velocityX: -moveSpeed,
-    });
-  }
-
-  if (intent.kind === "moveRight") {
-    return updateRunner(state, seatId, {
-      ...runner,
-      facing: "right",
-      velocityX: moveSpeed,
-    });
-  }
-
-  if (intent.kind === "jump") {
-    return {
-      events: [{ kind: "runnerJumped", seatId }],
-      state: updateRunner(state, seatId, {
-        ...runner,
-        grounded: false,
-        velocityY: jumpVelocity,
-      }).state,
-    };
-  }
-
-  if (intent.kind === "attack") {
-    const hazard = findAttackableHazard(state, seatId);
-    if (hazard === null) {
-      return { events: [], state };
-    }
-
-    return {
-      events: [{ hazardId: hazard.id, kind: "hazardDefeated", seatId }],
-      state: {
-        ...state,
-        hazards: state.hazards.map((candidate) =>
-          candidate.id === hazard.id ? { ...candidate, defeated: true } : candidate,
-        ),
-        runners: {
-          ...state.runners,
-          [seatId]: { ...runner, score: runner.score + 2, velocityX: 0 },
-        },
-      },
-    };
-  }
-
-  return updateRunner(state, seatId, { ...runner, velocityX: 0 });
-}
-
-function advanceRunner(
-  state: SideScrollerState,
-  seatId: RunnerSeatId,
-): { events: SideScrollerEvent[]; state: SideScrollerState } {
-  const runner = state.runners[seatId];
-  const nextX = clamp(runner.x + runner.velocityX, 0, levelWidth);
-  const airborneY = runner.y + runner.velocityY;
-  const nextY = airborneY <= groundY ? groundY : airborneY;
-  const nextRunner = {
-    ...runner,
-    grounded: nextY === groundY,
-    velocityX: 0,
-    velocityY: nextY === groundY ? 0 : runner.velocityY - gravity,
-    x: nextX,
-    y: nextY,
-  };
-
-  let nextState = updateRunner(state, seatId, nextRunner).state;
-  const events: SideScrollerEvent[] = [
-    { kind: "runnerMoved", seatId, x: nextRunner.x, y: nextRunner.y },
-  ];
-
-  const collectible = nextState.collectibles.find(
-    (candidate) =>
-      candidate.collectedBy === null &&
-      distance(candidate.x, candidate.y, nextRunner.x, nextRunner.y) <= collectibleRange,
-  );
-  if (collectible !== undefined) {
-    nextState = {
-      ...nextState,
-      collectibles: nextState.collectibles.map((candidate) =>
-        candidate.id === collectible.id
-          ? { ...candidate, collectedBy: seatId }
-          : candidate,
-      ),
-      runners: {
-        ...nextState.runners,
-        [seatId]: {
-          ...nextState.runners[seatId],
-          score: nextState.runners[seatId].score + collectible.value,
-        },
-      },
-    };
-    events.push({ collectibleId: collectible.id, kind: "collectibleClaimed", seatId });
-  }
-
-  const hazard = nextState.hazards.find(
-    (candidate) =>
-      !candidate.defeated &&
-      distance(candidate.x, candidate.y, nextRunner.x, nextRunner.y) <= hazardRange,
-  );
-  if (hazard !== undefined) {
-    nextState = {
-      ...nextState,
-      runners: {
-        ...nextState.runners,
-        [seatId]: {
-          ...nextState.runners[seatId],
-          health: Math.max(0, nextState.runners[seatId].health - hazard.damage),
-        },
-      },
-    };
-    events.push({
-      damage: hazard.damage,
-      hazardId: hazard.id,
-      kind: "runnerDamaged",
-      seatId,
-    });
-  }
-
-  if (nextRunner.x >= nextState.goal.x) {
-    events.push({ kind: "goalReached", seatId });
-  }
-
-  return { events, state: nextState };
-}
-
-function updateRunner(
-  state: SideScrollerState,
-  seatId: RunnerSeatId,
-  runner: RunnerState,
-): { events: SideScrollerEvent[]; state: SideScrollerState } {
-  return {
-    events: [],
-    state: {
-      ...state,
-      runners: { ...state.runners, [seatId]: runner },
-    },
-  };
-}
-
-function getActiveRunner(state: SideScrollerState): RunnerState {
-  const activeSeatId = getRunnerSeatId(state.shell.activeSeatId ?? "seat-0");
-  return state.runners[activeSeatId ?? "seat-0"];
-}
-
-function findAttackableHazard(
-  state: SideScrollerState,
-  seatId: RunnerSeatId,
-): HazardState | null {
-  const runner = state.runners[seatId];
-  const facingMultiplier = runner.facing === "right" ? 1 : -1;
-  const attackX = runner.x + facingMultiplier * attackRange;
-
-  return (
-    state.hazards.find(
-      (hazard) =>
-        !hazard.defeated &&
-        Math.abs(hazard.x - attackX) <= attackRange &&
-        Math.abs(hazard.y - runner.y) <= attackRange,
-    ) ?? null
-  );
-}
-
-function createSceneObjects(state: SideScrollerState) {
-  return [
-    {
-      id: "board:level-1",
-      interactive: false,
-      label: "Level 1",
-      position: { x: levelWidth / 2, y: -24, z: 0 },
-      size: { height: 48, width: levelWidth },
-    },
-    ...Object.values(state.runners).map((runner) => ({
-      id: "piece:runner-" + runner.id,
-      interactive: true,
-      label: runner.id,
-      position: { x: runner.x, y: runner.y, z: 1 },
-      size: { height: 72, width: 36 },
-    })),
-    ...state.hazards.map((hazard) => ({
-      id: hazard.id,
-      interactive: !hazard.defeated,
-      label: hazard.defeated ? "Defeated Hazard" : "Hazard",
-      position: { x: hazard.x, y: hazard.y, z: 1 },
-      size: { height: 48, width: 48 },
-    })),
-    ...state.collectibles.map((collectible) => ({
-      id: collectible.id,
-      interactive: collectible.collectedBy === null,
-      label: collectible.collectedBy === null ? "Collectible" : "Collected",
-      position: { x: collectible.x, y: collectible.y, z: 1 },
-      size: { height: 28, width: 28 },
-    })),
-    {
-      id: "token:goal",
-      interactive: false,
-      label: "Goal",
-      position: { x: state.goal.x, y: state.goal.y, z: 1 },
-      size: { height: 120, width: 24 },
-    },
-  ];
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function distance(
-  firstX: number,
-  firstY: number,
-  secondX: number,
-  secondY: number,
-): number {
-  return Math.hypot(firstX - secondX, firstY - secondY);
-}
-
-function createShell(id: string, rulesetId: string): GameShell {
-  return {
-    activeSeatId: "seat-0",
-    format: { id, name: "Starter", rulesetId, version: "0.1.0" },
-    id,
-    phase: "run",
-    prioritySeatId: "seat-0",
-    round: 1,
-    status: "playing",
-    timers: [],
-    version: 0,
+    ruleset: createSideScrollerRuleset(sideScrollerStarterConfig),
   };
 }
 `;

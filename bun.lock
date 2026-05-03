@@ -17,6 +17,11 @@
         "@lunchtable/bot-sdk": "workspace:*",
         "@lunchtable/card-content": "workspace:*",
         "@lunchtable/game-core": "workspace:*",
+        "@lunchtable/games-ai": "workspace:*",
+        "@lunchtable/games-core": "workspace:*",
+        "@lunchtable/games-render": "workspace:*",
+        "@lunchtable/games-side-scroller": "workspace:*",
+        "@lunchtable/games-tabletop": "workspace:*",
         "@lunchtable/render-pixi": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
         "@playwright/test": "1.59.1",
@@ -44,6 +49,8 @@
       "dependencies": {
         "@lunchtable/card-content": "workspace:*",
         "@lunchtable/game-core": "workspace:*",
+        "@lunchtable/games-render": "workspace:*",
+        "@lunchtable/games-tabletop": "workspace:*",
         "@lunchtable/render-pixi": "workspace:*",
         "@lunchtable/shared-types": "workspace:*",
         "@pixi/react": "^8.0.3",
@@ -75,7 +82,7 @@
     },
     "packages/cli": {
       "name": "lunchtable",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "lunchtable": "./src/index.ts",
       },
@@ -89,19 +96,28 @@
     },
     "packages/games-ai": {
       "name": "@lunchtable/games-ai",
-      "version": "0.1.0",
+      "version": "0.1.1",
     },
     "packages/games-core": {
       "name": "@lunchtable/games-core",
-      "version": "0.1.0",
+      "version": "0.1.1",
     },
     "packages/games-render": {
       "name": "@lunchtable/games-render",
-      "version": "0.1.0",
+      "version": "0.1.1",
+    },
+    "packages/games-side-scroller": {
+      "name": "@lunchtable/games-side-scroller",
+      "version": "0.1.1",
+      "dependencies": {
+        "@lunchtable/games-core": "workspace:*",
+        "@lunchtable/games-render": "workspace:*",
+        "@lunchtable/games-tabletop": "workspace:*",
+      },
     },
     "packages/games-tabletop": {
       "name": "@lunchtable/games-tabletop",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@lunchtable/games-core": "workspace:*",
       },
@@ -270,6 +286,8 @@
     "@lunchtable/games-core": ["@lunchtable/games-core@workspace:packages/games-core"],
 
     "@lunchtable/games-render": ["@lunchtable/games-render@workspace:packages/games-render"],
+
+    "@lunchtable/games-side-scroller": ["@lunchtable/games-side-scroller@workspace:packages/games-side-scroller"],
 
     "@lunchtable/games-tabletop": ["@lunchtable/games-tabletop@workspace:packages/games-tabletop"],
 

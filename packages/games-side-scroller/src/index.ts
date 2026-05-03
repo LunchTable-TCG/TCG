@@ -1,0 +1,27 @@
+export type {
+  SideScrollerCollectibleState,
+  SideScrollerEngineConfig,
+  SideScrollerEvent,
+  SideScrollerFacing,
+  SideScrollerGameConfig,
+  SideScrollerGoalState,
+  SideScrollerHazardState,
+  SideScrollerIntent,
+  SideScrollerLevelConfig,
+  SideScrollerPhysicsConfig,
+  SideScrollerPlatform,
+  SideScrollerRunnerSpawn,
+  SideScrollerRunnerState,
+  SideScrollerSeatId,
+  SideScrollerState,
+} from "./engine";
+export {
+  applySideScrollerIntent,
+  createSideScrollerComponents,
+  createSideScrollerInitialState,
+  createSideScrollerRuleset,
+  deriveSideScrollerRenderScene,
+  listSideScrollerLegalIntents,
+  sideScrollerStarterConfig,
+  stepSideScrollerWorld,
+} from "./engine";

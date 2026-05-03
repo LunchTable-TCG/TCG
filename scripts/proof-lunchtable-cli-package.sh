@@ -37,6 +37,7 @@ extract_package() {
 extract_package "$PACK_DIR/lunchtable-games-ai-0.1.1.tgz" "$SIDE_TARGET/node_modules/@lunchtable/games-ai"
 extract_package "$PACK_DIR/lunchtable-games-core-0.1.1.tgz" "$SIDE_TARGET/node_modules/@lunchtable/games-core"
 extract_package "$PACK_DIR/lunchtable-games-render-0.1.1.tgz" "$SIDE_TARGET/node_modules/@lunchtable/games-render"
+extract_package "$PACK_DIR/lunchtable-games-side-scroller-0.1.1.tgz" "$SIDE_TARGET/node_modules/@lunchtable/games-side-scroller"
 extract_package "$PACK_DIR/lunchtable-games-tabletop-0.1.1.tgz" "$SIDE_TARGET/node_modules/@lunchtable/games-tabletop"
 ln -s "$ROOT/node_modules/@types" "$SIDE_TARGET/node_modules/@types"
 ln -s "$ROOT/node_modules/vitest" "$SIDE_TARGET/node_modules/vitest"

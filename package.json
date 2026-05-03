@@ -46,6 +46,7 @@
     "@lunchtable/games-ai": "workspace:*",
     "@lunchtable/games-core": "workspace:*",
     "@lunchtable/games-render": "workspace:*",
+    "@lunchtable/games-side-scroller": "workspace:*",
     "@lunchtable/games-tabletop": "workspace:*",
     "@lunchtable/render-pixi": "workspace:*",
     "@lunchtable/shared-types": "workspace:*",

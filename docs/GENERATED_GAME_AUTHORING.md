@@ -17,6 +17,10 @@ models, agent-readable docs, and MCP tools before it becomes a playable starter.
 The `@lunchtable/games-tabletop` authoring helpers return the required files,
 stages, gates, and publish readiness state for browser editors and CLIs.
 
+Side-scroller generated packs should use `@lunchtable/games-side-scroller` for
+deterministic runner state, legal movement/attack intents, platform collision,
+hazards, collectibles, goal completion, tabletop components, and scene output.
+
 ## Renderer Planning
 
 Renderers consume `RenderSceneModel` only. The `@lunchtable/games-render`

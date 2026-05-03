@@ -25,6 +25,10 @@ export default defineConfig({
         __dirname,
         "packages/games-render/src/index.ts",
       ),
+      "@lunchtable/games-side-scroller": path.resolve(
+        __dirname,
+        "packages/games-side-scroller/src/index.ts",
+      ),
       "@lunchtable/games-tabletop": path.resolve(
         __dirname,
         "packages/games-tabletop/src/index.ts",

@@ -32,6 +32,7 @@ Agents submit legal action ids, never arbitrary state mutations. The runtime res
 - `@lunchtable/games-tabletop` owns seats, zones, tabletop components, visibility, and generated pack types.
 - `@lunchtable/games-ai` owns legal action descriptors, observation frames, external envelopes, MCP, A2A, elizaOS Cloud hosted-agent adapters, policies, and agent-turn execution.
 - `@lunchtable/games-render` owns renderer-neutral scene, camera, interaction, cue models, and renderer adapter descriptors.
+- `@lunchtable/games-side-scroller` owns deterministic runner state, movement, dash, jump, attack, gravity, platform collision, hazards, collectibles, goals, side-scroller scene output, and the reusable side-scroller ruleset adapter.
 
 Generic packages must not import TCG rules, card content, Convex, React, Pixi, Three.js, or app code.
 
@@ -56,6 +57,11 @@ Generated games enter through validated packs and starter scaffolds. They must b
 `@lunchtable/games-render` exposes `createRendererAdapterPlan` so generated games choose renderer adapters from scene models without importing DOM, Pixi, Three.js, or game-specific code. Side-scrollers and isometric scenes prefer Pixi, 3D and first-person scenes prefer Three.js, and DOM remains the accessible fallback path.
 
 `@lunchtable/games-ai` exposes `createElizaCloudHostedGameplayOrchestration` for hosted Eliza agents. The orchestration uses elizaOS Cloud chat completions, requires `ELIZA_CLOUD_API_KEY`, exposes MCP tools for legal actions, seat views, and action submission, and keeps all responses on known legal action ids.
+
+The side-scroller scaffold imports `@lunchtable/games-side-scroller` instead of
+embedding a private copy of runner physics. New generated runner packs should
+start from `sideScrollerStarterConfig`, `createSideScrollerRuleset`, and
+`createSideScrollerComponents`.
 
 See `docs/GENERATED_GAME_AUTHORING.md` and `examples/generated-game-authoring.ts` before extending generated-game authoring behavior.
 

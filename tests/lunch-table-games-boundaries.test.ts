@@ -10,6 +10,7 @@ const genericPackageRoots = [
   "packages/games-tabletop/src",
   "packages/games-ai/src",
   "packages/games-render/src",
+  "packages/games-side-scroller/src",
 ] as const;
 
 const forbiddenPackages = [

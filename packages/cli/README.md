@@ -26,6 +26,10 @@ Available templates:
 - `side-scroller`
 - `shooter-3d`
 
+The `side-scroller` template is backed by `@lunchtable/games-side-scroller`,
+which provides deterministic runner physics, two equal seats, legal movement
+intents, platforms, hazards, collectibles, goals, and renderer-neutral scenes.
+
 Every starter includes:
 
 - `src/game.ts`: deterministic ruleset, state, legal intents, and render hints.
