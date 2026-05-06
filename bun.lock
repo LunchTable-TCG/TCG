@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "lunch-table",
+      "name": "lunch-table-games",
       "dependencies": {
         "@convex-dev/agent": "0.6.1",
         "@noble/curves": "2.0.1",

@@ -64,42 +64,42 @@ type Notice = StatusNotice;
 
 const siteFeatureCards = [
   {
-    body: "Play a card and the board answers with a summoned character burst instead of a dead flat state change.",
-    eyebrow: "Active Board",
-    title: "Card-to-character entrances",
+    body: "Reusable shells, intents, prompts, events, RNG, and replay contracts stay portable across game families.",
+    eyebrow: "Core Runtime",
+    title: "Deterministic primitives",
   },
   {
-    body: "Private keys stay in the browser, seats are restored locally, and account ownership is built for web-native players.",
-    eyebrow: "Player Identity",
-    title: "Wallet-native access",
+    body: "Cards, dice, runners, arenas, assets, legal actions, and tests enter through validated generated packs.",
+    eyebrow: "Generated Packs",
+    title: "Authorable game content",
   },
   {
-    body: "Practice matches, private duels, queue pairing, replay, and spectator-safe projections all resolve through one rules path.",
-    eyebrow: "Deterministic Engine",
-    title: "One match spine, many surfaces",
+    body: "Humans, local bots, hosted Eliza agents, MCP clients, and API callers all submit the same legal actions.",
+    eyebrow: "Agent Parity",
+    title: "Equal seats for AI",
   },
   {
-    body: "Coach and commentator threads can observe the match without ever becoming the source of truth for game state.",
-    eyebrow: "Sidecar AI",
-    title: "Advisory agents, not game masters",
+    body: "Renderer-neutral scenes feed DOM, Pixi, Three.js, asset studio previews, and future browser adapters.",
+    eyebrow: "Render And Assets",
+    title: "Portable scenes",
   },
 ] as const;
 
 const siteModeCards = [
   {
-    body: "Generate a seat, clone the starter list, and open a match in one session.",
-    label: "Onboard",
-    title: "Create a wallet seat and start fast",
+    body: "Use `bunx lunchtable init` to start from TCG, dice, side-scroller, or 3D arena scaffolds.",
+    label: "Scaffold",
+    title: "Start any game family",
   },
   {
-    body: "Use invite codes for friend matches or let the queue deterministically pair legal decks.",
-    label: "Battle",
-    title: "Private lobbies and casual queue",
+    body: "Validate packs, inspect assets, expose MCP tools, and keep llms context ready for builders and agents.",
+    label: "Author",
+    title: "Build with agents beside you",
   },
   {
-    body: "Follow public replay frames, mount the live shell, and branch into coach or commentator views.",
-    label: "Observe",
-    title: "Replay, commentary, and lab tools",
+    body: "Simulate self-play, render scenes, replay decisions, and verify humans and agents share one authority path.",
+    label: "Verify",
+    title: "Playtest before publishing",
   },
 ] as const;
 
@@ -2800,85 +2800,88 @@ export function App() {
             {viewer ? `Seat · ${viewer.username}` : "Create seat"}
           </a>
           <a className="action action-link" href="#play">
-            {featuredMatch ? "Open arena" : "See the match flow"}
+            {featuredMatch ? "Open arena" : "See the suite flow"}
           </a>
         </div>
       </header>
 
-      <section className="hero game-hero" id="top">
+      <section
+        aria-label="Lunch Table Games generated game suite"
+        className="hero game-hero"
+        id="top"
+      >
         <div className="hero-copy">
-          <p className="eyebrow">Web-First Trading Card Battles</p>
-          <h1>Summon the card. Break the board. Take the table.</h1>
+          <p className="eyebrow">AI-Native Browser Game Engine</p>
+          <h1>Generate games humans and agents can play together.</h1>
           <p className="lede">
-            {APP_NAME} is a browser TCG where cards erupt into summoned
-            characters, queues resolve deterministically, and every duel can be
-            played live, replayed publicly, and observed without leaking hidden
-            information.
+            {APP_NAME} gives generated tabletop, card, dice, runner, and arena
+            games the same deterministic authority loop, renderer-neutral scene
+            model, asset pipeline, and legal action surface.
           </p>
           <p className="support-copy">
-            Build a seat, forge a deck, trigger a summon cut-in, and keep the
-            coach or commentator on the side instead of turning the whole site
-            into an admin dashboard.
+            Scaffold a pack, seat humans beside Eliza agents or MCP clients,
+            stream legal choices over API surfaces, and replay every decision
+            from one portable runtime.
           </p>
           <div className="hero-actions">
             <a className="action action-link" href="#enter">
               {viewer
                 ? `Continue as ${viewer.username}`
-                : "Create a wallet seat"}
+                : "Create a player seat"}
             </a>
-            <a className="action secondary-action action-link" href="#play">
-              {featuredMatch
-                ? "Jump into the live arena"
-                : "Watch the board come alive"}
+            <a className="action secondary-action action-link" href="#builder">
+              Explore builders
             </a>
           </div>
           <div className="hero-metrics">
             <div className="metric-card">
-              <span className="metric-label">Seat</span>
-              <strong>{viewer ? viewer.username : "Guest challenger"}</strong>
+              <span className="metric-label">Authority</span>
+              <strong>Seeded · versioned · replayable</strong>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Deck</span>
-              <strong>
-                {activeDeck
-                  ? `${activeDeck.validation.mainboardCount} cards ready`
-                  : "Starter list waiting"}
-              </strong>
+              <span className="metric-label">Scaffolds</span>
+              <strong>TCG · dice · runner · arena</strong>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Arena</span>
-              <strong>
-                {featuredMatch
-                  ? `${featuredMatch.phase} · turn ${featuredMatch.turnNumber}`
-                  : "No live match mounted"}
-              </strong>
+              <span className="metric-label">Agent Surface</span>
+              <strong>MCP · SSE · A2A · HTTP</strong>
             </div>
             <div className="metric-card">
-              <span className="metric-label">Queue</span>
-              <strong>
-                {currentQueueEntry
-                  ? currentQueueEntry.matchId
-                    ? "Matched and sealed"
-                    : "Searching for an opponent"
-                  : currentLobby
-                    ? `Lobby ${currentLobby.code}`
-                    : "Open challenge room"}
-              </strong>
+              <span className="metric-label">Render</span>
+              <strong>DOM · Pixi · Three.js</strong>
             </div>
           </div>
         </div>
 
-        <div className="hero-stage">
-          <div className="hero-stage-copy">
-            <p className="eyebrow">Live Summon Showcase</p>
-            <h2>Cards should feel like they land with weight.</h2>
-            <p className="support-copy">
-              This surface uses the real board renderer and bundled summon
-              models so the homepage already behaves like a game, not a console.
-            </p>
+        <div className="hero-command-panel" aria-label="Runtime status">
+          <div className="hero-command-header">
+            <div>
+              <p className="eyebrow">Runtime Stack</p>
+              <h2>One contract for every seat.</h2>
+            </div>
+            <span>ready</span>
           </div>
-          <div className="hero-stage-surface">
-            <LocalCinematicPreview />
+          <div className="hero-command-grid">
+            <div>
+              <span>01</span>
+              <strong>Legal intents</strong>
+              <p>Humans and agents choose from the same scoped actions.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <strong>Generated packs</strong>
+              <p>Rules, assets, tests, and llms context ship together.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <strong>Scene adapters</strong>
+              <p>Tabletop, side-scroller, and 3D views share one model.</p>
+            </div>
+          </div>
+          <div className="hero-proof-strip">
+            <span>TCG proof mounted</span>
+            <span>Side-runner assets ready</span>
+            <span>Agent APIs online</span>
           </div>
         </div>
       </section>
@@ -2886,12 +2889,13 @@ export function App() {
       <section className="panel panel-secondary site-section site-section-light">
         <div className="site-section-header">
           <div>
-            <p className="eyebrow">Why It Feels Like A Game</p>
-            <h2>Every system points back to the match.</h2>
+            <p className="eyebrow">Why It Scales Past One Game</p>
+            <h2>Every system points back to portable authority.</h2>
           </div>
           <p className="support-copy">
-            The site now leads with board energy, then folds the account,
-            deckbuilding, queue, replay, and AI surfaces under that core loop.
+            The proof app still plays cards, but the reusable boundary is the
+            runtime: legal actions, scoped views, generated packs, render
+            scenes, assets, and agent access.
           </p>
         </div>
         <div className="site-card-grid">

@@ -21,13 +21,20 @@ function readFile(path: string) {
 
 describe("GitHub platform setup", () => {
   it("frames the repository as the Lunch Table Games library", () => {
+    const packageJson = readFile(join(rootDir, "package.json"));
+    const bunLock = readFile(join(rootDir, "bun.lock"));
     const readme = readFile(join(rootDir, "README.md"));
     const docsReadme = readFile(join(rootDir, "docs", "README.md"));
     const packagesReadme = readFile(join(rootDir, "packages", "README.md"));
+    const architecture = readFile(
+      join(rootDir, "docs", "platform", "ARCHITECTURE.md"),
+    );
     const githubSetup = readFile(
       join(rootDir, "docs", "platform", "GITHUB_SETUP.md"),
     );
 
+    expect(packageJson).toContain('"name": "lunch-table-games"');
+    expect(bunLock).toContain('"name": "lunch-table-games"');
     expect(readme).toContain("# Lunch Table Games");
     expect(readme).toContain("Browser-first game library");
     expect(readme).toContain("TCG app repo");
@@ -42,8 +49,16 @@ describe("GitHub platform setup", () => {
     expect(packagesReadme).toContain("## Public Packages");
     expect(packagesReadme).toContain("## Proof And Support Packages");
     expect(packagesReadme).toContain("Generic `@lunchtable/games-*` packages");
+    expect(architecture).toContain("Browser-first Lunch Table Games suite");
+    expect(architecture).toContain(
+      "Generated games enter through validated packs",
+    );
+    expect(architecture).toContain("## Suite Boundaries");
+    expect(architecture).not.toContain("Web-first trading card game platform");
+    expect(architecture).not.toContain("MVP is a 1v1 synchronous online TCG");
     expect(githubSetup).toContain("Lunch Table Games library home");
     expect(githubSetup).toContain("not only the original trading card game");
+    expect(githubSetup).toContain("root package name: `lunch-table-games`");
   });
 
   it("documents every public package in GitHub and release setup", () => {

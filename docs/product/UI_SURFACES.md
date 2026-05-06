@@ -1,4 +1,4 @@
-# Lunchtable UI Surfaces
+# Lunch Table Games UI Surfaces
 
 **Goal**: define every major user-facing surface, its audience, its responsibilities, and whether it is required for MVP.
 

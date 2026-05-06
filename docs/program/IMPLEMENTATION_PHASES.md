@@ -1,6 +1,6 @@
-# Implementation Phases: Lunchtable
+# Implementation Phases: Lunch Table Games
 
-**Project Type**: Web TCG platform
+**Project Type**: Lunch Table Games suite with TCG proof app
 **Stack**: Bun + TypeScript + React 19 + PixiJS 8 + Convex + local BSC wallet auth
 **Estimated Total**: 120-160 hours initial foundation, excluding card content production and live ops
 

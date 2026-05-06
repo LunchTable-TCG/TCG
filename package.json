@@ -1,5 +1,5 @@
 {
-  "name": "lunch-table",
+  "name": "lunch-table-games",
   "private": true,
   "packageManager": "bun@1.3.10",
   "workspaces": ["apps/*", "packages/*"],

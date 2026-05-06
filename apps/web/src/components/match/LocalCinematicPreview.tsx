@@ -231,11 +231,12 @@ export function LocalCinematicPreview() {
   return (
     <div className="panel-stack">
       <div>
-        <p className="eyebrow">Summon Forge</p>
-        <h3>Trigger live card entrances</h3>
+        <p className="eyebrow">TCG Proof Renderer</p>
+        <h3>Exercise live card entrances</h3>
         <p className="support-copy">
           Cycle through signature units and fire summon or ability beats in the
-          same board renderer that powers the live match shell.
+          proof renderer while the surrounding suite tests packs, assets, and
+          agent parity.
         </p>
       </div>
       <div className="match-choice-list">

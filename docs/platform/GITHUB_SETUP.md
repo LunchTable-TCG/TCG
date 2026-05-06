@@ -81,3 +81,18 @@ These files keep issue triage and PR review oriented around the full Lunch
 Table Games platform: core primitives, renderers, assets, generated-game
 admission, scaffolds, agents, TCG proof app, side-scroller, dice, and future
 3D game families.
+
+## Suite Setup Contract
+
+The repository should keep these suite-level signals aligned:
+
+- root package name: `lunch-table-games`
+- root README frames Lunch Table Games as the umbrella platform and the TCG as
+  the first proof surface
+- `docs/README.md` separates platform, product, and program ownership
+- `packages/README.md` separates public reusable packages from private proof
+  and support packages
+- `docs/platform/ARCHITECTURE.md` describes the whole game suite, not a single
+  TCG application
+- workflow tests cover GitHub setup, package boundaries, release publishing,
+  and generated-game scaffolds

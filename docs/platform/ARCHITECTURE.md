@@ -1,33 +1,42 @@
 # Lunch Table Games Architecture Spec
 
-**Last updated**: 2026-04-03
-**Scope**: Web-first trading card game platform with realtime online play, deterministic rules, replay support, and AI seats with human parity.
+**Last updated**: 2026-05-05
+**Scope**: Browser-first Lunch Table Games suite with deterministic game
+runtimes, generated-game packs, agent parity, renderer-neutral scenes, asset
+pipelines, and proof apps across tabletop/card, dice, side-scroller, and 3D
+arena families.
 
 ## Assumptions
 
-- MVP is a 1v1 synchronous online TCG with hidden information.
-- The rules kernel must support multiple future game styles without rewriting the engine:
-  - stack-based response windows
-  - lane battlers
-  - tactics-card hybrids
-  - simplified async PvE formats
+- The current TCG is the first full proof surface, not the repository boundary.
+- Public `@lunchtable/games-*` packages must stay portable across game
+  families, renderers, apps, and hosted agents.
+- Generated games enter through validated packs, scaffolds, simulations, and
+  replay fixtures instead of arbitrary runtime code.
+- Every human, local bot, hosted Eliza agent, MCP client, SSE consumer, and API
+  caller uses the same legal action contracts.
 - The renderer is not the source of truth.
-- AI players must use the same public gameplay surface as humans, with the same seat restrictions and no bot-only game actions.
+- Proof apps, Convex orchestration, Pixi, Three.js, and TCG-specific packages
+  depend inward on the reusable suite packages.
 
 ## Product Goals
 
-1. Deterministic and replayable rules.
-2. Premium visuals in the match surface without forcing all UI into canvas.
-3. Fast realtime updates for humans, spectators, and bots.
-4. Format-level extensibility for rules, card styles, and match structure.
-5. Strong testability: pure rules package, backend contract tests, replay goldens.
+1. Deterministic, replayable game runtimes for multiple genres.
+2. First-class human and AI participation through scoped views and legal
+   action ids.
+3. Renderer-neutral scene output that can drive DOM, Pixi, Three.js, and future
+   adapters.
+4. Generated-game admission with schema validation, simulation, self-play,
+   assets, MCP/SSE/API surfaces, and LLM-readable context.
+5. Strong suite-level testability: generic package boundary tests, scaffold
+   proofs, replay goldens, release package dry-runs, and app continuity gates.
 
 ## Chosen Stack
 
 - Runtime and tooling: Bun, TypeScript, Vitest, Playwright.
 - Web app shell: Vite + React 19.
-- Match renderer: PixiJS 8 with `@pixi/react`.
-- Premium hero moments only: Three.js / React Three Fiber.
+- 2D and 2.5D proof renderer: PixiJS 8 with `@pixi/react`.
+- 3D and cinematic proof renderer: Three.js / React Three Fiber.
 - Backend and realtime state sync: Convex.
 - Human auth: self-custodied local BSC wallet auth with custom JWT sessions in Convex.
 - Bot and service auth: custom JWT provider in Convex auth config.
@@ -35,9 +44,15 @@
 
 ## Why This Architecture
 
-- TCGs are rules-heavy and UI-heavy. They benefit more from a pure simulation core and a high-end renderer than from a monolithic "game engine owns everything" model.
-- Convex gives reactive queries, transactional mutations, subscriptions, and durable scheduling, which fit lobbies, seat views, match logs, and replay indexing.
-- PixiJS gives the best balance for web TCG visuals: layered boards, particles, foil shaders, procedural FX, and animated cards without turning deckbuilder and collection screens into canvas apps.
+- Generated games need deterministic authority, typed pack contracts, and
+  renderer-neutral scenes before they need one monolithic browser engine.
+- AI agents need stable, inspectable action surfaces. They should receive the
+  same legal intents, scoped views, and version checks as humans.
+- Convex gives reactive queries, transactional mutations, subscriptions, and
+  durable scheduling, which fit lobbies, seat views, match logs, replay
+  indexing, generated assets, and hosted agent orchestration.
+- PixiJS and Three.js remain adapters over scene models. They make the proof
+  apps rich without letting canvas or WebGL become game authority.
 
 ## Monorepo Layout
 
@@ -77,41 +92,72 @@ docs/
   superpowers/            Local methodology docs
 ```
 
-## Core Boundaries
+## Suite Boundaries
 
-### 1. `packages/game-core`
+### 1. Public `@lunchtable/games-*` packages
 
 Owns:
 
-- full authoritative match state
-- turn structure
-- priority and timing windows
-- command validation
-- ability resolution
-- continuous and replacement effects
-- deterministic RNG
-- replay generation
+- deterministic shells, RNG, lifecycle, intents, transitions, prompts, and replay
+- tabletop seats, zones, objects, decks, dice, boards, permissions, and visibility
+- legal action frames, agent envelopes, external decision resolution, SSE, A2A,
+  and elizaOS Cloud helpers
+- HTTP, SSE, MCP, and API adapters for agent and developer access
+- asset bundles, sprite sheets, tilemaps, hitboxes, pivots, timelines, and atlas export
+- renderer-neutral scene models, cameras, cues, interactions, and asset hints
+- side-scroller runtime, self-play helpers, scenes, and asset integration
 
 Does not own:
 
-- persistence
-- auth
-- network transport
-- rendering
-- sound
-- timers as wall-clock primitives
+- product routes or Convex functions
+- TCG rules or card content
+- React components
+- Pixi or Three.js components
+- privileged hosted-service credentials
 
-### 2. `convex/`
+### 2. `lunchtable` CLI
+
+Owns:
+
+- `bunx lunchtable init`
+- TCG, dice, side-scroller, and 3D shooter starter scaffolds
+- generated pack validation and evaluation commands
+- scaffolded MCP servers, LLM context files, agent skills, and self-play tests
+- starter asset manifests and side-scroller asset studio examples
+
+Does not own:
+
+- authoritative hosted match state
+- npm package publication credentials
+- renderer-specific game logic
+
+### 3. Proof-game packages
+
+Owns:
+
+- current TCG rules engine and proof-game state transitions
+- starter cards, starter decks, formats, and generated card/tabletop packs
+- TCG bot SDK adapters and evaluation harnesses
+- Pixi proof renderer for the browser app
+
+Does not own:
+
+- generic suite primitives
+- generated-game admission policy
+- renderer-neutral contracts for every game family
+
+### 4. `convex/`
 
 Owns:
 
 - user identity and authorization
 - canonical user, wallet, and challenge records
-- persistence of decks, collections, lobbies, matches, replays
+- persistence of decks, collections, lobbies, matches, replays, assets, and agent metadata
 - command ingestion
 - transactional application of intents
 - public/private seat projections
 - matchmaking and scheduling
+- generated asset storage and server-side elizaOS Cloud calls
 - telemetry and moderation hooks
 
 Does not own:
@@ -120,11 +166,14 @@ Does not own:
 - client animation state
 - raw private keys
 
-### 3. `apps/web` + `packages/render-pixi`
+### 5. `apps/web`
 
 Owns:
 
 - route-level product UI
+- TCG proof client
+- generated pack editor
+- asset studio panel
 - match presentation
 - animation timelines
 - local interaction affordances
@@ -132,11 +181,11 @@ Owns:
 
 Does not own:
 
-- authoritative card legality
+- authoritative rules
 - hidden information derivation
-- turn order
+- agent-only game actions
 
-### 4. `apps/bot-runner`
+### 6. `apps/bot-runner`
 
 Owns:
 
@@ -150,23 +199,46 @@ Does not own:
 - privileged writes to match state
 - alternate gameplay mutations
 
-## Authoritative Match Flow
+### 7. TCG rules proof surface
 
-1. A human or bot subscribes to a seat-scoped query.
-2. The client submits a single intent through `matches.submitIntent`.
-3. Convex validates identity, seat ownership, timing, and command shape.
-4. `game-core` applies the command to the current authoritative state.
-5. `game-core` emits:
+Owns:
+
+- full authoritative TCG match state
+- turn structure, priority, timing windows, command validation, and ability resolution
+- deterministic RNG
+- replay generation
+
+Does not own:
+
+- persistence
+- auth
+- network transport
+- rendering
+- sound
+- timers as wall-clock primitives
+
+## Authoritative Game Flow
+
+1. A human, bot, MCP client, hosted Eliza agent, or spectator receives a
+   scoped view.
+2. A participant submits one legal intent through the ruleset-specific public
+   action path.
+3. The authority layer validates state version, seat ownership, phase,
+   permissions, costs, targets, and prompt requirements.
+4. The ruleset applies the intent to the current authoritative state.
+5. The ruleset emits:
    - next state snapshot
    - event log entries
    - hidden/public projection inputs
    - follow-up tasks such as pending triggers or delayed effects
 6. The mutation commits snapshot, events, derived indices, and queueable work atomically.
-7. Convex subscriptions update:
+7. Projections update:
    - both seat views
    - spectator view
-   - match shell
+   - game shell
    - replay slices
+   - render scenes
+   - agent decision frames
 8. Non-critical work runs after commit:
    - notifications
    - analytics
@@ -192,9 +264,9 @@ Hot documents stay small and normalized:
 - `agent_runs`
 - `moderation_events`
 
-## Extensibility Axes
+## Game Family Axes
 
-The engine must not hardcode one card game. Each format plugs these axes:
+The suite must not hardcode one card game. Each game family plugs these axes:
 
 - `turnModel`: alternating, rounds, simultaneous planning
 - `timingModel`: full stack, fast/slow windows, no-response
@@ -204,13 +276,22 @@ The engine must not hardcode one card game. Each format plugs these axes:
 - `deckRules`: deck size, sideboard, duplicate limits, commander rules
 - `mulliganModel`: London, partial redraw, roguelite node draft
 - `cardPool`: set legality and ban list
+- `movementModel`: grid, platformer, lane, free arena, or tabletop placement
+- `cameraModel`: orthographic 2D, isometric 2.5D, side-scroller, table 3D, or
+  first-person arena
+- `assetModel`: cards, dice, tokens, sprites, tilemaps, models, materials, and
+  timelines
+- `agentModel`: legal action descriptors, context frames, self-play, MCP, SSE,
+  A2A, and external decision services
 
-## Match Surface Split
+## Surface Split
 
 - DOM/React:
   - navigation
   - deckbuilder
   - collection
+  - generated pack editor
+  - asset studio
   - social surfaces
   - modals
   - settings
@@ -229,6 +310,7 @@ The engine must not hardcode one card game. Each format plugs these axes:
   - booster opening
   - cinematic summon intros
   - premium arena backgrounds
+  - 3D tabletop and arena prototypes
 
 ## Non-Functional Requirements
 
@@ -238,6 +320,10 @@ The engine must not hardcode one card game. Each format plugs these axes:
 - Rate control: all public gameplay mutations are idempotency-aware and seat-scoped.
 - Performance: no live match path depends on full-table scans or text/vector search.
 - Observability: every command application emits latency, state version, and failure reason.
+- Portability: public packages build and pack without app, Convex, renderer, or
+  TCG-only imports.
+- Agent parity: generated starters ship API, MCP, SSE/A2A context, LLM maps,
+  skills, and self-play tests from day one.
 
 ## Anti-Patterns To Avoid
 

@@ -1,6 +1,6 @@
 # Agent-Playable Current-Format Execution Plan
 
-This document is the control plane for Phases 19-24 of Lunchtable.
+This document is the control plane for Phases 19-24 of Lunch Table Games.
 
 ## Goal
 

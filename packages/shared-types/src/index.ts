@@ -1,4 +1,4 @@
-export const APP_NAME = "Lunch-Table";
+export const APP_NAME = "Lunch Table Games";
 
 export { AGENT_MATCH_CONTEXT_VERSION } from "./agent-context";
 export { BENCHMARK_RESULT_VERSION } from "./benchmark";
