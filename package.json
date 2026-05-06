@@ -52,16 +52,16 @@
     "@lunchtable/games-tabletop": "workspace:*",
     "@lunchtable/render-pixi": "workspace:*",
     "@lunchtable/shared-types": "workspace:*",
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.4.14",
     "@edge-runtime/vm": "5.0.0",
     "@playwright/test": "1.59.1",
-    "@types/node": "^24.6.1",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
     "convex-test": "0.0.46",
-    "typescript": "^5.9.3",
-    "vite": "^7.1.10",
-    "vitest": "^3.2.4"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
   }
 }
