@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@convex-dev/agent": "0.6.1",
-    "@noble/curves": "2.0.1",
+    "@noble/curves": "2.2.0",
     "convex": "1.37.0",
     "jose": "6.2.2",
     "viem": "2.47.6"
